@@ -1,0 +1,6 @@
+# dados pessoais dos empregados - nunca subir
+*.xlsx
+*.xls
+*.csv
+# copias locais
+*.verde-original.html
