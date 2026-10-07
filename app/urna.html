@@ -337,6 +337,10 @@ body.present .present-title{display:block;margin:18px 0 8px;font-size:clamp(2rem
   .sb{grid-template-columns:96px 1fr 100px}
   .part{grid-template-columns:1fr;justify-items:center}
 }
+body.totem{-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;overscroll-behavior:none;touch-action:manipulation}
+body.totem input{-webkit-user-select:text;user-select:text}
+.totem-ini{z-index:70;background:linear-gradient(120deg,#16203a,#3e4095)}
+.totem-ini .card{border:0;text-align:center;font:inherit;color:inherit;cursor:pointer}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}.done-ic path{stroke-dashoffset:0}}
 </style>
 
@@ -741,6 +745,7 @@ var API = MODE==="gas" ? gasApi() : (MODE==="php" ? phpApi() : demoApi());
 /* ---------- cabeçalho ---------- */
 function setHeader(cfg){
   $("#tituloEleicao").textContent = cfg.titulo || "Eleição CIPA";
+  if($("#totTit")) $("#totTit").textContent = cfg.titulo || "Eleição CIPA";
   $("#subEleicao").textContent = (cfg.gestao? cfg.gestao+" · " : "") + "Representantes dos empregados";
   $("#empresaLbl").textContent = [cfg.empresa,cfg.estabelecimento].filter(Boolean).join(" · ");
   document.title = cfg.titulo || "Urna CIPA";
@@ -993,13 +998,14 @@ function tabPainel(){
       '<div class="field"><label class="lbl" for="pu">Novo usuário (opcional)</label><input id="pu" autocapitalize="off"></div>'+
       '<div class="field"><label class="lbl" for="pa">Senha atual</label><input id="pa" type="password" required></div>'+
       '<div class="field"><label class="lbl" for="pn">Nova senha</label><input id="pn" type="password" required minlength="6"></div></div>'+
-      '<button class="btn" type="submit" style="margin-top:12px">Alterar acesso</button></form></div>'+demo;
+      '<button class="btn" type="submit" style="margin-top:12px">Alterar acesso</button></form></div>'+enderecos()+demo;
 
   $$("[data-act]").forEach(function(b){ b.onclick=function(){ A.confirm=b.getAttribute("data-act"); tabPainel(); }; });
   $$("[data-cancel]").forEach(function(b){ b.onclick=function(){ A.confirm=null; tabPainel(); }; });
   $$("[data-go]").forEach(function(b){ b.onclick=function(){ b.disabled=true; apply(API.status(A.t,b.getAttribute("data-go"))).then(function(){ A.res=null; toast("Situação da votação atualizada"); }); }; });
   $$("[data-goto]").forEach(function(b){ b.onclick=function(){ A.tab=b.getAttribute("data-goto"); adminRender(); }; });
   $("#fpwd").onsubmit=function(ev){ ev.preventDefault(); API.trocarSenha(A.t,$("#pa").value,$("#pn").value,$("#pu").value).then(function(){ toast("Acesso do administrador alterado"); $("#fpwd").reset(); },function(e){ toast(e.message); }); };
+  $$("[data-copy]").forEach(function(b){ b.onclick=function(){ copyText(b.getAttribute("data-copy")); }; });
   $("#fcfg").onsubmit=function(ev){ ev.preventDefault(); var o={}; $$("#fcfg input, #fcfg select").forEach(function(i){o[i.id.replace("cfg_","")]=i.value;}); apply(API.saveConfig(A.t,o)).then(function(){toast("Dados salvos");}); };
   $$("[data-demo]").forEach(function(b){ b.onclick=function(){ var k=b.getAttribute("data-demo");
     if(k==="sim") apply(API.simular(A.t,20)).then(function(){toast("20 votos simulados");});
@@ -1008,6 +1014,16 @@ function tabPainel(){
     if(k==="limpar"){ if(A.confirm!=="limpar"){ A.confirm="limpar"; toast("Clique de novo em “Recomeçar do zero” para confirmar: apaga colaboradores e votos."); return; } apply(API.limpar(A.t)).then(function(){ A.res=null; A.tab="eleitores"; adminRender(); toast("Pronto: carregue a nova lista de colaboradores"); }); }
     if(k==="reset") API.reiniciar().then(function(){ A.res=null; adminLoad(); toast("Dados de exemplo restaurados"); });
   }; });
+}
+function enderecos(){
+  if(MODE==="demo" || !A.d.urlApp) return "";
+  var u=A.d.urlApp, L=[["Urna (celular ou computador)",u,"O colaborador abre no próprio aparelho."],
+    ["Totem (tablet fixo)",u+"?p=totem","Tela cheia, tela sempre ligada e volta ao início após 60 s sem uso."],
+    ["Inscrição de candidatos",u+"?p=inscricao","Funciona enquanto as inscrições estiverem abertas."]];
+  return '<div class="sect no-present"><h3>Endereços</h3><div class="card pad" style="display:grid;gap:14px">'+L.map(function(x){
+    return '<div class="row" style="align-items:center;justify-content:space-between"><div style="min-width:0;flex:1 1 260px"><b>'+esc(x[0])+'</b><div class="mono small" style="word-break:break-all">'+esc(x[1])+'</div><div class="muted small">'+esc(x[2])+'</div></div>'+
+      '<button class="btn" type="button" data-copy="'+esc(x[1])+'">Copiar</button></div>';
+  }).join("")+'</div></div>';
 }
 function donut(p){
   var r=52, C=2*Math.PI*r, off=C*(1-Math.min(100,p)/100);
@@ -1441,6 +1457,33 @@ function tabRegistro(){
   $("#tabBody").innerHTML='<p class="muted">Registro de todas as ações da comissão. Votos individuais não aparecem aqui, para preservar o sigilo.</p><div class="tbl-wrap"><table class="t"><thead><tr><th>Data e hora</th><th>Usuário</th><th>Ação</th><th>Detalhe</th></tr></thead><tbody>'+(rows||'<tr><td colspan="4" class="muted">Sem registros.</td></tr>')+'</tbody></table></div>';
 }
 
+/* ---------- modo totem (tablet fixo) ----------
+   Tela cheia no primeiro toque, tela sempre ligada, sem menu de contexto/seleção,
+   e volta para a matrícula se alguém largar a votação no meio (a sessão do eleitor
+   não pode ficar aberta para o próximo da fila). A tela FIM não tem tempo: espera o CONCLUIR. */
+var TOT={on:false,ult:Date.now(),lock:null,LIMITE:60000};
+function totemTelaCheia(){
+  var el=document.documentElement;
+  try{ if(!document.fullscreenElement && el.requestFullscreen){ var p=el.requestFullscreen({navigationUI:"hide"}); if(p&&p.catch) p.catch(function(){}); } }catch(e){}
+  try{ if(navigator.wakeLock && !TOT.lock){ navigator.wakeLock.request("screen").then(function(l){ TOT.lock=l; l.addEventListener("release",function(){ TOT.lock=null; }); },function(){}); } }catch(e){}
+}
+function totemInit(){
+  TOT.on=true; document.body.classList.add("totem");
+  $("#overlay2").innerHTML='<div class="overlay totem-ini" id="totIni" role="dialog" aria-label="Iniciar urna"><button type="button" class="card login" id="totGo">'+
+    '<img alt="Redentor" src="'+esc($(".mark img").getAttribute("src"))+'" style="height:64px;width:auto;margin:0 auto 14px;display:block;background:#fff;border-radius:12px;padding:6px 10px"><span class="lbl">Urna eletrônica</span><h2 id="totTit" style="margin:8px 0 6px">'+esc($("#tituloEleicao").textContent)+'</h2><p class="muted" style="margin:0 0 18px">Toque para começar</p><span class="btn primary lg" style="width:100%">Iniciar</span></button></div>';
+  $("#totGo").onclick=function(){ totemTelaCheia(); $("#overlay2").innerHTML=""; TOT.ult=Date.now(); };
+  ["pointerdown","keydown","touchstart"].forEach(function(ev){ document.addEventListener(ev,function(){ TOT.ult=Date.now(); },{passive:true,capture:true}); });
+  document.addEventListener("pointerup",function(){ if(!$("#totIni")) totemTelaCheia(); });
+  document.addEventListener("contextmenu",function(e){ e.preventDefault(); });
+  document.addEventListener("visibilitychange",function(){ if(document.visibilityState==="visible") totemTelaCheia(); });
+  setInterval(function(){
+    if(Date.now()-TOT.ult < TOT.LIMITE) return;
+    if($(".fim")) return;
+    var mi=$("#mat");
+    if(V.s || V.found || $("#overlay").innerHTML || (mi && mi.value)){ logout(); TOT.ult=Date.now(); toast("Sem uso por 1 minuto: voltamos ao início."); }
+  },3000);
+}
+
 /* ---------- inicialização ---------- */
 function show(view){
   $("#overlay").innerHTML=""; document.body.classList.remove("present"); var ex=$("#exitPres"); if(ex) ex.remove();
@@ -1454,7 +1497,8 @@ if(MODE==="demo"){
   window.addEventListener("hashchange",function(){ if(location.hash==="#admin") show("admin"); else if(location.hash==="#inscricao") inscricaoPage(); });
   if(location.hash==="#inscricao") inscricaoPage(); else show(location.hash==="#admin" ? "admin" : "voter");
 } else {
-  if(PAGE==="foto"){ fotoPage(); } else if(PAGE==="inscricao"){ inscricaoPage(); } else show(PAGE==="admin" || PAGE==="comissao" ? "admin" : "voter");
+  if(PAGE==="totem"){ show("voter"); totemInit(); }
+  else if(PAGE==="foto"){ fotoPage(); } else if(PAGE==="inscricao"){ inscricaoPage(); } else show(PAGE==="admin" || PAGE==="comissao" ? "admin" : "voter");
 }
 })();
 </script>

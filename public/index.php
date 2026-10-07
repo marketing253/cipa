@@ -5,11 +5,12 @@
  *   /?p=comissao       administração da comissão eleitoral
  *   /?p=inscricao      inscrição de candidatos pelo celular
  *   /?p=foto&t=...     foto do candidato pelo celular (QR Code)
+ *   /?p=totem          tablet fixo: tela cheia, tela ligada, volta ao início sem uso
  */
 declare(strict_types=1);
 
 $p = (string)($_GET['p'] ?? '');
-if (!in_array($p, ['', 'admin', 'comissao', 'inscricao', 'foto'], true)) $p = '';
+if (!in_array($p, ['', 'admin', 'comissao', 'inscricao', 'foto', 'totem'], true)) $p = '';
 $tok = preg_replace('/[^a-f0-9]/', '', (string)($_GET['t'] ?? ''));
 
 $html = file_get_contents(dirname(__DIR__) . '/app/urna.html');
