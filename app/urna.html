@@ -434,27 +434,17 @@ function resizePhoto(file){
   });
 }
 
-/* Avatar ilustrado (para demonstração) */
+/* Sem foto: iniciais do nome em dourado sobre o azul da Redentor (ou silhueta, antes de ter nome) */
 function avatar(seed){
-  var h=0; for(var i=0;i<seed.length;i++){ h=(h*31+seed.charCodeAt(i))>>>0; }
-  function pick(arr){ var v=arr[h%arr.length]; h=Math.floor(h/arr.length)+7919; return v; }
-  var bg=pick(["#dde2f5","#e4e0f2","#f3e3d3","#dbe7f3","#f1dfe3","#e6ecd6"]);
-  var skin=pick(["#f2c9a5","#d9a27a","#b97a52","#8d5a3b","#f5d6bd","#c68a63"]);
-  var hair=pick(["#2b1d16","#4a3020","#151515","#7a4b2a","#b58a52","#5c5c5c"]);
-  var shirt=pick(["#3e4095","#2f5d8a","#8a2f4d","#5a4a8a","#c06a1d","#3b6b6b","#6b6b3b"]);
-  var style=pick([0,1,2,3]);
-  var hairSvg = style===0 ? '<path d="M70 92c0-30 18-46 50-46s50 16 50 46c-8-14-22-22-50-22s-42 8-50 22z" fill="'+hair+'"/>'
-    : style===1 ? '<path d="M64 120c-4-48 20-74 56-74s60 26 56 74l-10 50h-14l4-56c-10-18-24-26-36-26s-26 8-36 26l4 56H74z" fill="'+hair+'"/>'
-    : style===2 ? '<circle cx="120" cy="40" r="18" fill="'+hair+'"/><path d="M72 94c0-30 18-48 48-48s48 18 48 48c-10-12-26-20-48-20s-38 8-48 20z" fill="'+hair+'"/>'
-    : '<path d="M76 86c6-24 22-36 44-36s38 12 44 36c-14-6-28-8-44-8s-30 2-44 8z" fill="'+hair+'"/>';
-  var svg='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 300"><rect width="240" height="300" fill="'+bg+'"/>'+
-    '<path d="M20 300c4-58 44-92 100-92s96 34 100 92z" fill="'+shirt+'"/>'+
-    '<path d="M100 196h40v26c-6 8-34 8-40 0z" fill="'+skin+'"/>'+
-    (style===1?hairSvg:'')+
-    '<ellipse cx="120" cy="120" rx="48" ry="58" fill="'+skin+'"/>'+
-    (style!==1?hairSvg:'<path d="M74 100c6-32 22-48 46-48s40 16 46 48c-12-16-28-24-46-24s-34 8-46 24z" fill="'+hair+'"/>')+
-    '<circle cx="102" cy="124" r="5" fill="#222"/><circle cx="138" cy="124" r="5" fill="#222"/>'+
-    '<path d="M104 152c10 8 22 8 32 0" stroke="#7a3a2a" stroke-width="4" fill="none" stroke-linecap="round"/></svg>';
+  seed=String(seed||"").trim();
+  var vazio=!seed || seed==="novo" || seed==="foto";
+  var ini=vazio?"":initials(seed);
+  var miolo = vazio
+    ? '<circle cx="120" cy="118" r="44" fill="#d29500" fill-opacity=".9"/><path d="M40 300c6-62 38-96 80-96s74 34 80 96z" fill="#d29500" fill-opacity=".9"/>'
+    : '<circle cx="120" cy="150" r="78" fill="none" stroke="#d29500" stroke-width="4" stroke-opacity=".55"/>'+
+      '<text x="120" y="150" dy=".35em" text-anchor="middle" font-family="Segoe UI,Arial,Helvetica,sans-serif" font-weight="700" font-size="'+(ini.length>1?68:84)+'" letter-spacing="2" fill="#d29500">'+esc(ini)+'</text>';
+  var svg='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 300"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#16203a"/><stop offset="1" stop-color="#3e4095"/></linearGradient></defs>'+
+    '<rect width="240" height="300" fill="url(#g)"/>'+miolo+'<rect y="292" width="240" height="8" fill="#d29500"/></svg>';
   return "data:image/svg+xml;charset=utf-8,"+encodeURIComponent(svg);
 }
 
@@ -540,7 +530,7 @@ function demoApi(){
     var r=rng(2026);
     var nomes=[["01","C. Nunes","Produção","2009-03-02"],["02","Leoni","Manutenção","2012-07-16"],["03","Rosimeire","Qualidade","2015-01-12"],["04","Kleber","Logística","2011-05-03"],["06","Alcionir","Produção","2007-09-10"],["07","F. Leandro","Expedição","2018-02-19"],["08","Narcreto","Manutenção","2010-11-08"],["09","Tales","Produção","2020-06-01"],["10","Langner","Logística","2014-04-14"],["11","Surek","Produção","2016-08-22"],["13","B. Lima","Administrativo","2019-10-07"],["14","Vaz","Expedição","2013-03-25"],["15","Mauri","Manutenção","2008-12-01"],["16","Léa","Qualidade","2017-05-15"],["17","Tamburi","Produção","2012-02-27"],["18","Cleusa","Administrativo","2006-08-14"],["19","Roze do DP","Departamento Pessoal","2011-01-10"],["20","Susan Psicóloga","Recursos Humanos","2021-03-08"]];
     var completos=["Cláudio Nunes","Leoni Ferreira","Rosimeire Alves","Kleber Santos","Alcionir Pereira","Fernando Leandro","Narcreto Souza","Tales Oliveira","Paulo Langner","João Surek","Bruna Lima","Marcos Vaz","Mauri Costa","Léa Martins","Sérgio Tamburi","Cleusa Rocha","Rozeli Moreira","Susan Ribeiro"];
-    var cands=nomes.map(function(n,i){ return {numero:n[0],matricula:String(10201+i),nome:completos[i],escala:n[1],cargo:"",setor:n[2],admissao:n[3],foto:avatar(n[1]+n[0])}; });
+    var cands=nomes.map(function(n,i){ return {numero:n[0],matricula:String(10201+i),nome:completos[i],escala:n[1],cargo:"",setor:n[2],admissao:n[3],foto:avatar(completos[i])}; });
     var pn=["Ana","Bruno","Carla","Diego","Eduarda","Fábio","Gabriela","Henrique","Isabela","João","Karina","Lucas","Mariana","Nelson","Otávio","Patrícia","Rafael","Sabrina","Thiago","Vanessa","Wagner","Yasmin","Adriana","Marcos","Juliana","Paulo","Renata","Sérgio","Tatiane","Vítor"];
     var sn=["Silva","Souza","Oliveira","Pereira","Costa","Rodrigues","Almeida","Nascimento","Lima","Araújo","Fernandes","Carvalho","Gomes","Martins","Rocha","Ribeiro","Barbosa","Moreira","Cardoso","Teixeira"];
     var setores=["Produção","Produção","Produção","Manutenção","Logística","Expedição","Qualidade","Administrativo","Recursos Humanos"];
