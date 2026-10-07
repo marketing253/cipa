@@ -4,3 +4,5 @@
 *.csv
 # copias locais
 *.verde-original.html
+data/
+.claude/

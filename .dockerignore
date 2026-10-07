@@ -1,0 +1,6 @@
+data/
+testes/
+.git/
+*.md
+.claude/
+.gitignore
