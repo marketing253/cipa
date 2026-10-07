@@ -874,9 +874,32 @@ function openConfirm(num){
   $("#kConfirma").onclick=confirmVote;
   $("#kConfirma").focus();
 }
+/* Som de "FIM" no estilo da urna eletrônica, sintetizado (não usa o áudio oficial).
+   O AudioContext nasce no clique do CONFIRMA, senão o navegador bloqueia o som. */
+var SOM={ctx:null};
+function somPreparar(){
+  try{ if(!SOM.ctx){ var AC=window.AudioContext||window.webkitAudioContext; if(AC) SOM.ctx=new AC(); } if(SOM.ctx && SOM.ctx.state==="suspended") SOM.ctx.resume(); }catch(e){}
+}
+function somFim(){
+  var c=SOM.ctx; if(!c) return;
+  try{
+    var t=c.currentTime+0.02, out=c.createGain(); out.gain.value=0.22; out.connect(c.destination);
+    function bip(f,ini,dur){
+      var o=c.createOscillator(), g=c.createGain();
+      o.type="square"; o.frequency.value=f;
+      g.gain.setValueAtTime(0,ini); g.gain.linearRampToValueAtTime(1,ini+0.005);
+      g.gain.setValueAtTime(1,ini+dur-0.012); g.gain.linearRampToValueAtTime(0,ini+dur);
+      o.connect(g); g.connect(out); o.start(ini); o.stop(ini+dur+0.02);
+    }
+    for(var i=0;i<5;i++) bip(i%2?1330:1180, t+i*0.105, 0.085);   /* ti-ti-ti-ti-ti */
+    bip(1330, t+5*0.105, 0.42);                                    /* tiiiim */
+  }catch(e){}
+}
 function confirmVote(){
   var b1=$("#kConfirma"), b2=$("#kCorrige"); b1.disabled=b2.disabled=true; b1.textContent="GRAVANDO…";
+  somPreparar();
   API.votar(V.s.token,V.pick).then(function(r){
+    somFim();
     $(".urna").innerHTML='<div class="screen" style="display:block"><div class="fim"><div class="big">FIM</div><p style="font-size:1.1rem;margin:6px 0 0"><b>Voto registrado com sucesso.</b></p>'+
       '<p style="margin:8px 0 0">Comprovante de participação</p><div class="cmp">'+esc(r.comprovante)+'</div><p class="small" style="margin-top:8px">'+esc(fmtDT(r.em))+' · o comprovante não identifica o candidato escolhido.</p></div></div>'+
       '<p class="small" id="cnt" style="text-align:center;color:#ddd;margin:12px 0 0">Esta tela será fechada em 5 segundos…</p>';
