@@ -849,11 +849,11 @@ function logout(){ V.s=null; V.pick=null; V.found=null; clearTimeout(V.timer); $
 
 function finishVote(){
   clearTimeout(V.timer); V.s=null; V.pick=null; V.done=true;
+  /* no servidor a mesma tela pode servir de totem: CONCLUIR volta direto para a matrícula */
+  if(MODE==="php"){ V.done=false; $("#overlay").innerHTML=""; voterRender(); window.scrollTo(0,0); return; }
   if(MODE==="gas"){ try{ sessionStorage.setItem("cipa-votou","1"); }catch(e){} }
   doneRender();
   if(MODE==="gas"){ try{ window.top.close(); }catch(e){} try{ window.close(); }catch(e){} }
-  /* no servidor a mesma tela pode servir de totem: volta sozinha para a matrícula */
-  if(MODE==="php"){ V.timer=setTimeout(function(){ V.done=false; voterRender(); },10000); }
 }
 
 function openConfirm(num){
@@ -902,8 +902,8 @@ function confirmVote(){
     somFim();
     $(".urna").innerHTML='<div class="screen" style="display:block"><div class="fim"><div class="big">FIM</div><p style="font-size:1.1rem;margin:6px 0 0"><b>Voto registrado com sucesso.</b></p>'+
       '<p style="margin:8px 0 0">Comprovante de participação</p><div class="cmp">'+esc(r.comprovante)+'</div><p class="small" style="margin-top:8px">'+esc(fmtDT(r.em))+' · o comprovante não identifica o candidato escolhido.</p></div></div>'+
-      '<p class="small" id="cnt" style="text-align:center;color:#ddd;margin:12px 0 0">Esta tela será fechada em 5 segundos…</p>';
-    var n=5; V.timer=setInterval(function(){ n--; var c=$("#cnt"); if(c) c.textContent="Esta tela será fechada em "+n+" segundo"+(n===1?"":"s")+"…"; if(n<=0){ clearInterval(V.timer); finishVote(); } },1000);
+      '<div class="keys"><button type="button" class="key confirma" id="kFim">CONCLUIR</button></div>';
+    $("#kFim").onclick=finishVote; $("#kFim").focus();
   }, function(e){
     $("#verr").textContent=e.message; $("#verr").hidden=false; b2.disabled=false; b1.textContent="CONFIRMA";
     if(/já foi registrado|já votou|encerrada|expirada/.test(e.message)){ b2.textContent="VOLTAR"; b2.onclick=logout; } else b1.disabled=false;
