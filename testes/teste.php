@@ -6,7 +6,7 @@ $tmp = sys_get_temp_dir() . '/urna-teste-' . bin2hex(random_bytes(4));
 putenv("CIPA_DATA=$tmp");
 putenv('CIPA_ADMIN_SENHA=senha-teste-1');
 putenv('CIPA_PERMITIR_ZERAR');
-$_SERVER['HTTP_HOST'] = 'urna.test'; $_SERVER['SCRIPT_NAME'] = '/api.php'; $_SERVER['REMOTE_ADDR'] = '10.0.0.1';
+$_SERVER['HTTP_HOST'] = 'urna.test'; $_SERVER['SCRIPT_NAME'] = '/api.php'; $_SERVER['REMOTE_ADDR'] = '10.0.0.1'; $_SERVER['HTTP_X_FORWARDED_FOR'] = '6.6.6.6, 200.10.20.30'; $_SERVER['HTTP_USER_AGENT'] = 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/129 Mobile Safari/537.36';
 require __DIR__ . '/../app/lib.php';
 
 $ok = 0; $ko = 0;
@@ -55,7 +55,7 @@ erro('matrícula inexistente', fn() => api_consultar('999'), 'não encontrada');
 $votos = ['07', '07', '07', '13', '13', '01', 'BRANCO', 'NULO'];
 foreach ($votos as $i => $n) {
     $s = api_login((string)(1001 + $i), '');
-    $v = api_votar($s['token'], $n);
+    $v = api_votar($s['token'], $n, $i === 7, $i < 2 ? 'MESMOAPARELHO' : "ap$i");
     t("voto $i", (bool)preg_match('/^[A-Z2-9]{4}-[A-Z2-9]{4}$/', $v['comprovante']));
 }
 erro('voto duplo', fn() => api_login('1001', ''), 'já votou');
@@ -93,5 +93,14 @@ t('nova senha vale', strlen(api_adminLogin('comissao', 'nova-senha-9')['token'])
 for ($i = 0; $i < 8; $i++) { try { api_adminLogin('x', 'y'); } catch (Erro $e) {} }
 erro('bloqueio por tentativas', fn() => api_adminLogin('comissao', 'nova-senha-9'), 'Muitas tentativas');
 
+// auditoria: participação com IP/aparelho, alertas, sem ligação matrícula→voto
+$au = api_auditoria($A);
+t('auditoria lista 8 votantes', count($au['votantes']) === 8);
+t('IP real atrás do proxy', $au['votantes'][0]['ip'] === '200.10.20.30');
+t('aparelho descrito', $au['votantes'][0]['disp'] === 'Android · Chrome');
+t('voto do totem marcado', count(array_filter($au['votantes'], fn($v) => $v['totem'])) === 1);
+t('alerta mesmo aparelho', (bool)array_filter($au['alertas'], fn($a) => $a['nivel'] === 'alto' && str_contains($a['texto'], '2 matrículas')));
+t('boletim no extrato', $au['resultado']['total'] === 8);
+t('votante não carrega voto', !array_key_exists('voto', $au['votantes'][0]));
 echo "\n$ok ok, $ko falha(s)\n";
 exit($ko ? 1 : 0);

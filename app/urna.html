@@ -734,7 +734,7 @@ function phpApi(){
   }
   var api={};
   ["ballot","consultar","login","votar","adminLogin","adminSair","trocarSenha","adminData","saveConfig","saveCand","delCand",
-   "importar","status","resultado","gerarAta","fotoToken","fotoBuscar","fotoEnviar","inscConsultar","inscrever"].forEach(function(k){
+   "importar","status","resultado","gerarAta","fotoToken","fotoBuscar","fotoEnviar","inscConsultar","inscrever","auditoria"].forEach(function(k){
     api[k]=function(){ return call.apply(null,[k].concat(Array.prototype.slice.call(arguments))); };
   });
   return api;
@@ -918,10 +918,15 @@ function somBipes(){
     bip(1330, t+5*0.105, 0.42);                                    /* tiiiim */
   }catch(e){}
 }
+/* id aleatório deste aparelho (não identifica a pessoa): serve para a auditoria apontar
+   várias matrículas votando pelo mesmo celular */
+function aparelhoId(){
+  try{ var k="cipa-aparelho", v=localStorage.getItem(k); if(!v){ v=randCode(12); localStorage.setItem(k,v); } return v; }catch(e){ return ""; }
+}
 function confirmVote(){
   var b1=$("#kConfirma"), b2=$("#kCorrige"); b1.disabled=b2.disabled=true; b1.textContent="GRAVANDO…";
   somPreparar();
-  API.votar(V.s.token,V.pick).then(function(r){
+  API.votar(V.s.token,V.pick,PAGE==="totem",aparelhoId()).then(function(r){
     somFim();
     $(".urna").innerHTML='<div class="screen" style="display:block"><div class="fim"><div class="big">FIM</div><p style="font-size:1.1rem;margin:6px 0 0"><b>Voto registrado com sucesso.</b></p>'+
       '<p style="margin:8px 0 0">Comprovante de participação</p><div class="cmp">'+esc(r.comprovante)+'</div><p class="small" style="margin-top:8px">'+esc(fmtDT(r.em))+' · o comprovante não identifica o candidato escolhido.</p></div></div>'+
@@ -963,7 +968,7 @@ function apply(p){ return p.then(function(d){ if(d && d.cfg){ A.d=d; setHeader(d
 function statusPill(s){ return '<span class="pill '+(s==="preparacao"?"prep":s)+'">'+({preparacao:"Em preparação",aberta:"Votação aberta",encerrada:"Votação encerrada"}[s]||s)+'</span>'; }
 
 function adminRender(){
-  var d=A.d, tabs=[["painel","Painel"],["candidatos","Candidatos ("+d.candidatos.length+")"],["eleitores","Colaboradores ("+d.eleitores.length+")"],["apuracao","Apuração"],["registro","Registro"]];
+  var d=A.d, tabs=[["painel","Painel"],["candidatos","Candidatos ("+d.candidatos.length+")"],["eleitores","Colaboradores ("+d.eleitores.length+")"],["apuracao","Apuração"],["registro","Registro"]].concat(MODE==="php"?[["auditoria","Auditoria"]]:[]);
   var html='<div class="admin"><aside class="side"><div class="side-h lbl">Administração</div><div class="tabs" role="tablist">'+tabs.map(function(t){return '<button type="button" role="tab" data-tab="'+t[0]+'" aria-selected="'+(A.tab===t[0])+'">'+t[1]+'</button>';}).join("")+'</div>'+
     '<button type="button" class="btn ghost" id="aSair">Sair do administrador</button></aside><div id="tabBody" class="admin-main"></div></div>';
   $("#app").innerHTML=html;
@@ -971,7 +976,7 @@ function adminRender(){
   $$("[data-tab]").forEach(function(b){ b.onclick=function(){ A.tab=b.getAttribute("data-tab"); A.confirm=null; adminRender();
     API.adminData(A.t).then(function(d){ var muda=JSON.stringify([d.candidatos.length,d.votantes,d.eleitores.length,d.cfg])!==JSON.stringify([A.d.candidatos.length,A.d.votantes,A.d.eleitores.length,A.d.cfg]) || d.candidatos.map(function(c){return c.numero+c.nome+(c.foto||"").length;}).join()!==A.d.candidatos.map(function(c){return c.numero+c.nome+(c.foto||"").length;}).join();
       A.d=d; if(muda && !$("#overlay").innerHTML) adminRender(); },function(){}); }; });
-  ({painel:tabPainel,candidatos:tabCandidatos,eleitores:tabEleitores,apuracao:tabApuracao,registro:tabRegistro})[A.tab]();
+  ({painel:tabPainel,candidatos:tabCandidatos,eleitores:tabEleitores,apuracao:tabApuracao,registro:tabRegistro,auditoria:tabAuditoria})[A.tab]();
 }
 
 function tabPainel(){
@@ -1474,6 +1479,67 @@ function togglePresent(){
 function tabRegistro(){
   var rows=A.d.log.map(function(l){ return '<tr><td class="mono" style="white-space:nowrap">'+esc(fmtDT(l.em))+'</td><td>'+esc(l.usuario||"")+'</td><td><b>'+esc(l.acao)+'</b></td><td>'+esc(l.detalhe||"")+'</td></tr>'; }).join("");
   $("#tabBody").innerHTML='<p class="muted">Registro de todas as ações da comissão. Votos individuais não aparecem aqui, para preservar o sigilo.</p><div class="tbl-wrap"><table class="t"><thead><tr><th>Data e hora</th><th>Usuário</th><th>Ação</th><th>Detalhe</th></tr></thead><tbody>'+(rows||'<tr><td colspan="4" class="muted">Sem registros.</td></tr>')+'</tbody></table></div>';
+}
+
+/* ---------- auditoria ----------
+   Participação (quem votou, quando, de onde), alertas, zerésima, boletim e registro.
+   O voto individual não existe no banco: nada aqui liga matrícula a candidato. */
+function origemVoto(v){ return v.totem ? "Totem" : (v.disp||"—"); }
+function nivelTxt(n){ return {alto:"Atenção",medio:"Conferir",info:"Informativo"}[n]||n; }
+function tabAuditoria(){
+  $("#tabBody").innerHTML='<div class="loading">Carregando auditoria…</div>';
+  API.auditoria(A.t).then(function(au){
+    var al=au.alertas.length ? au.alertas.map(function(a){ return '<div class="note '+(a.nivel==="alto"?"bad":(a.nivel==="medio"?"warn":"info"))+' small"><b>'+esc(nivelTxt(a.nivel))+':</b> '+esc(a.texto)+'</div>'; }).join("")
+      : '<div class="note ok small">Nenhum alerta: nenhum aparelho usado por mais de uma matrícula fora do totem.</div>';
+    var tot=au.votantes.filter(function(v){return v.totem;}).length;
+    var rows=au.votantes.slice().reverse().slice(0,500).map(function(v){ return '<tr><td class="mono" style="white-space:nowrap">'+esc(fmtDT(v.em))+'</td><td class="mono">'+esc(v.matricula)+'</td><td>'+esc(v.nome)+'</td><td>'+esc(v.setor||"—")+'</td><td>'+esc(origemVoto(v))+'</td><td class="mono small">'+esc(v.ip||"—")+'</td></tr>'; }).join("");
+    $("#tabBody").innerHTML=
+      '<div class="row" style="justify-content:space-between;align-items:flex-end"><div><h2 style="font-size:1.6rem">Auditoria</h2><p class="muted" style="margin:2px 0 0">Quem votou, quando e de onde. <b>Em quem cada um votou não é registrado</b> (voto secreto, NR-5).</p></div>'+
+      '<button class="btn primary" type="button" id="bExtrato">Gerar extrato (PDF)</button></div>'+
+      '<div class="kpis sect"><div class="card kpi"><div class="lbl">Votaram</div><div class="v">'+au.votantes.length+'</div><div class="small muted">de '+au.aptos+' aptos</div></div>'+
+        '<div class="card kpi"><div class="lbl">Pelo totem</div><div class="v">'+tot+'</div></div>'+
+        '<div class="card kpi"><div class="lbl">Por celular/computador</div><div class="v">'+(au.votantes.length-tot)+'</div></div>'+
+        '<div class="card kpi"><div class="lbl">Votos na urna</div><div class="v">'+au.urna+'</div><div class="small '+(au.urna===au.votantes.length?'yes':'no')+'">'+(au.urna===au.votantes.length?'Confere com votantes':'Diverge dos votantes')+'</div></div></div>'+
+      '<div class="sect"><h3>Alertas</h3><div style="display:grid;gap:8px">'+al+'</div></div>'+
+      '<div class="sect"><h3>Votantes</h3><div class="tbl-wrap"><table class="t"><thead><tr><th>Data e hora</th><th>Matrícula</th><th>Nome</th><th>Lotação</th><th>Origem</th><th>IP</th></tr></thead><tbody>'+
+        (rows||'<tr><td colspan="6" class="muted">Ninguém votou ainda.</td></tr>')+'</tbody></table></div>'+
+        (au.votantes.length>500?'<p class="muted small">Mostrando os 500 mais recentes. O extrato traz todos.</p>':'')+'</div>';
+    $("#bExtrato").onclick=function(){ extratoPdf(au); };
+  }, function(e){ $("#tabBody").innerHTML='<div class="note bad">'+esc(e.message)+'</div>'; });
+}
+function extratoPdf(au){
+  var c=au.cfg, r=au.resultado, logo=$(".mark img").getAttribute("src");
+  var abert=au.log.filter(function(l){return l.acao==="Votação aberta";}).slice(-1)[0];
+  function tab(cab,linhas){ return '<table><thead><tr>'+cab.map(function(h){return '<th>'+esc(h)+'</th>';}).join("")+'</tr></thead><tbody>'+
+    (linhas.length?linhas.map(function(l){return '<tr>'+l.map(function(x){return '<td>'+esc(x)+'</td>';}).join("")+'</tr>';}).join(""):'<tr><td colspan="'+cab.length+'">—</td></tr>')+'</tbody></table>'; }
+  var bol = r ? '<p>Votos na urna: <b>'+r.total+'</b> · válidos '+r.validos+' · brancos '+r.brancos+' · nulos '+r.nulos+' · votantes '+r.votantes+' de '+r.aptos+' aptos ('+fmtPct(r.participacao)+')</p>'+
+      tab(["Pos.","Nº","Candidato","Votos","Situação"], r.candidatos.map(function(x){ return [x.pos+"º",x.numero,x.nome+(x.escala&&x.escala!==x.nome?" ("+x.escala+")":""),String(x.votos),x.situacao||""]; }))+
+      '<p>Conferência urna × lista de votantes: <b>'+(r.integridade?"CONFERE":"DIVERGENTE")+'</b><br>Hash SHA-256 da urna no encerramento: <span class="mono">'+esc(c.hash||"—")+'</span></p>'
+    : '<p><b>Urna lacrada.</b> A votação '+(c.status==="aberta"?"está aberta":"não foi encerrada")+': os votos por candidato só são apurados após o encerramento. Votos na urna até agora: <b>'+au.urna+'</b> · votantes: <b>'+au.votantes.length+'</b>.</p>';
+  var css='@page{size:A4;margin:14mm 12mm}body{font:10.5pt/1.45 "Segoe UI",Arial,sans-serif;color:#16203a;margin:0}'+
+    'header{display:flex;gap:16px;align-items:center;border-bottom:3px solid #d29500;padding-bottom:10px;margin-bottom:14px}header img{height:58px}'+
+    'h1{font-size:16pt;margin:0}h2{font-size:12pt;margin:18px 0 6px;color:#3e4095;border-bottom:1px solid #cdd4e6;padding-bottom:3px;break-after:avoid}'+
+    'table{width:100%;border-collapse:collapse;font-size:9pt;margin:6px 0}th,td{border:1px solid #cdd4e6;padding:4px 6px;text-align:left;vertical-align:top}th{background:#eef0f6}'+
+    'tr{break-inside:avoid}.mono{font-family:Consolas,monospace;font-size:8.5pt;word-break:break-all}.muted{color:#5a6380}.al{padding:5px 8px;border-left:4px solid #d29500;background:#fbf0d4;margin:4px 0}.al.alto{border-color:#b42318;background:#fde8e5}'+
+    '.sig{display:grid;grid-template-columns:1fr 1fr;gap:34px 40px;margin-top:40px;break-inside:avoid}.sig div{border-top:1px solid #16203a;padding-top:4px;text-align:center;font-size:9pt}'+
+    '.box{border:1px solid #cdd4e6;background:#f5f7fd;padding:8px 10px;border-radius:6px}@media screen{body{max-width:900px;margin:20px auto;padding:0 16px}}';
+  var html='<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Extrato de auditoria - '+esc(c.titulo)+'</title><style>'+css+'</style></head><body>'+
+    '<header><img src="'+esc(logo)+'" alt=""><div><h1>Extrato de auditoria da eleição</h1><div>'+esc(c.titulo)+' · '+esc(c.gestao||"")+'</div>'+
+    '<div class="muted">'+esc(c.empresa||"")+(c.cnpj?' · CNPJ '+esc(c.cnpj):'')+(c.estabelecimento?' · '+esc(c.estabelecimento):'')+'</div></div></header>'+
+    '<div class="box">Emitido em <b>'+esc(fmtDT(au.emitido))+'</b> pela comissão eleitoral (IP '+esc(au.emitidoIp)+'). Situação da votação: <b>'+esc({preparacao:"em preparação",aberta:"aberta",encerrada:"encerrada"}[c.status]||c.status)+'</b>. '+
+    'Abertura: '+esc(fmtDT(c.abertura))+' · Encerramento: '+esc(fmtDT(c.encerramento))+'.<br><b>Voto secreto:</b> o sistema não registra em quem cada colaborador votou. A urna guarda apenas os números escolhidos, sem matrícula, horário ou ordem de chegada; este extrato mostra somente a participação.</div>'+
+    '<h2>1. Zerésima</h2><p>'+(abert?'Em <b>'+esc(fmtDT(abert.em))+'</b> a votação foi aberta com a urna contendo <b>0 (zero) votos</b>, conforme registro do sistema.':'A votação ainda não foi aberta.')+'</p>'+
+    '<h2>2. Boletim de urna</h2>'+bol+
+    '<h2>3. Alertas da auditoria</h2>'+(au.alertas.length?au.alertas.map(function(a){return '<div class="al '+a.nivel+'"><b>'+esc(nivelTxt(a.nivel))+':</b> '+esc(a.texto)+'</div>';}).join(""):'<p>Nenhum alerta: nenhum aparelho foi usado por mais de uma matrícula fora do totem e não houve votos de madrugada.</p>')+
+    '<h2>4. Lista de votantes ('+au.votantes.length+' de '+au.aptos+' aptos)</h2>'+
+    tab(["Data e hora","Matrícula","Nome","Lotação","Origem","IP","Comprovante"], au.votantes.map(function(v){ return [fmtDT(v.em),v.matricula,v.nome,v.setor||"—",origemVoto(v),v.ip||"—",v.comprovante||""]; }))+
+    '<h2>5. Registro de ações</h2>'+tab(["Data e hora","Usuário","Ação","Detalhe"], au.log.map(function(l){ return [fmtDT(l.em),l.usuario||"",l.acao,l.detalhe||""]; }))+
+    '<div class="sig"><div>Presidente da comissão eleitoral</div><div>Secretário(a)</div><div>Representante do empregador</div><div>Representante dos empregados</div></div>'+
+    '</body></html>';
+  var w=window.open("","_blank");
+  if(!w){ toast("O navegador bloqueou a nova janela. Permita pop-ups para este site."); return; }
+  w.document.open(); w.document.write(html); w.document.close();
+  setTimeout(function(){ try{ w.focus(); w.print(); }catch(e){} },400);
 }
 
 /* ---------- modo totem (tablet fixo) ----------

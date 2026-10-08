@@ -52,6 +52,10 @@ function db(): PDO {
         CREATE TABLE IF NOT EXISTS fotos (token TEXT PRIMARY KEY, foto TEXT, expira INTEGER NOT NULL);
         CREATE TABLE IF NOT EXISTS falhas (ip TEXT, em INTEGER);
     SQL);
+    // auditoria (08/10/2026): de onde cada matrícula votou — nunca em quem
+    $cols = array_column($pdo->query('PRAGMA table_info(eleitores)')->fetchAll(), 'name');
+    foreach (['voto_ip' => 'TEXT', 'voto_disp' => 'TEXT', 'voto_aparelho' => 'TEXT', 'voto_totem' => 'INTEGER'] as $c => $tipo)
+        if (!in_array($c, $cols, true)) $pdo->exec("ALTER TABLE eleitores ADD COLUMN $c $tipo");
     return $pdo;
 }
 
@@ -171,7 +175,31 @@ function exige_admin($t): void {
     if (sessao('admin', $t) === null) falha('Sessão do administrador expirada.');
     db()->prepare('UPDATE sessoes SET expira=? WHERE token=?')->execute([time() + SESSAO_ADMIN, $t]);
 }
-function ip(): string { return $_SERVER['REMOTE_ADDR'] ?? '?'; }
+/* Atrás do proxy do EasyPanel (Traefik) o REMOTE_ADDR é o do proxy: o IP real é o último
+   que o proxy acrescentou ao X-Forwarded-For (os anteriores podem ter vindo do próprio cliente). */
+function ip(): string {
+    $xff = array_filter(array_map('trim', explode(',', (string)($_SERVER['HTTP_X_FORWARDED_FOR'] ?? ''))));
+    $ult = end($xff);
+    if ($ult && filter_var($ult, FILTER_VALIDATE_IP)) return $ult;
+    $real = (string)($_SERVER['HTTP_X_REAL_IP'] ?? '');
+    if (filter_var($real, FILTER_VALIDATE_IP)) return $real;
+    return $_SERVER['REMOTE_ADDR'] ?? '?';
+}
+/* "Android · Chrome", "iPhone · Safari", "Windows · Edge"... */
+function aparelho_desc(string $ua): string {
+    $so = match (true) {
+        str_contains($ua, 'iPhone') => 'iPhone', str_contains($ua, 'iPad') => 'iPad',
+        str_contains($ua, 'Android') => 'Android', str_contains($ua, 'Windows') => 'Windows',
+        str_contains($ua, 'Mac OS') => 'Mac', str_contains($ua, 'CrOS') => 'Chromebook',
+        str_contains($ua, 'Linux') => 'Linux', default => 'Outro',
+    };
+    $nav = match (true) {
+        str_contains($ua, 'SamsungBrowser') => 'Samsung Internet', str_contains($ua, 'Edg') => 'Edge',
+        str_contains($ua, 'OPR') || str_contains($ua, 'Opera') => 'Opera', str_contains($ua, 'Firefox') || str_contains($ua, 'FxiOS') => 'Firefox',
+        str_contains($ua, 'CriOS') || str_contains($ua, 'Chrome') => 'Chrome', str_contains($ua, 'Safari') => 'Safari', default => 'navegador',
+    };
+    return "$so · $nav";
+}
 
 /* =================== chamadas do front-end =================== */
 
@@ -203,7 +231,7 @@ function api_login($m, $c): array {
     return ['token' => sessao_nova('eleitor', $e['matricula'], SESSAO_ELEITOR), 'nome' => $e['nome'], 'jaVotou' => false];
 }
 
-function api_votar($t, $n): array {
+function api_votar($t, $n, $totem = false, $aparelho = ''): array {
     $p = db();
     $p->exec('BEGIN IMMEDIATE');
     try {
@@ -222,7 +250,9 @@ function api_votar($t, $n): array {
         $ins = $p->prepare('INSERT OR IGNORE INTO votos(id,voto) VALUES(?,?)');
         do { $ins->execute([rand_code(12), $n]); } while ($ins->rowCount() === 0);
         $comp = rand_code(4) . '-' . rand_code(4); $em = agora();
-        $p->prepare('UPDATE eleitores SET votou=1, votou_em=?, comprovante=? WHERE matricula=?')->execute([$em, $comp, $mat]);
+        $p->prepare('UPDATE eleitores SET votou=1, votou_em=?, comprovante=?, voto_ip=?, voto_disp=?, voto_aparelho=?, voto_totem=? WHERE matricula=?')
+          ->execute([$em, $comp, ip(), aparelho_desc((string)($_SERVER['HTTP_USER_AGENT'] ?? '')),
+                     substr(preg_replace('/[^A-Za-z0-9]/', '', (string)$aparelho), 0, 16), $totem === true ? 1 : 0, $mat]);
         $p->prepare('DELETE FROM sessoes WHERE token=?')->execute([$t]);
         $p->exec('COMMIT');
         return ['comprovante' => $comp, 'em' => $em];
@@ -323,7 +353,7 @@ function api_importar($t, $rows, $subst): array {
         $existe = $p->prepare('SELECT 1 FROM eleitores WHERE matricula=?');
         $up = $p->prepare('INSERT INTO eleitores(matricula,mnorm,ordem,nome,escala,cargo,setor,codigo) VALUES(?,?,?,?,?,?,?,?)
             ON CONFLICT(matricula) DO UPDATE SET mnorm=excluded.mnorm,nome=excluded.nome,escala=excluded.escala,cargo=excluded.cargo,
-            setor=excluded.setor,codigo=excluded.codigo,votou=0,votou_em=NULL,comprovante=NULL');
+            setor=excluded.setor,codigo=excluded.codigo,votou=0,votou_em=NULL,comprovante=NULL,voto_ip=NULL,voto_disp=NULL,voto_aparelho=NULL,voto_totem=NULL');
         $n = 0; $seq = $ordem;
         foreach ($rows as $r) {
             $r = (array)$r;
@@ -351,7 +381,7 @@ function api_status($t, $s): array {
             if ($cur === 'preparacao') {
                 if (!$p->query('SELECT COUNT(*) FROM candidatos')->fetchColumn()) falha('Cadastre ao menos um candidato.');
                 if (!$p->query('SELECT COUNT(*) FROM eleitores')->fetchColumn()) falha('Importe a lista de eleitores.');
-                $p->exec('DELETE FROM votos'); $p->exec('UPDATE eleitores SET votou=0,votou_em=NULL,comprovante=NULL');
+                $p->exec('DELETE FROM votos'); $p->exec('UPDATE eleitores SET votou=0,votou_em=NULL,comprovante=NULL,voto_ip=NULL,voto_disp=NULL,voto_aparelho=NULL,voto_totem=NULL');
                 $cfg['abertura'] = agora(); registrar('Votação aberta', 'Zerésima emitida: 0 votos na urna');
             } elseif ($cur === 'encerrada') {
                 $cfg['hash'] = ''; $cfg['encerramento'] = '';
@@ -368,7 +398,7 @@ function api_status($t, $s): array {
         } elseif ($s === 'preparacao') {
             if ($cur === 'aberta' || getenv('CIPA_PERMITIR_ZERAR') !== '1')
                 falha('Zerar a urna não é permitido na eleição oficial.');
-            $p->exec('DELETE FROM votos'); $p->exec('UPDATE eleitores SET votou=0,votou_em=NULL,comprovante=NULL');
+            $p->exec('DELETE FROM votos'); $p->exec('UPDATE eleitores SET votou=0,votou_em=NULL,comprovante=NULL,voto_ip=NULL,voto_disp=NULL,voto_aparelho=NULL,voto_totem=NULL');
             $cfg = array_merge($cfg, ['status' => 'preparacao', 'hash' => '', 'abertura' => '', 'encerramento' => '']);
             registrar('Urna zerada (modo de teste)', '');
         } else falha('Situação inválida.');
@@ -473,4 +503,41 @@ function api_inscrever($m, $foto): array {
         $p->exec('COMMIT');
     } catch (Throwable $e) { $p->exec('ROLLBACK'); throw $e; }
     return ['numero' => $num, 'nome' => $r['nome'], 'escala' => $r['escala']];
+}
+
+/* Extrato de auditoria: participação (quem votou, quando, de onde) + boletim + registro.
+   Não existe — e não pode existir — ligação entre a matrícula e o voto. */
+function api_auditoria($t): array {
+    exige_admin($t);
+    $p = db(); $cfg = cfg();
+    $vot = $p->query('SELECT matricula,nome,setor,votou_em,comprovante,voto_ip,voto_disp,voto_aparelho,voto_totem
+                      FROM eleitores WHERE votou=1 ORDER BY votou_em')->fetchAll();
+    $vot = array_map(fn($e) => ['matricula' => $e['matricula'], 'nome' => $e['nome'], 'setor' => (string)$e['setor'],
+        'em' => (string)$e['votou_em'], 'comprovante' => (string)$e['comprovante'], 'ip' => (string)$e['voto_ip'],
+        'disp' => (string)$e['voto_disp'], 'aparelho' => (string)$e['voto_aparelho'], 'totem' => (bool)$e['voto_totem']], $vot);
+
+    $alertas = [];
+    $porAp = []; $porIp = [];
+    foreach ($vot as $v) {
+        if ($v['totem']) continue;
+        if ($v['aparelho'] !== '') $porAp[$v['aparelho']][] = $v;
+        if ($v['ip'] !== '') $porIp[$v['ip']][] = $v;
+        $h = (int)substr($v['em'], 11, 2);
+        if ($v['em'] !== '' && $h < 5) $alertas[] = ['nivel' => 'info', 'texto' => 'Voto de madrugada: ' . $v['matricula'] . ' – ' . $v['nome'], 'em' => $v['em']];
+    }
+    foreach ($porAp as $ap => $l) if (count($l) > 1)
+        $alertas[] = ['nivel' => 'alto', 'texto' => count($l) . ' matrículas votaram pelo MESMO aparelho (fora do totem): ' .
+            implode(', ', array_map(fn($v) => $v['matricula'] . ' – ' . $v['nome'], $l)), 'em' => $l[0]['em']];
+    foreach ($porIp as $ip => $l) if (count($l) >= 5)
+        $alertas[] = ['nivel' => 'medio', 'texto' => count($l) . " votos fora do totem pela mesma rede (IP $ip). Normal se for o Wi-Fi da empresa; confira se não for.", 'em' => $l[0]['em']];
+
+    $res = null;
+    if ($cfg['status'] === 'encerrada') { $res = api_resultado($t); unset($res['cfg']); }
+    return [
+        'cfg' => $cfg, 'emitido' => agora(), 'emitidoIp' => ip(), 'votantes' => $vot, 'alertas' => $alertas,
+        'aptos' => (int)$p->query('SELECT COUNT(*) FROM eleitores')->fetchColumn(),
+        'urna' => (int)$p->query('SELECT COUNT(*) FROM votos')->fetchColumn(),
+        'resultado' => $res,
+        'log' => $p->query('SELECT em,usuario,acao,detalhe FROM log ORDER BY id')->fetchAll(),
+    ];
 }
