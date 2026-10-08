@@ -11,6 +11,9 @@
  */
 declare(strict_types=1);
 
+// cronograma e registros sempre no horário de Brasília, mesmo se o servidor estiver em UTC
+date_default_timezone_set('America/Sao_Paulo');
+
 final class Erro extends RuntimeException {}
 
 function falha(string $msg): never { throw new Erro($msg); }
@@ -117,7 +120,55 @@ function cfg(): array {
         'cnpj' => '', 'estabelecimento' => 'Matriz', 'vagasTitulares' => 4, 'vagasSuplentes' => 4,
         'verificacao' => 'nenhuma', 'inscricoes' => 'sim', 'status' => 'preparacao',
         'abertura' => '', 'encerramento' => '', 'hash' => '',
+        'inscInicio' => '', 'inscFim' => '', 'votoInicio' => '', 'votoFim' => '',
     ];
+}
+
+/* ---------- cronograma ----------
+   Datas no formato do <input type=datetime-local> ("2026-10-10T08:00"), no fuso do servidor
+   (America/Sao_Paulo). Não precisa de cron: cada chamada da API confere o relógio. */
+function agora_local(): string { return date('Y-m-d\TH:i'); }
+function data_br(string $d): string { if ($d === '') return ''; $x = strtotime($d); return date('d/m/Y', $x) . ' às ' . date('H:i', $x); }
+function data_ok($v): string {
+    $v = trim((string)($v ?? ''));
+    if ($v === '') return '';
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/', $v) || strtotime($v) === false) falha('Data inválida: ' . $v);
+    return $v;
+}
+/* situação das inscrições agora: aberta | antes | depois | desabilitada | fechada (votação já começou) */
+function insc_situacao(array $c): string {
+    if ($c['inscricoes'] !== 'sim') return 'desabilitada';
+    if ($c['status'] !== 'preparacao') return 'fechada';
+    $n = agora_local();
+    if ($c['inscInicio'] !== '' && $n < $c['inscInicio']) return 'antes';
+    if ($c['inscFim'] !== '' && $n >= $c['inscFim']) return 'depois';
+    return 'aberta';
+}
+function insc_exige_aberta(array $c): void {
+    switch (insc_situacao($c)) {
+        case 'aberta': return;
+        case 'antes': falha('As inscrições de candidatos abrem em ' . data_br($c['inscInicio']) . '.');
+        case 'depois': falha('As inscrições de candidatos foram encerradas em ' . data_br($c['inscFim']) . '.');
+        default: falha('As inscrições de candidatos estão encerradas.');
+    }
+}
+/* abre/encerra a votação sozinha nos horários marcados */
+function agenda_aplicar(): void {
+    $c = cfg(); $n = agora_local();
+    try {
+        if ($c['status'] === 'preparacao' && $c['votoInicio'] !== '' && $n >= $c['votoInicio'] && ($c['votoFim'] === '' || $n < $c['votoFim'])) {
+            mudar_status('aberta', 'Sistema (cronograma)');
+            kv_set('agenda_falha', '');
+        } elseif ($c['status'] === 'aberta' && $c['votoFim'] !== '' && $n >= $c['votoFim']) {
+            mudar_status('encerrada', 'Sistema (cronograma)');
+        }
+    } catch (Throwable $e) {
+        if (!$e instanceof Erro) { error_log('[urna-cipa] cronograma: ' . $e); return; }   // nunca derruba a chamada em curso
+        if (kv_get('agenda_falha', '') !== $e->getMessage()) {   // registra uma vez só
+            kv_set('agenda_falha', $e->getMessage());
+            registrar('Abertura automática não aconteceu', $e->getMessage(), 'Sistema (cronograma)');
+        }
+    }
 }
 function salvar_cfg(array $c): void { kv_set('cfg', $c); }
 function registrar(string $acao, string $det = '', string $usuario = 'Comissão'): void {
@@ -153,6 +204,7 @@ function admin_data(): array {
         'urna' => (int)$p->query('SELECT COUNT(*) FROM votos')->fetchColumn(),
         'urlApp' => url_base(),
         'podeZerar' => getenv('CIPA_PERMITIR_ZERAR') === '1',
+        'agora' => agora_local(), 'inscSituacao' => insc_situacao(cfg()),
     ];
 }
 
@@ -205,7 +257,9 @@ function aparelho_desc(string $ua): string {
 
 function api_ballot(): array {
     $c = cfg();
-    return ['cfg' => array_intersect_key($c, array_flip(['titulo', 'gestao', 'empresa', 'estabelecimento', 'status', 'verificacao'])),
+    $pub = array_intersect_key($c, array_flip(['titulo', 'gestao', 'empresa', 'estabelecimento', 'status', 'verificacao', 'inscInicio', 'inscFim', 'votoInicio', 'votoFim']));
+    $pub['inscSituacao'] = insc_situacao($c);
+    return ['cfg' => $pub,
             'candidatos' => array_map(fn($x) => array_diff_key($x, ['matricula' => 1, 'admissao' => 1, 'origem' => 1]), candidatos())];
 }
 
@@ -374,6 +428,11 @@ function api_importar($t, $rows, $subst): array {
 
 function api_status($t, $s): array {
     exige_admin($t);
+    mudar_status((string)$s);
+    return admin_data();
+}
+
+function mudar_status(string $s, string $quem = 'Comissão'): void {
     $p = db(); $p->exec('BEGIN IMMEDIATE');
     try {
         $cfg = cfg(); $cur = $cfg['status'];
@@ -382,10 +441,14 @@ function api_status($t, $s): array {
                 if (!$p->query('SELECT COUNT(*) FROM candidatos')->fetchColumn()) falha('Cadastre ao menos um candidato.');
                 if (!$p->query('SELECT COUNT(*) FROM eleitores')->fetchColumn()) falha('Importe a lista de eleitores.');
                 $p->exec('DELETE FROM votos'); $p->exec('UPDATE eleitores SET votou=0,votou_em=NULL,comprovante=NULL,voto_ip=NULL,voto_disp=NULL,voto_aparelho=NULL,voto_totem=NULL');
-                $cfg['abertura'] = agora(); registrar('Votação aberta', 'Zerésima emitida: 0 votos na urna');
+                $cfg['abertura'] = agora(); registrar('Votação aberta', 'Zerésima emitida: 0 votos na urna', $quem);
             } elseif ($cur === 'encerrada') {
                 $cfg['hash'] = ''; $cfg['encerramento'] = '';
-                registrar('Votação reaberta (prorrogação)', $p->query('SELECT COUNT(*) FROM votos')->fetchColumn() . ' votos já na urna');
+                registrar('Votação reaberta (prorrogação)', $p->query('SELECT COUNT(*) FROM votos')->fetchColumn() . ' votos já na urna', $quem);
+                if ($cfg['votoFim'] !== '' && agora_local() >= $cfg['votoFim']) {   // senão o cronograma fecharia de novo na hora
+                    $cfg['votoFim'] = '';
+                    registrar('Encerramento automático removido', 'Prorrogação: defina o novo horário no cronograma', $quem);
+                }
             }
             $cfg['status'] = 'aberta';
         } elseif ($s === 'encerrada') {
@@ -394,17 +457,38 @@ function api_status($t, $s): array {
             $l = array_map(fn($v) => $v['id'] . ':' . $v['voto'], $p->query('SELECT id,voto FROM votos')->fetchAll());
             sort($l, SORT_STRING);
             $cfg['hash'] = hash('sha256', implode('|', $l));
-            registrar('Votação encerrada', count($l) . ' votos · hash ' . substr($cfg['hash'], 0, 16) . '…');
+            registrar('Votação encerrada', count($l) . ' votos · hash ' . substr($cfg['hash'], 0, 16) . '…', $quem);
         } elseif ($s === 'preparacao') {
             if ($cur === 'aberta' || getenv('CIPA_PERMITIR_ZERAR') !== '1')
                 falha('Zerar a urna não é permitido na eleição oficial.');
             $p->exec('DELETE FROM votos'); $p->exec('UPDATE eleitores SET votou=0,votou_em=NULL,comprovante=NULL,voto_ip=NULL,voto_disp=NULL,voto_aparelho=NULL,voto_totem=NULL');
             $cfg = array_merge($cfg, ['status' => 'preparacao', 'hash' => '', 'abertura' => '', 'encerramento' => '']);
-            registrar('Urna zerada (modo de teste)', '');
+            registrar('Urna zerada (modo de teste)', '', $quem);
         } else falha('Situação inválida.');
         salvar_cfg($cfg);
         $p->exec('COMMIT');
     } catch (Throwable $e) { $p->exec('ROLLBACK'); throw $e; }
+}
+
+function api_saveAgenda($t, $a): array {
+    exige_admin($t); $a = (array)$a; $c = cfg();
+    $ii = data_ok($a['inscInicio'] ?? ''); $if = data_ok($a['inscFim'] ?? '');
+    $vi = data_ok($a['votoInicio'] ?? ''); $vf = data_ok($a['votoFim'] ?? '');
+    if ($ii !== '' && $if !== '' && $if <= $ii) falha('O fim das inscrições precisa ser depois do início.');
+    if ($vi !== '' && $vf !== '' && $vf <= $vi) falha('O fim da votação precisa ser depois do início.');
+    if ($c['status'] === 'preparacao') {
+        if (in_array($a['inscricoes'] ?? null, ['sim', 'nao'], true)) $c['inscricoes'] = $a['inscricoes'];
+        $c['inscInicio'] = $ii; $c['inscFim'] = $if; $c['votoInicio'] = $vi;
+    } elseif ($vi !== $c['votoInicio']) {
+        falha('O início da votação não pode mudar depois da abertura.');
+    }
+    if ($c['status'] === 'aberta' && $vf !== '' && $vf <= agora_local()) falha('Para encerrar agora, use o botão “Encerrar votação”.');
+    $c['votoFim'] = $vf;
+    salvar_cfg($c);
+    registrar('Cronograma alterado', 'Inscrições: ' . ($c['inscricoes'] === 'sim' ? 'habilitadas' : 'desabilitadas') .
+        ($c['inscInicio'] || $c['inscFim'] ? ' de ' . (data_br($c['inscInicio']) ?: '—') . ' a ' . (data_br($c['inscFim']) ?: '—') : '') .
+        ' · Votação: ' . (data_br($c['votoInicio']) ?: 'abertura manual') . ' a ' . (data_br($c['votoFim']) ?: 'encerramento manual'));
+    agenda_aplicar();
     return admin_data();
 }
 
@@ -479,7 +563,7 @@ function api_fotoEnviar($tok, $data): array {
 
 function api_inscConsultar($m): array {
     $cfg = cfg();
-    if ($cfg['inscricoes'] !== 'sim' || $cfg['status'] !== 'preparacao') falha('As inscrições de candidatos estão encerradas.');
+    insc_exige_aberta($cfg);
     if (mat_norm($m) === '') falha('Digite sua matrícula.');
     $e = eleitor_por_mat($m);
     if (!$e) falha('Matrícula não encontrada no cadastro de colaboradores. Procure a comissão eleitoral.');
@@ -540,4 +624,30 @@ function api_auditoria($t): array {
         'resultado' => $res,
         'log' => $p->query('SELECT em,usuario,acao,detalhe FROM log ORDER BY id')->fetchAll(),
     ];
+}
+
+/* Modo de teste (CIPA_PERMITIR_ZERAR=1): apaga os votos, ou tudo, para recomeçar.
+   Mantém a senha da comissão e os dados da eleição (título, empresa, vagas, cronograma). */
+function api_recomecar($t, $tudo): array {
+    exige_admin($t);
+    if (getenv('CIPA_PERMITIR_ZERAR') !== '1') falha('Apagar dados não é permitido na eleição oficial.');
+    $p = db(); $p->exec('BEGIN IMMEDIATE');
+    try {
+        $p->exec('DELETE FROM votos');
+        $p->exec("DELETE FROM sessoes WHERE tipo='eleitor'");
+        if ($tudo) {
+            $p->exec('DELETE FROM eleitores'); $p->exec('DELETE FROM candidatos'); $p->exec('DELETE FROM fotos');
+            $p->exec('DELETE FROM log'); kv_set('atas', []);
+        } else {
+            $p->exec('UPDATE eleitores SET votou=0,votou_em=NULL,comprovante=NULL,voto_ip=NULL,voto_disp=NULL,voto_aparelho=NULL,voto_totem=NULL');
+        }
+        $c = array_merge(cfg(), ['status' => 'preparacao', 'hash' => '', 'abertura' => '', 'encerramento' => '']);
+        // datas já vencidas reabririam/fechariam na hora: limpa o que ficou no passado
+        foreach (['inscInicio', 'inscFim', 'votoInicio', 'votoFim'] as $k) if ($c[$k] !== '' && $c[$k] <= agora_local()) $c[$k] = '';
+        salvar_cfg($c);
+        registrar($tudo ? 'Recomeço do zero (modo de teste)' : 'Votos apagados (modo de teste)',
+            $tudo ? 'Candidatos, colaboradores, votos e registro apagados' : 'Candidatos e colaboradores mantidos');
+        $p->exec('COMMIT');
+    } catch (Throwable $e) { $p->exec('ROLLBACK'); throw $e; }
+    return admin_data();
 }

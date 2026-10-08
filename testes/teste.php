@@ -102,5 +102,40 @@ t('voto do totem marcado', count(array_filter($au['votantes'], fn($v) => $v['tot
 t('alerta mesmo aparelho', (bool)array_filter($au['alertas'], fn($a) => $a['nivel'] === 'alto' && str_contains($a['texto'], '2 matrículas')));
 t('boletim no extrato', $au['resultado']['total'] === 8);
 t('votante não carrega voto', !array_key_exists('voto', $au['votantes'][0]));
+// cronograma e modo de teste
+putenv('CIPA_PERMITIR_ZERAR=1');
+$A2 = sessao_nova('admin', 'admin', 3600);   // o IP de teste já está bloqueado pelas senhas erradas acima
+$d = api_recomecar($A2, false);
+t('zerar votos mantém candidatos e colaboradores', count($d['candidatos']) === 3 && count($d['eleitores']) === 11 && $d['urna'] === 0 && $d['votantes'] === 0 && $d['cfg']['status'] === 'preparacao');
+$f = fn(int $min) => date('Y-m-d\TH:i', time() + $min * 60);
+$ag = fn(array $x) => api_saveAgenda($A2, $x + ['inscricoes' => 'sim', 'inscInicio' => '', 'inscFim' => '', 'votoInicio' => '', 'votoFim' => '']);
+$ag(['inscInicio' => $f(60), 'inscFim' => $f(120)]);
+erro('inscrição antes do início', fn() => api_inscConsultar('1005'), 'abrem em');
+t('cédula informa situação', api_ballot()['cfg']['inscSituacao'] === 'antes');
+$ag(['inscInicio' => $f(-120), 'inscFim' => $f(-60)]);
+erro('inscrição depois do fim', fn() => api_inscConsultar('1005'), 'encerradas em');
+$ag(['inscInicio' => $f(-60), 'inscFim' => $f(60)]);
+t('inscrição dentro do prazo', api_inscConsultar('1005')['nome'] === 'Colaborador 5');
+$ag(['inscricoes' => 'nao']);
+erro('inscrição desabilitada', fn() => api_inscConsultar('1005'), 'estão encerradas');
+erro('fim antes do início', fn() => $ag(['inscInicio' => $f(10), 'inscFim' => $f(5)]), 'depois do início');
+erro('data inválida', fn() => $ag(['votoInicio' => '10/10/2026']), 'Data inválida');
+$ag(['inscricoes' => 'nao', 'votoInicio' => $f(30), 'votoFim' => $f(90)]);
+t('não abre antes da hora', cfg()['status'] === 'preparacao');
+$ag(['inscricoes' => 'nao', 'votoInicio' => $f(-1), 'votoFim' => $f(60)]);
+t('abriu sozinha no horário', cfg()['status'] === 'aberta');
+erro('início não muda depois de aberta', fn() => $ag(['inscricoes' => 'nao', 'votoInicio' => $f(5), 'votoFim' => $f(60)]), 'não pode mudar');
+$s = api_login('1001', ''); api_votar($s['token'], '07');
+$c = cfg(); $c['votoFim'] = $f(-1); salvar_cfg($c); agenda_aplicar();
+t('encerrou sozinha no horário', cfg()['status'] === 'encerrada' && strlen(cfg()['hash']) === 64);
+api_status($A2, 'aberta');
+t('prorrogação limpa o fim vencido', cfg()['status'] === 'aberta' && cfg()['votoFim'] === '');
+api_status($A2, 'encerrada');
+$d = api_recomecar($A2, true);
+t('recomeçar do zero apaga tudo', !$d['candidatos'] && !$d['eleitores'] && $d['urna'] === 0 && $d['cfg']['status'] === 'preparacao');
+t('recomeçar mantém senha', (bool)kv_get('admin'));
+putenv('CIPA_PERMITIR_ZERAR');
+erro('apagar proibido sem a variável', fn() => api_recomecar($A2, false), 'não é permitido');
+
 echo "\n$ok ok, $ko falha(s)\n";
 exit($ko ? 1 : 0);

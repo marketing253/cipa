@@ -5,6 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <style>body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
 <title>Urna CIPA</title>
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#16203a">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
@@ -337,6 +342,9 @@ body.present .present-title{display:block;margin:18px 0 8px;font-size:clamp(2rem
   .sb{grid-template-columns:96px 1fr 100px}
   .part{grid-template-columns:1fr;justify-items:center}
 }
+.agenda{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:18px;margin-top:14px}
+.ag-bloco{border:1px solid var(--line);border-radius:var(--r-sm);padding:14px;display:grid;gap:10px;background:var(--surface-2)}
+.ag-h{display:flex;flex-wrap:wrap;gap:8px;justify-content:space-between;align-items:center}
 body.totem{-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;overscroll-behavior:none;touch-action:manipulation}
 body.totem input{-webkit-user-select:text;user-select:text}
 .totem-ini{z-index:70;background:linear-gradient(120deg,#16203a,#3e4095)}
@@ -734,7 +742,7 @@ function phpApi(){
   }
   var api={};
   ["ballot","consultar","login","votar","adminLogin","adminSair","trocarSenha","adminData","saveConfig","saveCand","delCand",
-   "importar","status","resultado","gerarAta","fotoToken","fotoBuscar","fotoEnviar","inscConsultar","inscrever","auditoria"].forEach(function(k){
+   "importar","status","resultado","gerarAta","fotoToken","fotoBuscar","fotoEnviar","inscConsultar","inscrever","auditoria","saveAgenda","recomecar"].forEach(function(k){
     api[k]=function(){ return call.apply(null,[k].concat(Array.prototype.slice.call(arguments))); };
   });
   return api;
@@ -767,7 +775,9 @@ function voterRender(){
   var app=$("#app"), b=V.ballot, st=b.cfg.status;
   if(st!=="aberta"){
     app.innerHTML='<div class="card login solo"><h2>'+(st==="encerrada"?"Votação encerrada":"Votação ainda não iniciada")+'</h2><p class="muted">'+
-      (st==="encerrada"?"O período de votação terminou. O resultado será divulgado pela comissão eleitoral.":"A comissão eleitoral ainda não abriu a votação. Tente novamente no período informado no edital.")+'</p></div>';
+      (st==="encerrada"?"O período de votação terminou. O resultado será divulgado pela comissão eleitoral.":
+        (b.cfg.votoInicio?"A votação abre em <b>"+esc(fmtDT(b.cfg.votoInicio))+"</b>"+(b.cfg.votoFim?" e vai até "+esc(fmtDT(b.cfg.votoFim)):"")+". Esta tela se atualiza sozinha.":"A comissão eleitoral ainda não abriu a votação. Tente novamente no período informado no edital."))+'</p></div>';
+    if(MODE==="php" && st!=="encerrada"){ clearTimeout(V.poll); V.poll=setTimeout(function(){ API.ballot().then(function(nb){ V.ballot=nb; setHeader(nb.cfg); if(!V.s && !V.found) voterRender(); },function(){ voterRender(); }); },30000); }
     return;
   }
   if(V.done){ return doneRender(); }
@@ -790,7 +800,7 @@ function loginRender(){
   var demo = "";
   var cfg=V.ballot.cfg;
   $("#app").innerHTML='<div class="gate"><div class="gate-intro">'+
-      '<span class="eyebrow">'+esc(cfg.gestao||"Eleição CIPA")+' · votação aberta</span>'+
+      '<span class="eyebrow">'+esc(cfg.gestao||"Eleição CIPA")+' · votação aberta'+(cfg.votoFim?' até '+esc(fmtDT(cfg.votoFim)):'')+'</span>'+
       '<h2>Sua escolha deixa o trabalho <em>mais seguro</em>.</h2>'+
       '<p class="lead">Escolha quem vai representar os colaboradores na Comissão Interna de Prevenção de Acidentes e de Assédio.</p>'+
       '<ul class="feats">'+
@@ -996,12 +1006,17 @@ function tabPainel(){
   var demo = API.demo ? '<div class="sect no-present"><h3>Ferramentas da demonstração</h3><div class="row">'+
     (c.status==="aberta"?'<button class="btn" data-demo="sim" type="button">Simular 20 votos</button><button class="btn" data-demo="sim200" type="button">Simular 200 votos</button>':'')+
     '<button class="btn" data-demo="zerar" type="button">Voltar para preparação (zera a urna)</button><button class="btn danger" data-demo="limpar" type="button">Recomeçar do zero</button><button class="btn" data-demo="reset" type="button">Restaurar dados de exemplo</button></div></div>'
-    : (d.podeZerar && c.status!=="preparacao" ? '<div class="sect no-present"><h3>Modo de teste</h3><div class="note warn small" style="margin-bottom:10px">Liberado pela variável CIPA_PERMITIR_ZERAR. Desligue antes da eleição oficial.</div><div class="row"><button class="btn danger" data-demo="zerar" type="button">Voltar para preparação (apaga os votos)</button></div></div>' : "");
+    : (d.podeZerar ? '<div class="sect no-present"><h3>Modo de teste</h3><div class="card pad"><div class="note warn small" style="margin-bottom:12px">Liberado pela variável <span class="mono">CIPA_PERMITIR_ZERAR</span> no EasyPanel. <b>Remova a variável antes da eleição oficial</b>: sem ela, estes botões somem e ninguém consegue apagar votos.</div>'+
+        '<div class="row">'+
+        (A.confirm==="rzvotos"?'<span class="small" style="flex:1 1 100%">Apagar <b>todos os votos</b> e voltar para preparação? Candidatos e colaboradores ficam.</span><button class="btn danger" data-rz="votos" type="button">Sim, apagar os votos</button><button class="btn ghost" data-cancel type="button">Não</button>'
+          :(A.confirm==="rztudo"?'<span class="small" style="flex:1 1 100%">Apagar <b>tudo</b>: votos, candidatos, colaboradores e registro? A senha e os dados da eleição ficam.</span><button class="btn danger" data-rz="tudo" type="button">Sim, apagar tudo</button><button class="btn ghost" data-cancel type="button">Não</button>'
+          :'<button class="btn" data-rz="votos" type="button">Apagar votos (mantém candidatos e colaboradores)</button><button class="btn danger" data-rz="tudo" type="button">Recomeçar do zero (apaga tudo)</button>'))+
+        '</div></div></div>' : "");
 
   var lockV = c.status!=="preparacao";
   $("#tabBody").innerHTML=
     '<div class="row" style="justify-content:space-between;align-items:center"><div>'+statusPill(c.status)+
-      ' <span class="muted small" style="margin-left:8px">Abertura: '+esc(fmtDT(c.abertura))+(c.encerramento?' · Encerramento: '+esc(fmtDT(c.encerramento)):'')+'</span></div><div class="row">'+act+'</div></div>'+conf+
+      ' <span class="muted small" style="margin-left:8px">Abertura: '+esc(fmtDT(c.abertura))+(c.encerramento?' · Encerramento: '+esc(fmtDT(c.encerramento)):'')+'</span></div><div class="row">'+act+'</div></div>'+conf+cronograma(d)+
     '<div class="kpis sect"><div class="card kpi"><div class="lbl">Eleitores aptos</div><div class="v">'+apt+'</div></div>'+
       '<div class="card kpi"><div class="lbl">Já votaram</div><div class="v">'+vot+'</div></div>'+
       '<div class="card kpi"><div class="lbl">Faltam votar</div><div class="v">'+(apt-vot)+'</div></div>'+
@@ -1028,6 +1043,10 @@ function tabPainel(){
   $$("[data-go]").forEach(function(b){ b.onclick=function(){ b.disabled=true; apply(API.status(A.t,b.getAttribute("data-go"))).then(function(){ A.res=null; toast("Situação da votação atualizada"); }); }; });
   $$("[data-goto]").forEach(function(b){ b.onclick=function(){ A.tab=b.getAttribute("data-goto"); adminRender(); }; });
   $("#fpwd").onsubmit=function(ev){ ev.preventDefault(); API.trocarSenha(A.t,$("#pa").value,$("#pn").value,$("#pu").value).then(function(){ toast("Acesso do administrador alterado"); $("#fpwd").reset(); },function(e){ toast(e.message); }); };
+  wireCronograma();
+  $$("[data-rz]").forEach(function(b){ b.onclick=function(){ var k=b.getAttribute("data-rz");
+    if(A.confirm!=="rz"+k){ A.confirm="rz"+k; tabPainel(); return; }
+    b.disabled=true; apply(API.recomecar(A.t,k==="tudo")).then(function(){ A.res=null; toast(k==="tudo"?"Tudo apagado: comece cadastrando colaboradores e candidatos":"Votos apagados: a urna voltou para preparação"); }); }; });
   $$("[data-copy]").forEach(function(b){ b.onclick=function(){ copyText(b.getAttribute("data-copy")); }; });
   $("#fcfg").onsubmit=function(ev){ ev.preventDefault(); var o={}; $$("#fcfg input, #fcfg select").forEach(function(i){o[i.id.replace("cfg_","")]=i.value;}); apply(API.saveConfig(A.t,o)).then(function(){toast("Dados salvos");}); };
   $$("[data-demo]").forEach(function(b){ b.onclick=function(){ var k=b.getAttribute("data-demo");
@@ -1037,6 +1056,42 @@ function tabPainel(){
     if(k==="limpar"){ if(A.confirm!=="limpar"){ A.confirm="limpar"; toast("Clique de novo em “Recomeçar do zero” para confirmar: apaga colaboradores e votos."); return; } apply(API.limpar(A.t)).then(function(){ A.res=null; A.tab="eleitores"; adminRender(); toast("Pronto: carregue a nova lista de colaboradores"); }); }
     if(k==="reset") API.reiniciar().then(function(){ A.res=null; adminLoad(); toast("Dados de exemplo restaurados"); });
   }; });
+}
+/* ---------- cronograma (inscrições e votação com data e hora) ---------- */
+function situacaoInsc(d){
+  var c=d.cfg, s=d.inscSituacao;
+  return s==="aberta" ? ['aberta','Inscrições abertas'+(c.inscFim?' até '+fmtDT(c.inscFim):'')]
+    : s==="antes" ? ['prep','Abrem em '+fmtDT(c.inscInicio)]
+    : s==="depois" ? ['encerrada','Encerradas em '+fmtDT(c.inscFim)]
+    : s==="fechada" ? ['encerrada','Encerradas (votação já começou)'] : ['prep','Desabilitadas'];
+}
+function situacaoVoto(c){
+  if(c.status==="preparacao") return c.votoInicio ? ['prep','Abre sozinha em '+fmtDT(c.votoInicio)] : ['prep','Abertura manual (botão “Abrir votação”)'];
+  if(c.status==="aberta") return c.votoFim ? ['aberta','Aberta · encerra sozinha em '+fmtDT(c.votoFim)] : ['aberta','Aberta · encerramento manual'];
+  return ['encerrada','Encerrada em '+fmtDT(c.encerramento)];
+}
+function dtField(id,label,val,dis){ return '<div class="field"><label class="lbl" for="ag_'+id+'">'+esc(label)+'</label><input id="ag_'+id+'" type="datetime-local" value="'+esc(val||"")+'"'+(dis?' disabled':'')+'></div>'; }
+function cronograma(d){
+  if(MODE!=="php") return "";
+  var c=d.cfg, prep=c.status==="preparacao", si=situacaoInsc(d), sv=situacaoVoto(c);
+  return '<form class="card pad sect" id="fage"><div class="row" style="justify-content:space-between;align-items:center"><h3 style="font-size:1.2rem;margin:0">Cronograma</h3>'+
+      '<span class="muted small">Horário de Brasília · deixe em branco para fazer pelo botão</span></div>'+
+    '<div class="agenda">'+
+      '<div class="ag-bloco"><div class="ag-h"><b>Inscrição de candidatos</b><span class="pill '+si[0]+'">'+esc(si[1])+'</span></div>'+
+        '<div class="field"><label class="lbl" for="ag_insc">Inscrição pelo link</label><select id="ag_insc"'+(prep?'':' disabled')+'><option value="sim"'+(c.inscricoes==="sim"?' selected':'')+'>Habilitada</option><option value="nao"'+(c.inscricoes!=="sim"?' selected':'')+'>Desabilitada</option></select></div>'+
+        '<div class="grid2">'+dtField("inscInicio","Início",c.inscInicio,!prep)+dtField("inscFim","Fim",c.inscFim,!prep)+'</div></div>'+
+      '<div class="ag-bloco"><div class="ag-h"><b>Votação</b><span class="pill '+sv[0]+'">'+esc(sv[1])+'</span></div>'+
+        '<p class="muted small" style="margin:0 0 4px">No início a urna abre sozinha (zerésima com 0 votos); no fim, encerra e libera a apuração.</p>'+
+        '<div class="grid2">'+dtField("votoInicio","Início",c.votoInicio,!prep)+dtField("votoFim","Fim",c.votoFim,c.status==="encerrada")+'</div></div>'+
+    '</div><div class="row" style="margin-top:14px;align-items:center"><button class="btn primary" type="submit"'+(c.status==="encerrada"?' disabled':'')+'>Salvar cronograma</button>'+
+    (c.status==="encerrada"?'<span class="muted small">Votação encerrada. Para prorrogar, use “Prorrogar votação” e depois defina o novo fim.</span>':'')+'</div></form>';
+}
+function wireCronograma(){
+  var f=$("#fage"); if(!f) return;
+  f.onsubmit=function(ev){ ev.preventDefault();
+    var o={inscricoes:$("#ag_insc").value}; ["inscInicio","inscFim","votoInicio","votoFim"].forEach(function(k){ o[k]=$("#ag_"+k).value; });
+    apply(API.saveAgenda(A.t,o)).then(function(){ toast("Cronograma salvo"); });
+  };
 }
 function enderecos(){
   if(MODE==="demo" || !A.d.urlApp) return "";
@@ -1092,7 +1147,7 @@ function tabCandidatos(){
     insc='<div class="card pad sect insc"><div class="insc-h"><div><div class="lbl">Inscrição pelo celular</div><h3 style="font-size:1.15rem;margin-top:4px">Link para os colaboradores se candidatarem</h3>'+
       '<p class="muted small" style="margin:4px 0 0">O colaborador informa a matrícula, confere nome completo e nome escala, tira a foto e recebe o número da urna automaticamente.</p></div>'+
       '<div class="insc-st"><button class="btn '+(aberta?'danger':'primary')+'" type="button" id="inscTog">'+(aberta?'Fechar inscrições':'Abrir inscrições')+'</button>'+
-      '<span class="pill '+(aberta?'aberta':'prep')+'">'+(aberta?'Inscrições abertas':'Inscrições fechadas')+'</span></div></div>'+
+      (d.inscSituacao?'<span class="pill '+situacaoInsc(d)[0]+'">'+esc(situacaoInsc(d)[1])+'</span>':'<span class="pill '+(aberta?'aberta':'prep')+'">'+(aberta?'Inscrições abertas':'Inscrições fechadas')+'</span>')+'</div></div>'+
       '<div class="row" style="margin-top:14px;align-items:center">'+
         (url?'<input class="mono" id="inscUrl" readonly value="'+esc(url)+'" style="flex:1 1 320px;min-height:44px;border:1.5px solid var(--line-2);border-radius:12px;padding:0 12px;background:var(--surface-2)">'+
              '<button class="btn" type="button" id="inscCopy">Copiar link</button><button class="btn" type="button" id="inscQr">QR Code</button>'
@@ -1235,13 +1290,18 @@ function showLinkQr(url){
 var I={c:null,foto:""};
 function inscricaoPage(){
   document.title="Inscrição de candidatos · CIPA";
-  if(API.ballot) API.ballot().then(function(b){ setHeader(b.cfg); },function(){});
+  if(API.ballot) API.ballot().then(function(b){ setHeader(b.cfg); var c=b.cfg, el=$("#iPer"); if(!el) return;
+    var t = c.inscSituacao==="antes" ? "As inscrições abrem em "+fmtDT(c.inscInicio)+(c.inscFim?" e vão até "+fmtDT(c.inscFim):"")+"."
+      : c.inscSituacao==="aberta" ? (c.inscFim?"Inscrições abertas até "+fmtDT(c.inscFim)+".":"")
+      : c.inscSituacao==="depois" ? "As inscrições foram encerradas em "+fmtDT(c.inscFim)+"."
+      : c.inscSituacao ? "As inscrições estão encerradas." : "";
+    if(t){ el.textContent=t; el.hidden=false; } },function(){});
   inscStep1();
 }
 function inscStep1(){
   I.c=null; I.foto="";
   $("#app").innerHTML='<div class="gate"><div class="gate-intro"><span class="eyebrow">Inscrição de candidatos</span>'+
-    '<h2>Candidate-se à <em>CIPA</em>.</h2><p class="lead">Represente seus colegas na Comissão Interna de Prevenção de Acidentes e de Assédio. Informe sua matrícula para começar.</p></div>'+
+    '<h2>Candidate-se à <em>CIPA</em>.</h2><p class="lead">Represente seus colegas na Comissão Interna de Prevenção de Acidentes e de Assédio. Informe sua matrícula para começar.</p><p class="eyebrow" id="iPer" hidden style="margin-top:14px"></p></div>'+
     '<div class="card login"><h2>Digite sua matrícula</h2><p class="muted" style="margin:0">Use o número do seu crachá ou holerite.</p>'+
     '<form id="fi" autocomplete="off" novalidate><div class="field"><label class="lbl" for="imat">Matrícula</label><input id="imat" class="matbox" inputmode="numeric" maxlength="6" placeholder="00000"></div>'+
     '<div id="ierr" class="note bad" hidden></div><button class="btn primary lg" type="submit" id="ibtn">Continuar</button></form></div></div>';

@@ -9,7 +9,7 @@ header('X-Content-Type-Options: nosniff');
 
 const PERMITIDAS = ['ballot', 'consultar', 'login', 'votar', 'adminLogin', 'adminSair', 'trocarSenha', 'adminData',
     'saveConfig', 'saveCand', 'delCand', 'importar', 'status', 'resultado', 'gerarAta', 'fotoToken', 'fotoBuscar',
-    'fotoEnviar', 'inscConsultar', 'inscrever', 'auditoria'];
+    'fotoEnviar', 'inscConsultar', 'inscrever', 'auditoria', 'saveAgenda', 'recomecar'];
 
 function responder($v, int $code = 200): never {
     http_response_code($code);
@@ -24,6 +24,7 @@ $args = is_array($req['args'] ?? null) ? array_values($req['args']) : [];
 if (!in_array($fn, PERMITIDAS, true)) responder(['erro' => 'Chamada desconhecida.'], 400);
 
 try {
+    agenda_aplicar();   // abre/encerra sozinha no horário do cronograma
     $f = 'api_' . $fn;
     $n = (new ReflectionFunction($f))->getNumberOfParameters();
     $args = array_pad(array_slice($args, 0, $n), $n, null);
