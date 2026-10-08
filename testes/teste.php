@@ -40,7 +40,7 @@ $d = api_saveCand($A, ['numero' => '13', 'nome' => 'Candidato Doze', 'admissao' 
 t('renumerar 12→13', array_column($d['candidatos'], 'numero') === ['01', '07', '13']);
 $b = api_ballot(); t('cédula sem matrícula', !isset($b['candidatos'][0]['matricula']));
 
-$tk = api_fotoToken($A); t('url da foto', str_starts_with($tk['url'], 'http://urna.test/?p=foto&t='));
+$tk = api_fotoToken($A); t('url da foto', str_starts_with($tk['url'], 'http://urna.test/foto/'));
 api_fotoEnviar($tk['token'], 'data:image/jpeg;base64,AAAA');
 t('foto chega', api_fotoBuscar($A, $tk['token'])['foto'] === 'data:image/jpeg;base64,AAAA');
 t('foto consumida', api_fotoBuscar($A, $tk['token']) === []);

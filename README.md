@@ -6,9 +6,11 @@ o servidor é PHP 8.2 + SQLite (`app/lib.php`, chamado por `public/api.php`).
 | Endereço | Quem usa |
 |---|---|
 | `/` | colaborador vota (matrícula → confirma nome → cédula → CONFIRMA) |
-| `/?p=comissao` | comissão eleitoral (candidatos, lista de colaboradores, abrir/encerrar, apuração, ata) |
-| `/?p=inscricao` | colaborador se inscreve como candidato pelo celular |
-| `/?p=totem` | tablet fixo: toque para iniciar em tela cheia, tela sempre ligada, volta à matrícula após 60 s sem uso (a tela FIM espera o CONCLUIR) |
+| `/admin` | comissão eleitoral (candidatos, lista de colaboradores, abrir/encerrar, apuração, ata) |
+| `/inscricao` | colaborador se inscreve como candidato pelo celular |
+| `/totem` | tablet fixo: toque para iniciar em tela cheia, tela sempre ligada, volta à matrícula após 60 s sem uso (a tela FIM espera o CONCLUIR) |
+
+Os endereços antigos com `?p=comissao`, `?p=totem`, `?p=inscricao` continuam funcionando.
 
 ## Deploy no EasyPanel
 

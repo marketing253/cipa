@@ -429,7 +429,7 @@ function api_fotoToken($t): array {
     $p = db(); $p->prepare('DELETE FROM fotos WHERE expira<?')->execute([time()]);
     $tok = token();
     $p->prepare('INSERT INTO fotos(token,foto,expira) VALUES(?,NULL,?)')->execute([$tok, time() + 900]);
-    return ['token' => $tok, 'url' => url_base() . '?p=foto&t=' . $tok];
+    return ['token' => $tok, 'url' => url_base() . 'foto/' . $tok];
 }
 function api_fotoBuscar($t, $tok): array {
     exige_admin($t);

@@ -1036,8 +1036,9 @@ function tabPainel(){
 function enderecos(){
   if(MODE==="demo" || !A.d.urlApp) return "";
   var u=A.d.urlApp, L=[["Urna (celular ou computador)",u,"O colaborador abre no próprio aparelho."],
-    ["Totem (tablet fixo)",u+"?p=totem","Tela cheia, tela sempre ligada e volta ao início após 60 s sem uso."],
-    ["Inscrição de candidatos",u+"?p=inscricao","Funciona enquanto as inscrições estiverem abertas."]];
+    ["Totem (tablet fixo)",u+"totem","Tela cheia, tela sempre ligada e volta ao início após 60 s sem uso."],
+    ["Inscrição de candidatos",u+"inscricao","Funciona enquanto as inscrições estiverem abertas."],
+    ["Comissão eleitoral",u+"admin","Esta área. Não divulgue para os colaboradores."]];
   return '<div class="sect no-present"><h3>Endereços</h3><div class="card pad" style="display:grid;gap:14px">'+L.map(function(x){
     return '<div class="row" style="align-items:center;justify-content:space-between"><div style="min-width:0;flex:1 1 260px"><b>'+esc(x[0])+'</b><div class="mono small" style="word-break:break-all">'+esc(x[1])+'</div><div class="muted small">'+esc(x[2])+'</div></div>'+
       '<button class="btn" type="button" data-copy="'+esc(x[1])+'">Copiar</button></div>';
@@ -1082,7 +1083,7 @@ function tabCandidatos(){
   var insc='';
   if(!locked){
     var aberta=d.cfg.inscricoes==="sim";
-    var url = MODE!=="demo" ? (d.urlApp||"")+"?p=inscricao" : "";
+    var url = MODE!=="demo" ? (d.urlApp||"")+"inscricao" : "";
     insc='<div class="card pad sect insc"><div class="insc-h"><div><div class="lbl">Inscrição pelo celular</div><h3 style="font-size:1.15rem;margin-top:4px">Link para os colaboradores se candidatarem</h3>'+
       '<p class="muted small" style="margin:4px 0 0">O colaborador informa a matrícula, confere nome completo e nome escala, tira a foto e recebe o número da urna automaticamente.</p></div>'+
       '<div class="insc-st"><button class="btn '+(aberta?'danger':'primary')+'" type="button" id="inscTog">'+(aberta?'Fechar inscrições':'Abrir inscrições')+'</button>'+
