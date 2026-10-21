@@ -1442,11 +1442,23 @@ function readExcel(file){
   });
 }
 
+function cpfMasc(v){
+  v=String(v||"");
+  var d=v.replace(/\D/g,"");
+  if(/^\d{11}$/.test(d)) return d.slice(0,3)+".•••.•••-••";        /* planilha (antes de importar) */
+  if(/^\d{3}$/.test(v)) return v+".•••.•••-••";                     /* 3 primeiros guardados */
+  if(/^\d{4}$/.test(v)) return "•••.•••.•"+v.slice(0,2)+"-"+v.slice(2); /* 4 últimos guardados */
+  return v||"—";
+}
 function tabEleitores(){
   var d=A.d, locked=d.cfg.status!=="preparacao", q=norm(A.q);
   var vm=d.cfg.verificacao||"nenhuma";
+  var temCod=d.eleitores.some(function(e){ return e.codigo; }), mostraCod = vm!=="nenhuma" || temCod;
+  var cpfModo = vm==="cpf3" || vm==="cpf" || (vm==="nenhuma" && temCod);
+  var colCod = vm==="nenhuma" ? "CPF" : VERIF[vm].tab;
+  var semCod = vm!=="nenhuma" ? d.eleitores.filter(function(e){ return !e.codigo; }).length : 0;
   var list=d.eleitores.filter(function(e){ return !q || String(e.matricula).indexOf(A.q.trim())>=0 || norm(e.nome).indexOf(q)>=0 || norm(e.escala).indexOf(q)>=0 || norm(e.setor).indexOf(q)>=0 || norm(e.cargo).indexOf(q)>=0; });
-  var rows=list.slice(0,400).map(function(e){ return '<tr><td class="mono">'+esc(e.matricula)+'</td><td>'+esc(e.nome)+'</td><td>'+esc(e.escala||"—")+'</td><td>'+esc(e.cargo||"—")+'</td><td>'+esc(e.setor||"—")+'</td>'+(vm!=="nenhuma"?'<td class="mono">'+esc(e.codigo)+'</td>':'')+'<td>'+(e.votou?'<span class="yes">Votou</span> <span class="muted small">'+esc(fmtDT(e.votouEm))+'</span>':'<span class="no">Não votou</span>')+'</td></tr>'; }).join("");
+  var rows=list.slice(0,400).map(function(e){ return '<tr><td class="mono">'+esc(e.matricula)+'</td><td>'+esc(e.nome)+'</td><td>'+esc(e.escala||"—")+'</td><td>'+esc(e.cargo||"—")+'</td><td>'+esc(e.setor||"—")+'</td>'+(mostraCod?'<td class="mono">'+esc(cpfModo?cpfMasc(e.codigo):(e.codigo||"—"))+'</td>':'')+'<td>'+(e.votou?'<span class="yes">Votou</span> <span class="muted small">'+esc(fmtDT(e.votouEm))+'</span>':'<span class="no">Não votou</span>')+'</td></tr>'; }).join("");
   var imp = locked ? '<div class="note info">A votação já foi aberta: o cadastro de colaboradores está lacrado.</div>' :
     '<div class="card pad" id="impCard"><h3 style="font-size:1.25rem">Carregar lista de colaboradores</h3>'+
     '<p class="muted small" style="margin:4px 0 14px">Selecione a planilha do Excel com as colunas <b>Matrícula</b>, <b>Nome Completo</b>, <b>Nome Escala</b>, <b>Cargo</b> e <b>Lotação</b> (com a linha de títulos). A matrícula é gravada exatamente como está na planilha.</p>'+
@@ -1456,10 +1468,14 @@ function tabEleitores(){
     '<details style="margin-top:14px"><summary class="small muted" style="cursor:pointer">Ou cole os dados copiados do Excel</summary>'+
     '<div class="field" style="margin-top:10px"><label class="lbl" for="impTxt">Dados</label><textarea id="impTxt" placeholder="Matrícula&#9;Nome Completo&#9;Cargo&#9;Lotação&#10;70963&#9;Nome do Colaborador&#9;Operador&#9;Produção"></textarea></div>'+
     '<button class="btn" type="button" id="impPaste" style="margin-top:10px">Ler dados colados</button></details></div>';
-  $("#tabBody").innerHTML=imp+
+  var antigo = vm!=="cpf" && d.eleitores.some(function(e){ return /^\d{4}$/.test(e.codigo||""); });
+  var avisoCod = antigo ? '<div class="note warn sect">Esta lista foi importada numa versão antiga da urna, que guardava os <b>4 últimos</b> dígitos do CPF. Para a confirmação pelos <b>3 primeiros</b>, carregue a planilha de novo (com “Substituir o cadastro atual” marcado).</div>'
+    : (vm!=="nenhuma" && d.eleitores.length && semCod) ? '<div class="note warn sect">'+semCod+' colaborador(es) sem '+esc(minusc(VERIF[vm].campo))+' no cadastro: eles não conseguem passar da matrícula. Confira a planilha e importe de novo.</div>'
+    : (vm==="nenhuma" && temCod ? '<div class="note info sect">O CPF foi importado, mas a urna ainda não pede. Para pedir os 3 primeiros dígitos depois da matrícula, escolha <b>“Matrícula + 3 primeiros dígitos do CPF”</b> em Painel → Dados da eleição.</div>' : '');
+  $("#tabBody").innerHTML=imp+avisoCod+
     '<div class="sect row" style="justify-content:space-between;align-items:flex-end"><div class="field" style="flex:1;max-width:380px"><label class="lbl" for="busca">Buscar colaborador</label><input id="busca" value="'+esc(A.q)+'" placeholder="Matrícula, nome, cargo ou lotação"></div>'+
     '<div class="row"><button class="btn" type="button" id="cpCod">Copiar cadastro</button><button class="btn" type="button" id="cpPres">Copiar lista de votantes</button></div></div>'+
-    '<div class="sect tbl-wrap"><table class="t"><thead><tr><th>Matrícula</th><th>Nome completo</th><th>Nome escala</th><th>Cargo</th><th>Lotação</th>'+(vm!=="nenhuma"?'<th>'+esc(VERIF[vm].tab)+'</th>':'')+'<th>Situação</th></tr></thead><tbody>'+(rows||'<tr><td colspan="6" class="muted">Nenhum colaborador cadastrado.</td></tr>')+'</tbody></table></div>'+
+    '<div class="sect tbl-wrap"><table class="t"><thead><tr><th>Matrícula</th><th>Nome completo</th><th>Nome escala</th><th>Cargo</th><th>Lotação</th>'+(mostraCod?'<th>'+esc(colCod)+'</th>':'')+'<th>Situação</th></tr></thead><tbody>'+(rows||'<tr><td colspan="7" class="muted">Nenhum colaborador cadastrado.</td></tr>')+'</tbody></table></div>'+
     (list.length>400?'<p class="muted small">Mostrando 400 de '+list.length+'. Use a busca para encontrar um colaborador.</p>':'');
   var bi=$("#busca"); bi.oninput=function(){ A.q=bi.value; var pos=bi.selectionStart; tabEleitores(); var n=$("#busca"); n.focus(); n.setSelectionRange(pos,pos); };
   $("#cpCod").onclick=function(){ copyText("matricula;nome;nome_escala;cargo;lotacao\n"+d.eleitores.map(function(e){return [e.matricula,e.nome,e.escala||"",e.cargo||"",e.setor||""].join(";");}).join("\n")); };
@@ -1470,11 +1486,11 @@ function tabEleitores(){
     if(!p.rows.length){ box.innerHTML='<div class="note bad" style="margin-top:14px">Nenhum colaborador encontrado. Confira se a planilha tem a linha de títulos com Matrícula e Nome.</div>'; return; }
     var semMat=p.rows.filter(function(r){return !r.matricula;}).length;
     var seen={}, dup=0; p.rows.forEach(function(r){ if(r.matricula){ if(seen[r.matricula]) dup++; seen[r.matricula]=1; } });
-    var cols=p.map?["matricula","nome","escala","cargo","setor"].filter(function(k){return p.map[k]!=null;}).map(function(k){return {matricula:"Matrícula",nome:"Nome",escala:"Nome escala",cargo:"Cargo",setor:"Lotação"}[k];}).join(", "):"sem títulos";
+    var cols=p.map?["matricula","nome","escala","cargo","setor","codigo"].filter(function(k){return p.map[k]!=null;}).map(function(k){return {matricula:"Matrícula",nome:"Nome",escala:"Nome escala",cargo:"Cargo",setor:"Lotação",codigo:"CPF/confirmação"}[k];}).join(", "):"sem títulos";
     box.innerHTML='<div class="sect"><div class="note ok"><b>'+p.rows.length+' colaboradores</b> prontos para importar · colunas reconhecidas: '+esc(cols)+
       (semMat?'<br>'+semMat+' linha(s) sem matrícula.':'')+(dup?'<br>'+dup+' matrícula(s) repetida(s): vale a última linha.':'')+(p.erros.length?'<br>Linhas ignoradas (sem nome): '+p.erros.slice(0,10).join(", ")+(p.erros.length>10?"…":""):'')+'</div>'+
-      '<div class="tbl-wrap" style="margin-top:12px"><table class="t"><thead><tr><th>Matrícula</th><th>Nome completo</th><th>Nome escala</th><th>Cargo</th><th>Lotação</th></tr></thead><tbody>'+
-      p.rows.slice(0,5).map(function(r){return '<tr><td class="mono">'+esc(r.matricula)+'</td><td>'+esc(r.nome)+'</td><td>'+esc(r.escala||"—")+'</td><td>'+esc(r.cargo||"—")+'</td><td>'+esc(r.setor||"—")+'</td></tr>';}).join("")+'</tbody></table></div>'+
+      '<div class="tbl-wrap" style="margin-top:12px"><table class="t"><thead><tr><th>Matrícula</th><th>Nome completo</th><th>Nome escala</th><th>Cargo</th><th>Lotação</th><th>CPF</th></tr></thead><tbody>'+
+      p.rows.slice(0,5).map(function(r){return '<tr><td class="mono">'+esc(r.matricula)+'</td><td>'+esc(r.nome)+'</td><td>'+esc(r.escala||"—")+'</td><td>'+esc(r.cargo||"—")+'</td><td>'+esc(r.setor||"—")+'</td><td class="mono">'+esc(cpfMasc(r.codigo))+'</td></tr>';}).join("")+'</tbody></table></div>'+
       '<div class="row" style="margin-top:12px;align-items:center"><label class="small"><input type="checkbox" id="impSub" checked> Substituir o cadastro atual ('+d.eleitores.length+' colaboradores)</label>'+
       '<button class="btn primary" type="button" id="impGo">Importar '+p.rows.length+' colaboradores</button></div></div>';
     $("#impGo").onclick=function(){ this.disabled=true; this.textContent="Importando…";
