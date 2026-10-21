@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" data-theme="light">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -10,6 +10,7 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#16203a">
+<meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
@@ -1634,7 +1635,7 @@ function extratoPdf(au){
     'tr{break-inside:avoid}.mono{font-family:Consolas,monospace;font-size:8.5pt;word-break:break-all}.muted{color:#5a6380}.al{padding:5px 8px;border-left:4px solid #d29500;background:#fbf0d4;margin:4px 0}.al.alto{border-color:#b42318;background:#fde8e5}'+
     '.sig{display:grid;grid-template-columns:1fr 1fr;gap:34px 40px;margin-top:40px;break-inside:avoid}.sig div{border-top:1px solid #16203a;padding-top:4px;text-align:center;font-size:9pt}'+
     '.box{border:1px solid #cdd4e6;background:#f5f7fd;padding:8px 10px;border-radius:6px}@media screen{body{max-width:900px;margin:20px auto;padding:0 16px}}';
-  var html='<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Extrato de auditoria - '+esc(c.titulo)+'</title><style>'+css+'</style></head><body>'+
+  var html='<!doctype html><html lang="pt-BR" data-theme="light"><head><meta charset="utf-8"><title>Extrato de auditoria - '+esc(c.titulo)+'</title><style>'+css+'</style></head><body>'+
     '<header><img src="'+esc(logo)+'" alt=""><div><h1>Extrato de auditoria da eleição</h1><div>'+esc(c.titulo)+' · '+esc(c.gestao||"")+'</div>'+
     '<div class="muted">'+esc(c.empresa||"")+(c.cnpj?' · CNPJ '+esc(c.cnpj):'')+(c.estabelecimento?' · '+esc(c.estabelecimento):'')+'</div></div></header>'+
     '<div class="box">Emitido em <b>'+esc(fmtDT(au.emitido))+'</b> pela comissão eleitoral (IP '+esc(au.emitidoIp)+'). Situação da votação: <b>'+esc({preparacao:"em preparação",aberta:"aberta",encerrada:"encerrada"}[c.status]||c.status)+'</b>. '+
