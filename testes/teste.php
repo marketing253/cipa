@@ -30,9 +30,10 @@ t('matrícula com zero preservada', $d['eleitores'][10]['matricula'] === '007048
 
 erro('consultar antes de abrir', fn() => api_consultar('1001'), 'não está aberta');
 $r = api_inscConsultar('1001'); t('inscrição consulta', $r['nome'] === 'Colaborador 1' && $r['jaNumero'] === '');
-$r = api_inscrever('1001', ''); t('inscrição número 01', $r['numero'] === '01');
-erro('inscrição dupla', fn() => api_inscrever('01001', ''), 'já está inscrito');
-erro('foto inválida', fn() => api_inscrever('1002', 'javascript:alert(1)'), 'inválido');
+erro('foto obrigatória', fn() => api_inscrever('1001', '', ''), 'Tire a sua foto');
+$r = api_inscrever('1001', '', 'data:image/jpeg;base64,AAAA'); t('inscrição número 01', $r['numero'] === '01');
+erro('inscrição dupla', fn() => api_inscrever('01001', '', 'data:image/jpeg;base64,AAAA'), 'já está inscrito');
+erro('foto inválida', fn() => api_inscrever('1002', '', 'javascript:alert(1)'), 'inválido');
 api_saveCand($A, ['numero' => '7', 'nome' => 'Candidato Sete', 'escala' => 'Sete', 'admissao' => '2010-01-01'], '');
 api_saveCand($A, ['numero' => '12', 'nome' => 'Candidato Doze', 'admissao' => '2005-01-01'], '');
 erro('número duplicado', fn() => api_saveCand($A, ['numero' => '07', 'nome' => 'Outro'], ''), 'já pertence');
@@ -136,6 +137,35 @@ t('recomeçar do zero apaga tudo', !$d['candidatos'] && !$d['eleitores'] && $d['
 t('recomeçar mantém senha', (bool)kv_get('admin'));
 putenv('CIPA_PERMITIR_ZERAR');
 erro('apagar proibido sem a variável', fn() => api_recomecar($A2, false), 'não é permitido');
+
+// confirmação pelos 3 primeiros dígitos do CPF (inscrição e votação)
+putenv('CIPA_PERMITIR_ZERAR=1');
+$A3 = sessao_nova('admin', 'admin', 3600);
+api_recomecar($A3, true);
+api_saveConfig($A3, ['vagasTitulares' => 2, 'vagasSuplentes' => 2, 'verificacao' => 'cpf3']);
+api_saveAgenda($A3, ['inscricoes' => 'sim', 'inscInicio' => '', 'inscFim' => '', 'votoInicio' => '', 'votoFim' => '']);
+$d = api_importar($A3, [
+    ['matricula' => '2001', 'nome' => 'Ana CPF', 'codigo' => '123.456.789-09'],
+    ['matricula' => '2002', 'nome' => 'Beto CPF', 'codigo' => '987.654.321-00'],
+    ['matricula' => '2003', 'nome' => 'Caio CPF', 'codigo' => '555.444.333-22'],
+], true);
+t('CPF guardado só com 3 dígitos', $d['eleitores'][0]['codigo'] === '123');
+erro('inscrição sem CPF', fn() => api_inscConsultar('2001', ''), 'Informe os 3 primeiros');
+erro('inscrição CPF errado', fn() => api_inscConsultar('2001', '999'), 'não confere');
+t('inscrição CPF certo mostra o nome', api_inscConsultar('2001', '123')['nome'] === 'Ana CPF');
+erro('inscrever com CPF errado', fn() => api_inscrever('2001', '124', 'data:image/jpeg;base64,AAAA'), 'não confere');
+$r = api_inscrever('2001', '123', 'data:image/jpeg;base64,AAAA'); t('inscreveu com CPF', $r['numero'] === '01');
+api_saveCand($A3, ['numero' => '02', 'nome' => 'Outro'], '');
+api_status($A3, 'aberta');
+erro('consulta da urna sem CPF não revela nome', fn() => api_consultar('2002', ''), 'Informe os 3 primeiros');
+t('consulta com CPF certo', api_consultar('2002', '987')['nome'] === 'Beto CPF');
+erro('login com CPF errado', fn() => api_login('2002', '988'), 'não confere');
+$s = api_login('2002', '98765'); t('aceita CPF digitado a mais (usa só os 3 primeiros)', isset($s['token']));
+for ($i = 0; $i < 6; $i++) { try { api_consultar('2003', '000'); } catch (Erro $e) {} }
+erro('bloqueio após 5 erros na matrícula', fn() => api_consultar('2003', '555'), 'Muitas tentativas');
+t('bloqueio é só daquela matrícula', api_consultar('2002', '987')['nome'] === 'Beto CPF');
+api_status($A3, 'encerrada'); api_recomecar($A3, true);
+putenv('CIPA_PERMITIR_ZERAR');
 
 echo "\n$ok ok, $ko falha(s)\n";
 exit($ko ? 1 : 0);

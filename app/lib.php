@@ -18,7 +18,8 @@ final class Erro extends RuntimeException {}
 
 function falha(string $msg): never { throw new Erro($msg); }
 
-const VERIF = ['nenhuma' => '', 'nascimento' => 'Data de nascimento', 'cpf' => '4 últimos dígitos do CPF', 'codigo' => 'Código de acesso'];
+const VERIF = ['nenhuma' => '', 'cpf3' => '3 primeiros dígitos do CPF', 'nascimento' => 'Data de nascimento', 'cpf' => '4 últimos dígitos do CPF', 'codigo' => 'Código de acesso'];
+const TENTATIVAS_MATRICULA = 5; // erros de confirmação por matrícula a cada 15 min (3 dígitos = só mil combinações)
 const SESSAO_ELEITOR = 20 * 60;
 const SESSAO_ADMIN = 10 * 3600;
 const FOTO_MAX = 600000; // bytes do data URL (a tela já reduz para 240x300 JPEG, ~20 KB)
@@ -86,6 +87,7 @@ function conf_norm(string $mode, $v): string {
         return preg_replace('/\D/', '', $v);
     }
     if ($mode === 'cpf') return substr(preg_replace('/\D/', '', $v), -4);
+    if ($mode === 'cpf3') return substr(preg_replace('/\D/', '', $v), 0, 3);
     return mb_strtoupper($v);
 }
 
@@ -263,25 +265,41 @@ function api_ballot(): array {
             'candidatos' => array_map(fn($x) => array_diff_key($x, ['matricula' => 1, 'admissao' => 1, 'origem' => 1]), candidatos())];
 }
 
-function api_consultar($m): array {
+/* Confere o segundo dado (ex.: 3 primeiros dígitos do CPF). Fora de transação: o erro
+   registrado precisa sobreviver ao falha(). */
+function confere(array $e, $c): void {
+    $mode = cfg()['verificacao'] ?: 'nenhuma';
+    if ($mode === 'nenhuma') return;
+    $p = db(); $chave = 'mat:' . $e['matricula'];
+    $p->prepare('DELETE FROM falhas WHERE em<?')->execute([time() - 900]);
+    $st = $p->prepare('SELECT COUNT(*) FROM falhas WHERE ip=?'); $st->execute([$chave]);
+    if ((int)$st->fetchColumn() >= TENTATIVAS_MATRICULA)
+        falha('Muitas tentativas erradas para esta matrícula. Aguarde 15 minutos ou procure a comissão eleitoral.');
+    $dig = conf_norm($mode, $c);
+    if ($dig === '') falha('Informe os ' . (mb_strtolower(mb_substr(VERIF[$mode], 0, 1)) . mb_substr(VERIF[$mode], 1)) . '.');
+    if (!hash_equals(conf_norm($mode, $e['codigo']), $dig)) {
+        $p->prepare('INSERT INTO falhas(ip,em) VALUES(?,?)')->execute([$chave, time()]);
+        falha((str_contains(VERIF[$mode], 'dígitos') ? 'Os ' . (mb_strtolower(mb_substr(VERIF[$mode], 0, 1)) . mb_substr(VERIF[$mode], 1)) . ' não conferem' : VERIF[$mode] . ' não confere') .
+            ' com o cadastro. Confira e tente de novo; em caso de dúvida, procure a comissão eleitoral.');
+    }
+}
+
+function api_consultar($m, $c = ''): array {
     if (cfg()['status'] !== 'aberta') falha('A votação não está aberta.');
     if (mat_norm($m) === '') falha('Digite sua matrícula.');
     $e = eleitor_por_mat($m);
     if (!$e) falha('Matrícula não encontrada na lista de eleitores. Confira o número ou procure a comissão eleitoral.');
+    confere($e, $c);   // o nome só aparece depois da confirmação
     return ['matricula' => $e['matricula'], 'nome' => $e['nome'], 'jaVotou' => (bool)$e['votou'], 'votouEm' => (string)$e['votou_em']];
 }
 
 function api_login($m, $c): array {
-    $cfg = cfg(); $mode = $cfg['verificacao'] ?: 'nenhuma';
+    $cfg = cfg();
     if ($cfg['status'] !== 'aberta') falha('A votação não está aberta.');
     $e = eleitor_por_mat($m);
     if (!$e) falha('Matrícula não encontrada.');
+    confere($e, $c);
     if ($e['votou']) falha('Esta matrícula já votou. Cada colaborador vota uma única vez.');
-    if ($mode !== 'nenhuma') {
-        $dig = conf_norm($mode, $c);
-        if ($dig === '' || !hash_equals(conf_norm($mode, $e['codigo']), $dig))
-            falha(VERIF[$mode] . ' não confere com o cadastro. Em caso de dúvida, procure a comissão eleitoral.');
-    }
     return ['token' => sessao_nova('eleitor', $e['matricula'], SESSAO_ELEITOR), 'nome' => $e['nome'], 'jaVotou' => false];
 }
 
@@ -415,7 +433,10 @@ function api_importar($t, $rows, $subst): array {
             $mat = txt($r['matricula'] ?? '', 20);
             if ($mat === '') { do { $seq++; $mat = 'E' . str_pad((string)$seq, 4, '0', STR_PAD_LEFT); $existe->execute([$mat]); } while ($existe->fetchColumn()); }
             $cf = txt($r['codigo'] ?? '', 40);
-            if (preg_match('/^\d{3}\.?\d{3}\.?\d{3}-?\d{2}$/', $cf)) $cf = substr(preg_replace('/\D/', '', $cf), -4);
+            if (preg_match('/^\d{3}\.?\d{3}\.?\d{3}-?\d{2}$/', $cf)) {   // CPF: guarda só os dígitos que a confirmação usa
+                $d = preg_replace('/\D/', '', $cf);
+                $cf = $cfg['verificacao'] === 'cpf' ? substr($d, -4) : substr($d, 0, 3);
+            }
             if ($cf === '' && $cfg['verificacao'] === 'codigo') $cf = rand_code(6);
             $up->execute([$mat, mat_norm($mat), ++$ordem, $nome, txt($r['escala'] ?? '', 60), txt($r['cargo'] ?? '', 120), txt($r['setor'] ?? '', 120), $cf]);
             $n++;
@@ -561,12 +582,13 @@ function api_fotoEnviar($tok, $data): array {
     return [];
 }
 
-function api_inscConsultar($m): array {
+function api_inscConsultar($m, $c = ''): array {
     $cfg = cfg();
     insc_exige_aberta($cfg);
     if (mat_norm($m) === '') falha('Digite sua matrícula.');
     $e = eleitor_por_mat($m);
     if (!$e) falha('Matrícula não encontrada no cadastro de colaboradores. Procure a comissão eleitoral.');
+    confere($e, $c);
     $st = db()->prepare('SELECT numero,matricula FROM candidatos'); $st->execute();
     $ja = '';
     foreach ($st as $c) if (mat_norm($c['matricula']) === mat_norm($m)) { $ja = $c['numero']; break; }
@@ -574,19 +596,30 @@ function api_inscConsultar($m): array {
             'cargo' => (string)$e['cargo'], 'setor' => (string)$e['setor'], 'jaNumero' => $ja];
 }
 
-function api_inscrever($m, $foto): array {
+function api_inscrever($m, $c, $foto): array {
+    api_inscConsultar($m, $c);   // confirmação fora da transação (o erro conta como tentativa)
+    $foto = foto_ok($foto);
+    if ($foto === '') falha('Tire a sua foto para a urna antes de confirmar a inscrição.');
     $p = db(); $p->exec('BEGIN IMMEDIATE');
     try {
-        $r = api_inscConsultar($m);
+        $r = inscrito_dados($m);
         if ($r['jaNumero'] !== '') falha('Você já está inscrito com o número ' . $r['jaNumero'] . '.');
         $mx = 0; foreach ($p->query('SELECT numero FROM candidatos') as $c) $mx = max($mx, (int)$c['numero']);
         $num = pad2((string)($mx + 1));
         $p->prepare("INSERT INTO candidatos(numero,matricula,nome,escala,cargo,setor,admissao,foto,origem) VALUES(?,?,?,?,?,?,'',?,'link')")
-          ->execute([$num, $r['matricula'], $r['nome'], $r['escala'], $r['cargo'], $r['setor'], foto_ok($foto)]);
+          ->execute([$num, $r['matricula'], $r['nome'], $r['escala'], $r['cargo'], $r['setor'], $foto]);
         registrar('Inscrição pelo link', "$num – {$r['nome']}", 'Colaborador');
         $p->exec('COMMIT');
     } catch (Throwable $e) { $p->exec('ROLLBACK'); throw $e; }
     return ['numero' => $num, 'nome' => $r['nome'], 'escala' => $r['escala']];
+}
+
+function inscrito_dados($m): array {
+    $e = eleitor_por_mat($m);
+    if (!$e) falha('Matrícula não encontrada.');
+    $ja = '';
+    foreach (db()->query('SELECT numero,matricula FROM candidatos') as $c) if (mat_norm($c['matricula']) === mat_norm($m)) { $ja = $c['numero']; break; }
+    return ['matricula' => $e['matricula'], 'nome' => $e['nome'], 'escala' => (string)$e['escala'], 'cargo' => (string)$e['cargo'], 'setor' => (string)$e['setor'], 'jaNumero' => $ja];
 }
 
 /* Extrato de auditoria: participação (quem votou, quando, de onde) + boletim + registro.
