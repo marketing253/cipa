@@ -638,17 +638,20 @@ function api_pedirFoto($t, $n, $motivo, $cancelar = false): array {
 }
 
 /* o candidato manda a foto nova pelo link de inscrição (matrícula + confirmação) */
-function api_inscNovaFoto($m, $c, $foto): array {
+function api_inscNovaFoto($m, $c, $foto, $autoriza = false): array {
+    if ($autoriza !== true) falha('Marque a autorização de uso da imagem para enviar a nova foto.');
     $r = api_inscConsultar($m, $c);
     if (!$r['fotoPedida']) falha('Não há pedido de nova foto para esta inscrição.');
     $foto = foto_ok($foto);
     if ($foto === '') falha('Tire a nova foto antes de enviar.');
     db()->prepare("UPDATE candidatos SET foto=?, foto_pedido=0, foto_motivo='' WHERE numero=?")->execute([$foto, $r['jaNumero']]);
-    registrar('Nova foto enviada pelo candidato', $r['jaNumero'] . ' – ' . $r['nome'], 'Colaborador');
+    registrar('Nova foto enviada pelo candidato', $r['jaNumero'] . ' – ' . $r['nome'] . ' · autorizou o uso da imagem', 'Colaborador');
     return ['numero' => $r['jaNumero'], 'nome' => $r['nome']];
 }
 
-function api_inscrever($m, $c, $foto): array {
+function api_inscrever($m, $c, $foto, $aceite = false): array {
+    // declaração de candidatura + autorização de uso da imagem (LGPD): obrigatória
+    if ($aceite !== true) falha('Marque a declaração e a autorização de uso da imagem para confirmar a inscrição.');
     api_inscConsultar($m, $c);   // confirmação fora da transação (o erro conta como tentativa)
     $foto = foto_ok($foto);
     if ($foto === '') falha('Tire a sua foto para a urna antes de confirmar a inscrição.');
@@ -660,7 +663,7 @@ function api_inscrever($m, $c, $foto): array {
         $num = pad2((string)($mx + 1));
         $p->prepare("INSERT INTO candidatos(numero,matricula,nome,escala,cargo,setor,admissao,foto,origem) VALUES(?,?,?,?,?,?,'',?,'link')")
           ->execute([$num, $r['matricula'], $r['nome'], $r['escala'], $r['cargo'], $r['setor'], $foto]);
-        registrar('Inscrição pelo link', "$num – {$r['nome']}", 'Colaborador');
+        registrar('Inscrição pelo link', "$num – {$r['nome']} · aceitou a declaração e autorizou o uso da imagem", 'Colaborador');
         $p->exec('COMMIT');
     } catch (Throwable $e) { $p->exec('ROLLBACK'); throw $e; }
     return ['numero' => $num, 'nome' => $r['nome'], 'escala' => $r['escala']];
