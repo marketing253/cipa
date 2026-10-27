@@ -423,28 +423,36 @@ function api_importar($t, $rows, $subst): array {
         if ($subst) $p->exec('DELETE FROM eleitores');
         $ordem = (int)$p->query('SELECT COALESCE(MAX(ordem),0) FROM eleitores')->fetchColumn();
         $existe = $p->prepare('SELECT 1 FROM eleitores WHERE matricula=?');
+        $porNorm = $p->prepare('SELECT matricula FROM eleitores WHERE mnorm=? AND mnorm<>\'\' LIMIT 1');
+        // ao juntar listas, campo vazio no arquivo novo mantém o que já estava (ex.: PDF sem a coluna CPF)
         $up = $p->prepare('INSERT INTO eleitores(matricula,mnorm,ordem,nome,escala,cargo,setor,codigo) VALUES(?,?,?,?,?,?,?,?)
-            ON CONFLICT(matricula) DO UPDATE SET mnorm=excluded.mnorm,nome=excluded.nome,escala=excluded.escala,cargo=excluded.cargo,
-            setor=excluded.setor,codigo=excluded.codigo,votou=0,votou_em=NULL,comprovante=NULL,voto_ip=NULL,voto_disp=NULL,voto_aparelho=NULL,voto_totem=NULL');
-        $n = 0; $seq = $ordem;
+            ON CONFLICT(matricula) DO UPDATE SET mnorm=excluded.mnorm,nome=excluded.nome,
+            escala=COALESCE(NULLIF(excluded.escala,\'\'),escala),cargo=COALESCE(NULLIF(excluded.cargo,\'\'),cargo),
+            setor=COALESCE(NULLIF(excluded.setor,\'\'),setor),codigo=COALESCE(NULLIF(excluded.codigo,\'\'),codigo),
+            votou=0,votou_em=NULL,comprovante=NULL,voto_ip=NULL,voto_disp=NULL,voto_aparelho=NULL,voto_totem=NULL');
+        $n = 0; $novos = 0; $seq = $ordem;
         foreach ($rows as $r) {
             $r = (array)$r;
             $nome = txt($r['nome'] ?? '', 120); if ($nome === '') continue;
             $mat = txt($r['matricula'] ?? '', 20);
             if ($mat === '') { do { $seq++; $mat = 'E' . str_pad((string)$seq, 4, '0', STR_PAD_LEFT); $existe->execute([$mat]); } while ($existe->fetchColumn()); }
+            // mesma pessoa com ou sem zeros à esquerda ("007048" = "7048"): usa a matrícula que já está cadastrada
+            $porNorm->execute([mat_norm($mat)]);
+            $ja = $porNorm->fetchColumn();
+            if ($ja !== false) $mat = (string)$ja; else $novos++;
             $cf = txt($r['codigo'] ?? '', 40);
             if (preg_match('/^\d{3}\.?\d{3}\.?\d{3}-?\d{2}$/', $cf)) {   // CPF: guarda só os dígitos que a confirmação usa
                 $d = preg_replace('/\D/', '', $cf);
                 $cf = $cfg['verificacao'] === 'cpf' ? substr($d, -4) : substr($d, 0, 3);
             }
-            if ($cf === '' && $cfg['verificacao'] === 'codigo') $cf = rand_code(6);
+            if ($cf === '' && $cfg['verificacao'] === 'codigo' && $ja === false) $cf = rand_code(6);   // quem já tem código fica com ele
             $up->execute([$mat, mat_norm($mat), ++$ordem, $nome, txt($r['escala'] ?? '', 60), txt($r['cargo'] ?? '', 120), txt($r['setor'] ?? '', 120), $cf]);
             $n++;
         }
         $p->exec('COMMIT');
     } catch (Throwable $e) { $p->exec('ROLLBACK'); throw $e; }
-    registrar('Eleitores importados', $n . ' registros' . ($subst ? ' (lista substituída)' : ''));
-    return admin_data();
+    registrar('Eleitores importados', $n . ' registros' . ($subst ? ' (lista substituída)' : " · $novos novos, " . ($n - $novos) . ' atualizados'));
+    return admin_data() + ['importacao' => ['total' => $n, 'novos' => $novos, 'atualizados' => $n - $novos, 'substituiu' => (bool)$subst]];
 }
 
 function api_status($t, $s): array {

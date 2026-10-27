@@ -161,6 +161,15 @@ button{cursor:pointer}
 .cand{position:relative;display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;padding:0;text-align:left;box-shadow:var(--shadow);transition:transform .18s ease,box-shadow .18s ease,border-color .18s}
 .cand:hover{transform:translateY(-4px);box-shadow:var(--shadow-lg);border-color:var(--accent)}
 .cand:hover .ph{transform:scale(1.03)}
+.busca-ced{position:sticky;top:0;z-index:5;display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;padding:10px 0 12px;margin-bottom:6px;background:var(--bg)}
+.busca-ced input{flex:1 1 260px;min-height:50px;border:1.5px solid var(--line-2);border-radius:14px;padding:0 16px 0 44px;font-size:1rem;background:var(--surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235a6380' stroke-width='2.2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='M20 20l-3.5-3.5'/%3E%3C/svg%3E") no-repeat 14px center/20px}
+.busca-ced input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 4px color-mix(in srgb,var(--accent) 18%,transparent)}
+.ballot.compacta{grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:12px}
+.ballot.compacta .cand .cap{padding:9px 10px 10px}
+.ballot.compacta .cand .nm{font-size:.98rem}
+.ballot.compacta .cand .st{font-size:.72rem;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ballot.compacta .cand .n{top:-13px;right:8px;font-size:.82rem;padding:3px 8px}
+.ballot.compacta .cand.special .ph{font-size:1.1rem}
 .ballot .cand{animation:candIn .45s cubic-bezier(.2,.8,.3,1) backwards;animation-delay:calc(var(--i,0) * 70ms)}
 @keyframes candIn{from{opacity:0;transform:translateY(16px) scale(.96)}to{opacity:1;transform:none}}
 .cand.pick{border-color:var(--gold);box-shadow:0 0 0 4px var(--gold),0 16px 34px -10px color-mix(in srgb,var(--gold) 70%,transparent);transform:translateY(-4px) scale(1.02);animation:pickPulse .32s ease}
@@ -257,6 +266,13 @@ table.t tbody tr:hover td{background:var(--surface-2)}
 .yes{color:var(--ok);font-weight:700}
 .no{color:var(--muted)}
 .setor-bars{display:grid;gap:10px}
+.impmodo{border:1px solid var(--line);border-radius:var(--r-sm);padding:10px 14px 12px;margin:14px 0 0;display:grid;gap:8px}
+.impmodo label{display:flex;gap:10px;align-items:flex-start;font-size:.9rem;cursor:pointer}
+.impmodo input{margin-top:3px;accent-color:var(--accent)}
+.aovivo{display:inline-flex;align-items:center;gap:7px;font-size:.78rem;font-weight:700;color:var(--ok);background:var(--ok-soft);padding:4px 10px;border-radius:999px}
+.aovivo i{width:8px;height:8px;border-radius:50%;background:currentColor;animation:pulse 1.6s infinite}
+.kpi .v.pisca{animation:pisca 1.2s ease}
+@keyframes pisca{0%{color:var(--ok);transform:scale(1.12)}100%{color:inherit;transform:none}}
 .sb{display:grid;grid-template-columns:minmax(110px,220px) 1fr 120px;gap:12px;align-items:center;font-size:.9rem}
 .sb>span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sb .tr{height:10px;background:var(--bar-track);border-radius:999px;overflow:hidden}
@@ -346,6 +362,10 @@ body.present .present-title{display:block;margin:18px 0 8px;font-size:clamp(2rem
   .steps li+li::before{width:14px}
   .login{padding:22px}
   .ballot{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+  .ballot.compacta{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+  .ballot.compacta .cand .cap{padding:7px 7px 8px}
+  .ballot.compacta .cand .nm{font-size:.84rem}
+  .ballot.compacta .cand .n{top:-11px;right:5px;font-size:.72rem;padding:2px 6px}
   .screen{grid-template-columns:1fr}
   .screen .ph{width:110px}
   .key{min-width:0;flex:1}
@@ -802,16 +822,22 @@ function voterRender(){
   if(V.done){ return doneRender(); }
   if(!V.s){ return loginRender(); }
   var cards=b.candidatos.map(function(c,i){
-    return '<button type="button" class="cand" style="--i:'+i+'" data-num="'+esc(c.numero)+'" aria-label="Votar em '+esc(c.numero)+' '+esc(nUrna(c))+'">'+
+    return '<button type="button" class="cand" style="--i:'+Math.min(i,12)+'" data-busca="'+esc(norm(c.numero+" "+c.nome+" "+(c.escala||"")))+'" data-num="'+esc(c.numero)+'" aria-label="Votar em '+esc(c.numero)+' '+esc(nUrna(c))+'">'+
       '<img class="ph" alt="" src="'+esc(c.foto||avatar(c.nome))+'">'+
-      '<span class="cap"><span class="n">'+esc(c.numero)+'</span><span class="nm">'+esc(nUrna(c))+'</span><span class="st">'+esc(c.escala&&c.escala!==c.nome?c.nome:(c.setor||""))+'</span></span></button>';
+      '<span class="cap"><span class="n">'+esc(c.numero)+'</span><span class="nm">'+esc(nUrna(c))+'</span><span class="st">'+esc(c.escala&&c.escala!==c.nome?c.nome:(c.cargo||""))+'</span></span></button>';
   }).join("");
   var nc=b.candidatos.length;
-  cards+='<button type="button" class="cand special branco" style="--i:'+nc+'" data-num="BRANCO" aria-label="Votar em branco"><span class="ph">BRANCO</span><span class="cap"><span class="nm">Voto em branco</span><span class="st">Não escolher candidato</span></span></button>';
-  cards+='<button type="button" class="cand special nulo" style="--i:'+(nc+1)+'" data-num="NULO" aria-label="Anular o voto"><span class="ph">NULO</span><span class="cap"><span class="nm">Voto nulo</span><span class="st">Anular o voto</span></span></button>';
+  var muitos=nc>8, compacta=nc>12;
+  cards+='<button type="button" class="cand special branco" style="--i:'+Math.min(nc,13)+'" data-num="BRANCO" aria-label="Votar em branco"><span class="ph">BRANCO</span><span class="cap"><span class="nm">Voto em branco</span><span class="st">Não escolher candidato</span></span></button>';
+  cards+='<button type="button" class="cand special nulo" style="--i:'+Math.min(nc+1,14)+'" data-num="NULO" aria-label="Anular o voto"><span class="ph">NULO</span><span class="cap"><span class="nm">Voto nulo</span><span class="st">Anular o voto</span></span></button>';
   app.innerHTML='<div class="hello"><div>'+stepper(3)+'<h2>Olá, '+esc(V.s.nome.split(" ")[0])+'. Toque na foto do seu candidato.</h2></div><button class="btn" id="sair" type="button">Cancelar</button></div>'+
-    '<div class="ballot">'+cards+'</div>'+secureLine();
+    (muitos?'<div class="busca-ced"><input id="bced" type="search" inputmode="search" autocomplete="off" placeholder="Nome ou número do candidato" aria-label="Procurar candidato"><span class="muted small" id="bcnt">'+nc+' candidatos</span></div>':'')+
+    '<div class="ballot'+(compacta?' compacta':'')+'">'+cards+'</div><div id="bvazio" class="note info" hidden style="margin-top:12px">Nenhum candidato encontrado. Confira o nome ou o número.</div>'+secureLine();
   $("#sair").onclick=logout;
+  if(muitos){ var bi=$("#bced"); bi.oninput=function(){ var q=norm(bi.value), n=0;
+    $$(".cand[data-busca]",app).forEach(function(el){ var ok=!q || el.getAttribute("data-busca").indexOf(q)>=0; el.hidden=!ok; if(ok) n++; });
+    $("#bcnt").textContent = q ? n+" de "+nc+" candidatos" : nc+" candidatos";
+    $("#bvazio").hidden = n>0; }; }
   $$(".cand",app).forEach(function(el){ el.onclick=function(){
     if(V.abrindo) return;
     somPreparar(); somTecla(); vibrar(12);
@@ -929,7 +955,7 @@ function openConfirm(num){
   if(num==="BRANCO") body='<div class="big">VOTO EM BRANCO</div>';
   else if(num==="NULO") body='<div class="big">VOTO NULO</div>';
   else body='<div class="digits" aria-label="Número '+esc(num)+'">'+num.split("").map(function(d){return '<span>'+esc(d)+'</span>';}).join("")+'</div>'+
-    '<dl><dt>Nome:</dt><dd>'+esc(nUrna(c))+'</dd>'+(c.escala&&c.escala!==c.nome?'<dt>Nome completo:</dt><dd>'+esc(c.nome)+'</dd>':'')+(c.cargo?'<dt>Cargo:</dt><dd>'+esc(c.cargo)+'</dd>':'')+'<dt>Lotação:</dt><dd>'+esc(c.setor||"—")+'</dd></dl>';
+    '<dl><dt>Nome:</dt><dd>'+esc(nUrna(c))+'</dd>'+(c.escala&&c.escala!==c.nome?'<dt>Nome completo:</dt><dd>'+esc(c.nome)+'</dd>':'')+(c.cargo?'<dt>Cargo:</dt><dd>'+esc(c.cargo)+'</dd>':'')+'</dl>';
   var ph = c ? '<img class="ph" alt="Foto de '+esc(c.nome)+'" src="'+esc(c.foto||avatar(c.nome))+'">' : '';
   $("#overlay").innerHTML='<div class="overlay" role="dialog" aria-modal="true" aria-label="Confirmar voto"><div class="urna"><div class="screen">'+
     '<div><div class="tt">Seu voto para</div><h3>Representante dos empregados — CIPA</h3>'+body+'</div><div>'+ph+'</div>'+
@@ -1035,6 +1061,7 @@ function adminStart(){
   $("#ausr").focus();
 }
 function adminLogout(){
+  clearInterval(A.vivo);
   var t=A.t; A.t=null; A.d=null; A.res=null; A.tab="painel";
   API.adminSair(t).then(function(){},function(){});
   if(API.demo){ try{ if(location.hash) history.replaceState(null,"",location.pathname+location.search); }catch(e){} show("voter"); } else adminStart();
@@ -1058,6 +1085,41 @@ function adminRender(){
   ({painel:tabPainel,candidatos:tabCandidatos,eleitores:tabEleitores,apuracao:tabApuracao,registro:tabRegistro,auditoria:tabAuditoria})[A.tab]();
 }
 
+/* bloco que se atualiza sozinho: números, participação e lotações */
+function painelVivo(d){
+  var c=d.cfg, apt=d.eleitores.length, vot=d.votantes, p=pct(vot,apt);
+  var setores={}, comLot=0; d.eleitores.forEach(function(e){ var s=(e.setor||"").trim(); if(s) comLot++; s=s||"Sem lotação informada"; setores[s]=setores[s]||{a:0,v:0}; setores[s].a++; if(e.votou) setores[s].v++; });
+  var sb=Object.keys(setores).sort(function(a,b){ return setores[b].a-setores[a].a || a.localeCompare(b,"pt-BR"); }).map(function(s){ var x=setores[s], pp=pct(x.v,x.a); return '<div class="sb"><span title="'+esc(s)+'">'+esc(s)+'</span><span class="tr"><i style="width:'+pp.toFixed(1)+'%"></i></span><span class="mono small" style="text-align:right">'+x.v+'/'+x.a+' · '+fmtPct(pp)+'</span></div>'; }).join("");
+  var vivo = c.status==="aberta" ? '<span class="aovivo"><i></i>Ao vivo · atualizado às '+esc(new Date().toLocaleTimeString("pt-BR"))+'</span>' : '';
+  return '<div class="kpis sect"><div class="card kpi"><div class="lbl">Eleitores aptos</div><div class="v">'+apt+'</div></div>'+
+      '<div class="card kpi"><div class="lbl">Já votaram</div><div class="v" data-n="'+vot+'">'+vot+'</div><div class="small muted">'+fmtPct(p)+' de participação</div></div>'+
+      '<div class="card kpi"><div class="lbl">Faltam votar</div><div class="v">'+(apt-vot)+'</div></div>'+
+      '<div class="card kpi"><div class="lbl">Votos na urna</div><div class="v">'+d.urna+'</div><div class="small '+(d.urna===vot?'yes':'no')+'">'+(d.urna===vot?'Confere com votantes':'Diverge dos votantes')+'</div></div></div>'+
+    '<div class="card pad sect part">'+donut(p)+'<div><div class="row" style="justify-content:space-between;align-items:center;gap:8px"><div class="lbl">Participação</div>'+vivo+'</div><div style="font-family:var(--f-display);font-weight:700;font-size:1.5rem;margin-top:4px">'+vot+' de '+apt+' colaboradores votaram</div>'+
+      (p>=50?'<span class="pill aberta" style="margin-top:8px">Mínimo de 50% atingido</span>':'<span class="pill prep" style="margin-top:8px">Faltam '+Math.max(0,Math.ceil(apt/2)-vot)+' votos para 50%</span>')+
+      '<div class="meter" aria-hidden="true"><i style="width:'+Math.min(100,p).toFixed(1)+'%"></i><b style="left:50%"></b></div>'+
+      '<div class="meter-lbl"><span>0%</span><span>mínimo 50% (NR-5)</span><span>100%</span></div>'+
+      (c.status==="aberta"?'<p class="muted small" style="margin:12px 0 0">Os votos por candidato ficam lacrados até o encerramento. Durante a votação a comissão acompanha apenas a participação.</p>':'')+'</div></div>'+
+    '<div class="sect"><h3>Participação por Lotação</h3><div class="card pad setor-bars">'+(comLot?sb:'<span class="muted">A lotação aparece aqui depois que o cadastro de colaboradores for carregado com a coluna Lotação.</span>')+'</div></div>';
+}
+/* atualização ao vivo do Painel (a cada 15 s, só com a aba visível) */
+function vivoIniciar(){
+  clearInterval(A.vivo);
+  A.vivo=setInterval(function(){
+    if(!A.t || A.tab!=="painel" || document.visibilityState!=="visible") return;
+    API.adminData(A.t).then(function(d){
+      var mudouStatus = !A.d || d.cfg.status!==A.d.cfg.status;
+      var antes = A.d ? A.d.votantes : d.votantes;
+      A.d=d;
+      if(A.tab!=="painel") return;
+      var foco=document.activeElement, editando = foco && /INPUT|SELECT|TEXTAREA/.test(foco.tagName);
+      if(mudouStatus && !editando && !A.confirm){ setHeader(d.cfg); adminRender(); return; }
+      var box=$("#aoVivo"); if(!box) return;
+      box.innerHTML=painelVivo(d);
+      if(d.votantes!==antes){ var v=box.querySelector("[data-n]"); if(v){ v.classList.remove("pisca"); void v.offsetWidth; v.classList.add("pisca"); } }
+    },function(){});
+  },15000);
+}
 function tabPainel(){
   var d=A.d, c=d.cfg, apt=d.eleitores.length, vot=d.votantes, p=pct(vot,apt);
   var act="";
@@ -1069,8 +1131,6 @@ function tabPainel(){
   if(A.confirm==="encerrar") conf='<div class="confirmbox"><span>Após o encerramento ninguém mais consegue votar e a apuração é liberada. '+(p<50?'<b>Atenção: participação abaixo de 50%.</b>':'')+'</span><button class="btn danger" data-go="encerrada" type="button">Confirmar encerramento</button><button class="btn ghost" data-cancel type="button">Cancelar</button></div>';
   if(A.confirm==="reabrir") conf='<div class="confirmbox"><span>A prorrogação reabre a mesma urna, mantendo os votos já registrados. O hash de encerramento será recalculado no novo encerramento.</span><button class="btn primary" data-go="aberta" type="button">Confirmar prorrogação</button><button class="btn ghost" data-cancel type="button">Cancelar</button></div>';
 
-  var setores={}, comLot=0; d.eleitores.forEach(function(e){ var s=(e.setor||"").trim(); if(s) comLot++; s=s||"Sem lotação informada"; setores[s]=setores[s]||{a:0,v:0}; setores[s].a++; if(e.votou) setores[s].v++; });
-  var sb=Object.keys(setores).sort(function(a,b){ return setores[b].a-setores[a].a || a.localeCompare(b,"pt-BR"); }).map(function(s){ var x=setores[s], pp=pct(x.v,x.a); return '<div class="sb"><span title="'+esc(s)+'">'+esc(s)+'</span><span class="tr"><i style="width:'+pp.toFixed(1)+'%"></i></span><span class="mono small" style="text-align:right">'+x.v+'/'+x.a+' · '+fmtPct(pp)+'</span></div>'; }).join("");
 
   var demo = API.demo ? '<div class="sect no-present"><h3>Ferramentas da demonstração</h3><div class="row">'+
     (c.status==="aberta"?'<button class="btn" data-demo="sim" type="button">Simular 20 votos</button><button class="btn" data-demo="sim200" type="button">Simular 200 votos</button>':'')+
@@ -1083,19 +1143,11 @@ function tabPainel(){
         '</div></div></div>' : "");
 
   var lockV = c.status!=="preparacao";
+  vivoIniciar();
   $("#tabBody").innerHTML=
     '<div class="row" style="justify-content:space-between;align-items:center"><div>'+statusPill(c.status)+
       ' <span class="muted small" style="margin-left:8px">Abertura: '+esc(fmtDT(c.abertura))+(c.encerramento?' · Encerramento: '+esc(fmtDT(c.encerramento)):'')+'</span></div><div class="row">'+act+'</div></div>'+conf+cronograma(d)+
-    '<div class="kpis sect"><div class="card kpi"><div class="lbl">Eleitores aptos</div><div class="v">'+apt+'</div></div>'+
-      '<div class="card kpi"><div class="lbl">Já votaram</div><div class="v">'+vot+'</div></div>'+
-      '<div class="card kpi"><div class="lbl">Faltam votar</div><div class="v">'+(apt-vot)+'</div></div>'+
-      '<div class="card kpi"><div class="lbl">Votos na urna</div><div class="v">'+d.urna+'</div><div class="small '+(d.urna===vot?'yes':'no')+'">'+(d.urna===vot?'Confere com votantes':'Diverge dos votantes')+'</div></div></div>'+
-    '<div class="card pad sect part">'+donut(p)+'<div><div class="lbl">Participação</div><div style="font-family:var(--f-display);font-weight:700;font-size:1.5rem;margin-top:4px">'+vot+' de '+apt+' colaboradores votaram</div>'+
-      (p>=50?'<span class="pill aberta" style="margin-top:8px">Mínimo de 50% atingido</span>':'<span class="pill prep" style="margin-top:8px">Faltam '+Math.max(0,Math.ceil(apt/2)-vot)+' votos para 50%</span>')+
-      '<div class="meter" aria-hidden="true"><i style="width:'+Math.min(100,p).toFixed(1)+'%"></i><b style="left:50%"></b></div>'+
-      '<div class="meter-lbl"><span>0%</span><span>mínimo 50% (NR-5)</span><span>100%</span></div>'+
-      (c.status==="aberta"?'<p class="muted small" style="margin:12px 0 0">Os votos por candidato ficam lacrados até o encerramento. Durante a votação a comissão acompanha apenas a participação.</p>':'')+'</div></div>'+
-    '<div class="sect"><h3>Participação por Lotação</h3><div class="card pad setor-bars">'+(comLot?sb:'<span class="muted">A lotação aparece aqui depois que o cadastro de colaboradores for carregado com a coluna Lotação.</span>')+'</div></div>'+
+    '<div id="aoVivo">'+painelVivo(d)+'</div>'+
     '<div class="sect"><h3>Dados da eleição</h3><form class="card pad" id="fcfg"><div class="grid2">'+
       fld("titulo","Título",c.titulo)+fld("gestao","Gestão",c.gestao)+fld("empresa","Empresa",c.empresa)+fld("cnpj","CNPJ",c.cnpj)+fld("estabelecimento","Estabelecimento",c.estabelecimento)+
       fld("vagasTitulares","Vagas de titulares",c.vagasTitulares,"number",lockV)+fld("vagasSuplentes","Vagas de suplentes",c.vagasSuplentes,"number",lockV)+
@@ -1193,6 +1245,8 @@ function loadScript(src){
   });
 }
 var LIB_XLSX="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";
+var LIB_PDF="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
+var LIB_PDF_W="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
 var LIB_QR="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js";
 function acharColab(m){ var k=matNorm(m); if(!k) return null; return (A.d.eleitores||[]).filter(function(e){return matNorm(e.matricula)===k;})[0]||null; }
 
@@ -1397,7 +1451,7 @@ function inscStep2(){
   var c=I.c;
   $("#app").innerHTML='<div class="card login solo" style="max-width:560px"><h2>Confira seus dados</h2><p class="muted" style="margin:0">Estes dados vêm do cadastro da empresa.</p>'+
     '<div class="whoami"><span class="av" aria-hidden="true">'+esc(initials(c.nome))+'</span><div><span class="lbl">Matrícula '+esc(c.matricula)+'</span><span class="nm">'+esc(c.nome)+'</span></div></div>'+
-    '<dl class="idl"><dt>Nome escala (aparece na urna)</dt><dd>'+esc(c.escala||c.nome)+'</dd><dt>Cargo</dt><dd>'+esc(c.cargo||"—")+'</dd><dt>Lotação</dt><dd>'+esc(c.setor||"—")+'</dd></dl>'+
+    '<dl class="idl"><dt>Cargo</dt><dd>'+esc(c.cargo||"—")+'</dd></dl>'+
     '<div class="ifoto"><img id="ip" alt="Sua foto" src="'+avatar(c.nome)+'"><div><b>Sua foto para a urna <span style="color:var(--bad)">(obrigatória)</span></b><p class="muted small" style="margin:4px 0 10px">De frente, rosto bem iluminado.</p><label class="btn" for="ifin">Tirar foto</label><input id="ifin" type="file" accept="image/*" capture="user" hidden></div></div>'+
     '<label class="idecl"><input type="checkbox" id="iok"> <span>Declaro que desejo me candidatar a representante dos empregados na CIPA e que os dados acima estão corretos.</span></label>'+
     '<div id="ierr" class="note bad" hidden style="margin-top:12px"></div>'+
@@ -1462,12 +1516,54 @@ function parseRows(lines){
     else if(!/\d/.test(p[0])) r={matricula:"",nome:p[0],cargo:"",setor:p[1]||"",codigo:p[2]||""};
     else r={matricula:p[0],nome:p[1]||"",cargo:p[2]||"",setor:p[3]||"",codigo:p[4]||""};
     r.matricula=String(r.matricula).replace(/\.0+$/,"").trim();
+    if(map && map.matricula!=null && /^matr/.test(norm(r.matricula))) return;   /* título repetido (PDF de várias páginas) */
     if(!r.nome){ erros.push(i+1); return; }
     rows.push(r);
   });
   return {rows:rows,erros:erros,map:map};
 }
 function parseEleitores(txt){ return parseRows(txt.split(/\r?\n/).map(function(l){ return l.split(/[;\t]/); })); }
+/* PDF com a lista (relatório exportado do sistema de RH): lê o texto de cada página,
+   junta os pedaços pela linha (posição Y) e encaixa cada pedaço na coluna do título mais
+   próximo (posição X). PDF escaneado (foto) não tem texto e não dá para ler. */
+function readPdf(file){
+  return loadScript(LIB_PDF).then(function(){
+    var lib=window.pdfjsLib; lib.GlobalWorkerOptions.workerSrc=LIB_PDF_W;
+    return file.arrayBuffer().then(function(buf){ return lib.getDocument({data:new Uint8Array(buf)}).promise; });
+  }).then(function(pdf){
+    var paginas=[]; for(var i=1;i<=pdf.numPages;i++) paginas.push(i);
+    return Promise.all(paginas.map(function(n){ return pdf.getPage(n).then(function(pg){ return pg.getTextContent(); }); }));
+  }).then(function(conteudos){
+    var linhas=[], cols=null;
+    conteudos.forEach(function(ct){
+      var itens=ct.items.filter(function(it){ return it.str && it.str.trim(); })
+        .map(function(it){ return {x:it.transform[4], y:it.transform[5], w:it.width||0, t:it.str.trim()}; });
+      itens.sort(function(a,b){ return b.y-a.y || a.x-b.x; });
+      var grupos=[];
+      itens.forEach(function(it){ var g=grupos[grupos.length-1]; if(g && Math.abs(g.y-it.y)<=3) g.itens.push(it); else grupos.push({y:it.y,itens:[it]}); });
+      grupos.forEach(function(g){
+        g.itens.sort(function(a,b){ return a.x-b.x; });
+        var h=g.itens.map(function(it){ return norm(it.t); });
+        if(!cols && h.some(function(x){return /^matr/.test(x);}) && h.some(function(x){return /^nome/.test(x);})){
+          cols=g.itens.map(function(it){ return {x:it.x, t:it.t}; });
+          linhas.push(cols.map(function(c){ return c.t; }));
+          return;
+        }
+        if(!cols){ return; }
+        var cel=cols.map(function(){ return []; });
+        g.itens.forEach(function(it){
+          var k=0; for(var j=0;j<cols.length;j++){ if(it.x>=cols[j].x-6) k=j; }
+          cel[k].push(it.t);
+        });
+        var lin=cel.map(function(c){ return c.join(" "); });
+        if(lin.filter(function(x){ return x; }).length<2) return;   /* título, rodapé ("Página 2"): não é colaborador */
+        linhas.push(lin);
+      });
+    });
+    if(!cols) throw new Error("Não encontrei a linha de títulos (Matrícula, Nome…) no PDF. Se o PDF for uma foto/escaneado, use a planilha do Excel.");
+    return parseRows(linhas);
+  }, function(e){ throw (e && e.message && /títulos/.test(e.message)) ? e : new Error("Não foi possível ler este PDF. Confira se ele tem texto (não é uma foto) ou use a planilha do Excel."); });
+}
 function readExcel(file){
   return loadScript(LIB_XLSX).then(function(){
     return new Promise(function(res,rej){
@@ -1504,8 +1600,8 @@ function tabEleitores(){
   var rows=list.slice(0,400).map(function(e){ return '<tr><td class="mono">'+esc(e.matricula)+'</td><td>'+esc(e.nome)+'</td><td>'+esc(e.escala||"—")+'</td><td>'+esc(e.cargo||"—")+'</td><td>'+esc(e.setor||"—")+'</td>'+(mostraCod?'<td class="mono">'+esc(cpfModo?cpfMasc(e.codigo):(e.codigo||"—"))+'</td>':'')+'<td>'+(e.votou?'<span class="yes">Votou</span> <span class="muted small">'+esc(fmtDT(e.votouEm))+'</span>':'<span class="no">Não votou</span>')+'</td></tr>'; }).join("");
   var imp = locked ? '<div class="note info">A votação já foi aberta: o cadastro de colaboradores está lacrado.</div>' :
     '<div class="card pad" id="impCard"><h3 style="font-size:1.25rem">Carregar lista de colaboradores</h3>'+
-    '<p class="muted small" style="margin:4px 0 14px">Selecione a planilha do Excel com as colunas <b>Matrícula</b>, <b>Nome Completo</b>, <b>Nome Escala</b>, <b>Cargo</b> e <b>Lotação</b> (com a linha de títulos). A matrícula é gravada exatamente como está na planilha.</p>'+
-    '<div class="row" style="align-items:center"><label class="btn primary" for="xfile">Selecionar planilha do Excel</label><input id="xfile" type="file" accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv" hidden>'+
+    '<p class="muted small" style="margin:4px 0 14px">Selecione a <b>planilha do Excel</b> ou o <b>PDF</b> com as colunas <b>Matrícula</b>, <b>Nome Completo</b>, <b>CPF</b>, <b>Cargo</b> e <b>Lotação</b> (com a linha de títulos). Para <b>incluir pessoas novas</b> sem perder quem já está, use “Juntar com a lista atual”.</p>'+
+    '<div class="row" style="align-items:center"><label class="btn primary" for="xfile">Selecionar Excel ou PDF</label><input id="xfile" type="file" accept=".xlsx,.xls,.csv,.pdf,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv" hidden>'+
     '<span class="muted small" id="xname">Nenhum arquivo selecionado</span></div>'+
     '<div id="xprev"></div>'+
     '<details style="margin-top:14px"><summary class="small muted" style="cursor:pointer">Ou cole os dados copiados do Excel</summary>'+
@@ -1534,13 +1630,20 @@ function tabEleitores(){
       (semMat?'<br>'+semMat+' linha(s) sem matrícula.':'')+(dup?'<br>'+dup+' matrícula(s) repetida(s): vale a última linha.':'')+(p.erros.length?'<br>Linhas ignoradas (sem nome): '+p.erros.slice(0,10).join(", ")+(p.erros.length>10?"…":""):'')+'</div>'+
       '<div class="tbl-wrap" style="margin-top:12px"><table class="t"><thead><tr><th>Matrícula</th><th>Nome completo</th><th>Nome escala</th><th>Cargo</th><th>Lotação</th><th>CPF</th></tr></thead><tbody>'+
       p.rows.slice(0,5).map(function(r){return '<tr><td class="mono">'+esc(r.matricula)+'</td><td>'+esc(r.nome)+'</td><td>'+esc(r.escala||"—")+'</td><td>'+esc(r.cargo||"—")+'</td><td>'+esc(r.setor||"—")+'</td><td class="mono">'+esc(cpfMasc(r.codigo))+'</td></tr>';}).join("")+'</tbody></table></div>'+
-      '<div class="row" style="margin-top:12px;align-items:center"><label class="small"><input type="checkbox" id="impSub" checked> Substituir o cadastro atual ('+d.eleitores.length+' colaboradores)</label>'+
+      (d.eleitores.length
+        ? '<fieldset class="impmodo"><legend class="lbl">Como importar</legend>'+
+            '<label><input type="radio" name="impModo" value="juntar" checked> <span><b>Juntar com a lista atual</b> ('+d.eleitores.length+' colaboradores): inclui quem é novo, atualiza nome, cargo e lotação de quem já está e <b>mantém quem não aparece no arquivo</b>.</span></label>'+
+            '<label><input type="radio" name="impModo" value="substituir"> <span><b>Substituir a lista</b>: apaga os '+d.eleitores.length+' atuais e fica só quem está no arquivo.</span></label></fieldset>'
+        : '')+
+      '<div class="row" style="margin-top:12px;align-items:center">'+
       '<button class="btn primary" type="button" id="impGo">Importar '+p.rows.length+' colaboradores</button></div></div>';
     $("#impGo").onclick=function(){ this.disabled=true; this.textContent="Importando…";
-      apply(API.importar(A.t,p.rows,$("#impSub").checked)).then(function(){ toast(p.rows.length+" colaboradores importados"); }, function(){ var b=$("#impGo"); if(b){ b.disabled=false; b.textContent="Importar"; } }); };
+      var subst=!!document.querySelector('input[name=impModo][value=substituir]:checked');
+      apply(API.importar(A.t,p.rows,subst)).then(function(dd){ var im=dd&&dd.importacao;
+        toast(im ? (im.substituiu ? im.total+" colaboradores importados (lista substituída)" : im.novos+" novos e "+im.atualizados+" atualizados · lista com "+dd.eleitores.length) : p.rows.length+" colaboradores importados"); }, function(){ var b=$("#impGo"); if(b){ b.disabled=false; b.textContent="Importar"; } }); };
   }
   $("#xfile").onchange=function(){ var f=this.files[0]; if(!f) return; $("#xname").textContent=f.name+" · lendo…";
-    readExcel(f).then(function(p){ $("#xname").textContent=f.name; preview(p); }, function(e){ $("#xname").textContent=f.name; $("#xprev").innerHTML='<div class="note bad" style="margin-top:14px">'+esc(e.message)+'</div>'; });
+    ((/\.pdf$/i.test(f.name) || f.type==="application/pdf") ? readPdf(f) : readExcel(f)).then(function(p){ $("#xname").textContent=f.name; preview(p); }, function(e){ $("#xname").textContent=f.name; $("#xprev").innerHTML='<div class="note bad" style="margin-top:14px">'+esc(e.message)+'</div>'; });
     this.value=""; };
   $("#impPaste").onclick=function(){ preview(parseEleitores($("#impTxt").value)); };
 }

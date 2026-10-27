@@ -167,5 +167,31 @@ t('bloqueio é só daquela matrícula', api_consultar('2002', '987')['nome'] ===
 api_status($A3, 'encerrada'); api_recomecar($A3, true);
 putenv('CIPA_PERMITIR_ZERAR');
 
+// importação que junta listas (PDF/planilha nova sem apagar quem já está)
+putenv('CIPA_PERMITIR_ZERAR=1');
+$A4 = sessao_nova('admin', 'admin', 3600);
+api_recomecar($A4, true);
+api_saveConfig($A4, ['vagasTitulares' => 2, 'vagasSuplentes' => 2, 'verificacao' => 'cpf3']);
+api_importar($A4, [
+    ['matricula' => '007048', 'nome' => 'Renaldo Antigo', 'codigo' => '123.456.789-09', 'cargo' => 'Motorista', 'setor' => 'Tráfego'],
+    ['matricula' => '5000', 'nome' => 'Fica Igual', 'codigo' => '555.444.333-22', 'cargo' => 'Fiscal', 'setor' => 'Tráfego'],
+], true);
+$d = api_importar($A4, [
+    ['matricula' => '7048', 'nome' => 'Renaldo Novo Nome', 'codigo' => '', 'cargo' => 'Supervisor', 'setor' => ''],
+    ['matricula' => '9001', 'nome' => 'Pessoa Nova', 'codigo' => '987.654.321-00', 'cargo' => 'Mecânico', 'setor' => 'Oficina'],
+], false);
+$porMat = []; foreach ($d['eleitores'] as $e) $porMat[$e['matricula']] = $e;
+t('juntar: total 3', count($d['eleitores']) === 3);
+t('juntar: contagem novos/atualizados', $d['importacao']['novos'] === 1 && $d['importacao']['atualizados'] === 1);
+t('juntar: sem zeros acha a mesma pessoa', isset($porMat['007048']) && !isset($porMat['7048']));
+t('juntar: atualiza nome e cargo', $porMat['007048']['nome'] === 'Renaldo Novo Nome' && $porMat['007048']['cargo'] === 'Supervisor');
+t('juntar: campo vazio mantém CPF e lotação', $porMat['007048']['codigo'] === '123' && $porMat['007048']['setor'] === 'Tráfego');
+t('juntar: quem não veio no arquivo fica', isset($porMat['5000']) && $porMat['5000']['codigo'] === '555');
+t('juntar: pessoa nova entra com CPF', $porMat['9001']['codigo'] === '987');
+$d = api_importar($A4, [['matricula' => '1', 'nome' => 'Só Ela']], true);
+t('substituir: fica só o arquivo', count($d['eleitores']) === 1 && $d['importacao']['substituiu']);
+api_recomecar($A4, true);
+putenv('CIPA_PERMITIR_ZERAR');
+
 echo "\n$ok ok, $ko falha(s)\n";
 exit($ko ? 1 : 0);
