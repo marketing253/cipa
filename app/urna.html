@@ -908,7 +908,7 @@ function voterRender(){
     $("#bvazio").hidden = n>0; }; }
   $$(".cand",app).forEach(function(el){ el.onclick=function(){
     if(V.abrindo) return;
-    somPreparar(); somTecla(); vibrar(12);
+    somPreparar(); sfxLiberar(); sfxTecla(); vibrar(12);
     $$(".cand.pick",app).forEach(function(x){ x.classList.remove("pick"); });
     el.classList.add("pick"); V.abrindo=true;
     setTimeout(function(){ V.abrindo=false; openConfirm(el.getAttribute("data-num")); }, 320);
@@ -1030,7 +1030,7 @@ function openConfirm(num){
     '<div class="foot">Aperte a tecla <b>CONFIRMA</b> para registrar o voto ou <b>CORRIGE</b> para voltar à cédula.</div></div>'+
     '<div class="keys"><button type="button" class="key corrige" id="kCorrige">CORRIGE</button><button type="button" class="key confirma" id="kConfirma">CONFIRMA</button></div>'+
     '<div id="verr" class="note bad" hidden style="margin-top:10px"></div></div></div>';
-  $("#kCorrige").onclick=function(){ somTecla(); $("#overlay").innerHTML=""; V.pick=null; $$(".cand.pick").forEach(function(x){ x.classList.remove("pick"); }); };
+  $("#kCorrige").onclick=function(){ sfxTecla(); $("#overlay").innerHTML=""; V.pick=null; $$(".cand.pick").forEach(function(x){ x.classList.remove("pick"); }); };
   $("#kConfirma").onclick=confirmVote;
   $("#kConfirma").focus();
 }
@@ -1070,6 +1070,41 @@ function somTecla(){
   }catch(e){}
 }
 /* vibração (Android/Chrome; iPhone ignora) */
+/* Sons como MÍDIA (elemento <audio>): no iPhone tocam mesmo com a chave do silencioso e no
+   Android seguem o volume de mídia — o Web Audio fica mudo no silencioso do iPhone. Os arquivos já
+   vêm cortados e com volume normalizado (testes/gerar_sons.py). Se a mídia falhar, cai no Web Audio. */
+var SFX={fim:null, tecla:[], k:0, liberado:false, fimPendente:false};
+function sfxCriar(){
+  if(SFX.fim || MODE==="demo") return;
+  try{
+    if(navigator.audioSession) navigator.audioSession.type="playback";   /* Safari 17+: Web Audio ignora o silencioso */
+    SFX.fim=new Audio("fim-urna.mp3"); SFX.fim.preload="auto";
+    for(var i=0;i<3;i++){ var a=new Audio("tecla.mp3"); a.preload="auto"; SFX.tecla.push(a); }   /* 3 para toques seguidos */
+  }catch(e){ SFX.fim=null; }
+}
+/* precisa acontecer dentro do toque: o iPhone só deixa tocar depois, sozinho, a mídia "liberada" num toque */
+function sfxLiberar(){
+  sfxCriar();
+  var a=SFX.fim; if(!a || SFX.liberado) return;
+  try{
+    a.muted=true;
+    var pr=a.play();
+    var ok=function(){ SFX.liberado=true; if(SFX.fimPendente){ SFX.fimPendente=false; a.currentTime=0; a.muted=false; } else { a.pause(); a.currentTime=0; a.muted=false; } };
+    if(pr && pr.then) pr.then(ok,function(){ a.muted=false; }); else ok();
+  }catch(e){}
+}
+function sfxTecla(){
+  sfxCriar();
+  var a=SFX.tecla[SFX.k++ % (SFX.tecla.length||1)];
+  if(!a){ somPreparar(); return somTecla(); }
+  try{ a.currentTime=0; var pr=a.play(); if(pr && pr.catch) pr.catch(function(){ somPreparar(); somTecla(); }); }catch(e){ somPreparar(); somTecla(); }
+}
+function sfxFim(){
+  var a=SFX.fim;
+  if(!a){ return somFim(); }
+  if(!SFX.liberado){ SFX.fimPendente=true; return; }   /* a liberação ainda não terminou: toca assim que terminar */
+  try{ a.muted=false; a.currentTime=0; var pr=a.play(); if(pr && pr.catch) pr.catch(function(){ somFim(); }); }catch(e){ somFim(); }
+}
 function vibrar(p){ try{ if(navigator.vibrate) navigator.vibrate(p); }catch(e){} }
 function somBipes(){
   var c=SOM.ctx; if(!c) return;
@@ -1093,9 +1128,9 @@ function aparelhoId(){
 }
 function confirmVote(){
   var b1=$("#kConfirma"), b2=$("#kCorrige"); b1.disabled=b2.disabled=true; b1.textContent="GRAVANDO…";
-  somPreparar(); somTecla(); vibrar(60);
+  somPreparar(); sfxLiberar(); sfxTecla(); vibrar(60);
   API.votar(V.s.token,V.pick,PAGE==="totem",aparelhoId()).then(function(r){
-    somFim(); vibrar([40,70,40]);
+    sfxFim(); vibrar([40,70,40]);
     $(".urna").innerHTML='<div class="screen visor" style="display:block"><div class="fim">'+
         '<span class="votou">VOTOU</span>'+
         '<div class="big" aria-label="Fim">FIM</div>'+
