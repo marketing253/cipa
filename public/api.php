@@ -9,7 +9,7 @@ header('X-Content-Type-Options: nosniff');
 
 const PERMITIDAS = ['ballot', 'consultar', 'login', 'votar', 'adminLogin', 'adminSair', 'trocarSenha', 'adminData',
     'saveConfig', 'saveCand', 'delCand', 'importar', 'status', 'resultado', 'gerarAta', 'fotoToken', 'fotoBuscar',
-    'fotoEnviar', 'inscConsultar', 'inscrever', 'auditoria', 'saveAgenda', 'recomecar'];
+    'fotoEnviar', 'inscConsultar', 'inscrever', 'auditoria', 'saveAgenda', 'recomecar', 'pedirFoto', 'inscNovaFoto'];
 
 function responder($v, int $code = 200): never {
     http_response_code($code);

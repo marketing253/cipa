@@ -266,6 +266,11 @@ table.t tbody tr:hover td{background:var(--surface-2)}
 .yes{color:var(--ok);font-weight:700}
 .no{color:var(--muted)}
 .setor-bars{display:grid;gap:10px}
+.ifoto img.ruim{outline:4px solid var(--bad);outline-offset:-4px}
+.dicas{margin-top:10px;font-size:.88rem;border:1px solid var(--line);border-radius:var(--r-sm);padding:8px 12px;background:var(--surface-2)}
+.dicas summary{cursor:pointer;font-weight:700;color:var(--accent)}
+.dicas ul{margin:8px 0 2px;padding-left:18px;display:grid;gap:4px}
+.cc-acts.pf select{min-height:40px;border:1.5px solid var(--line-2);border-radius:10px;padding:0 10px;background:var(--surface)}
 .impmodo{border:1px solid var(--line);border-radius:var(--r-sm);padding:10px 14px 12px;margin:14px 0 0;display:grid;gap:8px}
 .impmodo label{display:flex;gap:10px;align-items:flex-start;font-size:.9rem;cursor:pointer}
 .impmodo input{margin-top:3px;accent-color:var(--accent)}
@@ -466,7 +471,29 @@ function buscarEleitores(lista,q){
 function randCode(n, rnd){ var a="ABCDEFGHJKLMNPQRSTUVWXYZ23456789", s=""; for(var i=0;i<n;i++){ s+=a.charAt(Math.floor((rnd?rnd():Math.random())*a.length)); } return s; }
 
 /* Foto: redimensiona para 240x300 (4:5) e devolve JPEG em data URL */
-function resizePhoto(file){
+/* Foto 480x600 (4:5) em JPEG de boa qualidade + análise: nitidez (variância do Laplaciano no
+   centro da foto, onde fica o rosto), brilho médio e resolução da câmera. */
+/* calibrado no navegador em 27/10/2026 (nitidez normalizada pelo brilho, análise em 480x600):
+   nítida 113, nítida lisa sem textura 52, escura 123, tremida 20 px 21 → limite 30 */
+var FOTO_LIM={nitidez:30, escura:62, clara:212, minimo:320};
+function qualidadeFoto(img){
+  var W=480,H=600,c=document.createElement("canvas"); c.width=W; c.height=H;
+  var g=c.getContext("2d",{willReadFrequently:true}), r=Math.max(W/img.width,H/img.height);
+  g.drawImage(img,(W-img.width*r)/2,(H-img.height*r)/2,img.width*r,img.height*r);
+  var px=g.getImageData(0,0,W,H).data, cin=new Float32Array(W*H);
+  for(var i=0;i<W*H;i++) cin[i]=0.299*px[i*4]+0.587*px[i*4+1]+0.114*px[i*4+2];
+  var x0=Math.round(W*0.2), x1=Math.round(W*0.8), y0=Math.round(H*0.12), y1=Math.round(H*0.78);
+  var soma=0, n=0, sl=0, sl2=0, nl=0;
+  for(var y=y0;y<y1;y++) for(var x=x0;x<x1;x++){
+    var v=cin[y*W+x]; soma+=v; n++;
+    var l=4*v-cin[(y-1)*W+x]-cin[(y+1)*W+x]-cin[y*W+x-1]-cin[y*W+x+1];
+    sl+=l; sl2+=l*l; nl++;
+  }
+  var med=sl/nl, br=soma/n;
+  /* foto escura tem contraste menor: normaliza para não confundir escura com tremida */
+  return {brilho:br, nitidez:(sl2/nl-med*med)/Math.pow(Math.max(br,20)/128,2)};
+}
+function prepararFoto(file){
   return new Promise(function(res,rej){
     var fr=new FileReader();
     fr.onerror=function(){rej(new Error("Não foi possível ler a imagem."));};
@@ -474,15 +501,53 @@ function resizePhoto(file){
       var img=new Image();
       img.onerror=function(){rej(new Error("Arquivo de imagem inválido."));};
       img.onload=function(){
-        var W=240,H=300,c=document.createElement("canvas"); c.width=W; c.height=H;
+        var W=480,H=600,c=document.createElement("canvas"); c.width=W; c.height=H;
         var g=c.getContext("2d"), r=Math.max(W/img.width,H/img.height), w=img.width*r, h=img.height*r;
-        g.fillStyle="#fff"; g.fillRect(0,0,W,H); g.drawImage(img,(W-w)/2,(H-h)/2,w,h);
-        res(c.toDataURL("image/jpeg",0.72));
+        g.fillStyle="#fff"; g.fillRect(0,0,W,H); g.imageSmoothingQuality="high"; g.drawImage(img,(W-w)/2,(H-h)/2,w,h);
+        var q=qualidadeFoto(img), prob=[];
+        if(Math.min(img.width,img.height)<FOTO_LIM.minimo) prob.push("A foto está com resolução muito baixa. Use a câmera do celular, não um print ou foto pequena.");
+        if(q.nitidez<FOTO_LIM.nitidez) prob.push("A foto ficou tremida ou fora de foco.");
+        if(q.brilho<FOTO_LIM.escura) prob.push("A foto ficou escura.");
+        if(q.brilho>FOTO_LIM.clara) prob.push("A foto ficou clara demais (contra a luz ou com flash forte).");
+        res({url:c.toDataURL("image/jpeg",0.86), nitidez:q.nitidez, brilho:q.brilho, problemas:prob, soNitidez:prob.length===1 && q.nitidez<FOTO_LIM.nitidez});
       };
       img.src=fr.result;
     };
     fr.readAsDataURL(file);
   });
+}
+/* comissão (cadastro, QR Code): avisa, mas aceita — quem decide é a comissão */
+function resizePhoto(file){
+  return prepararFoto(file).then(function(r){ if(r.problemas.length) toast("Atenção: "+r.problemas[0]+" Se puder, tire outra."); return r.url; });
+}
+var DICAS_FOTO='<details class="dicas"><summary>Como tirar uma boa foto</summary><ul>'+
+  '<li>Segure o celular com as <b>duas mãos</b> e fique parado ao tocar.</li>'+
+  '<li><b>Luz de frente</b> (de frente para uma janela); evite ficar de costas para a luz.</li>'+
+  '<li><b>Rosto inteiro</b>, centralizado e de frente, sem boné, óculos escuros ou máscara.</li>'+
+  '<li>Fundo liso, se possível. Limpe a lente da câmera.</li></ul></details>';
+/* campo de foto do candidato: só aceita foto que passa na análise */
+function campoFotoCand(titulo, fotoIni){
+  return '<div class="ifoto"><img id="ip" alt="Sua foto" src="'+esc(fotoIni)+'"><div><b>'+titulo+'</b><p class="muted small" style="margin:4px 0 10px">De frente, parado e com o rosto bem iluminado.</p>'+
+    '<label class="btn" for="ifin" id="ilab">Tirar foto</label><input id="ifin" type="file" accept="image/*" capture="user" hidden></div></div>'+
+    '<div id="fq" class="note small" hidden style="margin-top:10px"></div>'+DICAS_FOTO;
+}
+function wireFotoCand(){
+  $("#ifin").onchange=function(){ var f=this.files[0]; if(!f) return; var fq=$("#fq"); fq.hidden=false; fq.className="note info small"; fq.textContent="Analisando a foto…";
+    prepararFoto(f).then(function(r){
+      $("#ip").src=r.url;
+      if(r.problemas.length){
+        I.foto=""; $("#ip").classList.add("ruim"); $("#ilab").textContent="Tirar outra foto";
+        I.ruins = r.soNitidez ? (I.ruins||0)+1 : 0;
+        fq.className="note bad small"; fq.innerHTML="<b>"+esc(r.problemas.join(" "))+"</b> Tire outra foto: veja as dicas abaixo."+
+          (I.ruins>=3 ? '<div style="margin-top:8px"><button type="button" class="btn" id="fusar">Esta foto está boa, usar assim mesmo</button></div>' : '');
+        if($("#fusar")) $("#fusar").onclick=function(){ I.foto=r.url; $("#ip").classList.remove("ruim"); fq.className="note warn small"; fq.textContent="Foto aceita. A comissão confere todas as fotos e pode pedir outra."; };
+        $(".dicas").open=true; vibrar([40,60,40]);
+      } else {
+        I.foto=r.url; I.ruins=0; $("#ip").classList.remove("ruim"); $("#ilab").textContent="Tirar outra foto";
+        fq.className="note ok small"; fq.textContent="✓ Foto boa: nítida e bem iluminada.";
+      }
+    }, function(e){ fq.className="note bad small"; fq.textContent=e.message; });
+    this.value=""; };
 }
 
 /* Sem foto: iniciais do nome em dourado sobre o azul da Redentor (ou silhueta, antes de ter nome) */
@@ -781,7 +846,7 @@ function phpApi(){
   }
   var api={};
   ["ballot","consultar","login","votar","adminLogin","adminSair","trocarSenha","adminData","saveConfig","saveCand","delCand",
-   "importar","status","resultado","gerarAta","fotoToken","fotoBuscar","fotoEnviar","inscConsultar","inscrever","auditoria","saveAgenda","recomecar"].forEach(function(k){
+   "importar","status","resultado","gerarAta","fotoToken","fotoBuscar","fotoEnviar","inscConsultar","inscrever","auditoria","saveAgenda","recomecar","pedirFoto","inscNovaFoto"].forEach(function(k){
     api[k]=function(){ return call.apply(null,[k].concat(Array.prototype.slice.call(arguments))); };
   });
   return api;
@@ -1259,9 +1324,15 @@ function tabCandidatos(){
     var acts = locked ? '' :
       (A.confirm==="del"+c.numero
         ? '<div class="cc-acts"><span class="small" style="flex:1 1 100%">Excluir '+esc(c.nome)+'?</span><button class="btn danger" type="button" data-delok="'+esc(c.numero)+'">Sim, excluir</button><button class="btn ghost" type="button" data-delno>Não</button></div>'
-        : '<div class="cc-acts"><button class="btn" type="button" data-ed="'+esc(c.numero)+'">Editar</button><button class="btn" type="button" data-ft="'+esc(c.numero)+'">Foto</button><button class="btn ghost" type="button" data-del="'+esc(c.numero)+'" aria-label="Excluir '+esc(c.nome)+'">Excluir</button></div>');
+        : (A.confirm==="pf"+c.numero
+          ? '<div class="cc-acts pf"><label class="lbl" for="pfm" style="flex:1 1 100%">Motivo do pedido de nova foto</label><select id="pfm" style="flex:1 1 100%">'+
+              ["Foto tremida ou fora de foco","Foto escura ou contra a luz","Rosto cortado, longe ou de lado","Com boné, óculos escuros ou máscara","Foto fora do padrão"].map(function(m){ return '<option>'+esc(m)+'</option>'; }).join("")+
+              '</select><button class="btn primary" type="button" data-pfok="'+esc(c.numero)+'">Pedir nova foto</button><button class="btn ghost" type="button" data-delno>Cancelar</button></div>'
+          : '<div class="cc-acts"><button class="btn" type="button" data-ed="'+esc(c.numero)+'">Editar</button><button class="btn" type="button" data-ft="'+esc(c.numero)+'">Foto</button>'+
+            (MODE==="php" ? (+c.foto_pedido ? '<button class="btn" type="button" data-pfc="'+esc(c.numero)+'">Cancelar pedido de foto</button>' : '<button class="btn" type="button" data-pf="'+esc(c.numero)+'">Pedir nova foto</button>') : '')+
+            '<button class="btn ghost" type="button" data-del="'+esc(c.numero)+'" aria-label="Excluir '+esc(c.nome)+'">Excluir</button></div>'));
     return '<article class="cc"><div class="cc-ph"><img alt="" src="'+esc(c.foto||avatar(c.nome))+'"><span class="cc-n">'+esc(c.numero)+'</span></div>'+
-      '<div class="cc-b"><strong>'+esc(nUrna(c))+'</strong>'+(c.escala&&c.escala!==c.nome?'<div class="muted small">'+esc(c.nome)+'</div>':'')+(c.origem==="link"?'<span class="pill prep" style="margin-top:6px">Inscrito pelo link</span>':'')+'<dl><dt>Matrícula</dt><dd class="mono">'+esc(c.matricula||"—")+'</dd><dt>Cargo</dt><dd>'+esc(c.cargo||"—")+'</dd><dt>Lotação</dt><dd>'+esc(c.setor||"—")+'</dd></dl></div>'+acts+'</article>';
+      '<div class="cc-b"><strong>'+esc(nUrna(c))+'</strong>'+(c.escala&&c.escala!==c.nome?'<div class="muted small">'+esc(c.nome)+'</div>':'')+(c.origem==="link"?'<span class="pill prep" style="margin-top:6px">Inscrito pelo link</span>':'')+(+c.foto_pedido?'<span class="pill encerrada" style="margin-top:6px;white-space:normal">Nova foto pedida · '+esc(c.foto_motivo||"")+'</span>':'')+'<dl><dt>Matrícula</dt><dd class="mono">'+esc(c.matricula||"—")+'</dd><dt>Cargo</dt><dd>'+esc(c.cargo||"—")+'</dd><dt>Lotação</dt><dd>'+esc(c.setor||"—")+'</dd></dl></div>'+acts+'</article>';
   }).join("");
   var insc='';
   if(!locked){
@@ -1290,6 +1361,11 @@ function tabCandidatos(){
   $$("[data-ft]").forEach(function(b){ b.onclick=function(){ photoModal(find(b.getAttribute("data-ft"))); }; });
   $$("[data-del]").forEach(function(b){ b.onclick=function(){ A.confirm="del"+b.getAttribute("data-del"); tabCandidatos(); }; });
   $$("[data-delno]").forEach(function(b){ b.onclick=function(){ A.confirm=null; tabCandidatos(); }; });
+  $$("[data-pf]").forEach(function(b){ b.onclick=function(){ A.confirm="pf"+b.getAttribute("data-pf"); tabCandidatos(); }; });
+  $$("[data-pfok]").forEach(function(b){ b.onclick=function(){ b.disabled=true;
+    apply(API.pedirFoto(A.t,b.getAttribute("data-pfok"),$("#pfm").value,false)).then(function(){ A.tab="candidatos"; toast("Pedido registrado. Avise o candidato: ele entra no link de inscrição com a matrícula e o CPF e tira a nova foto."); }); }; });
+  $$("[data-pfc]").forEach(function(b){ b.onclick=function(){ b.disabled=true;
+    apply(API.pedirFoto(A.t,b.getAttribute("data-pfc"),"",true)).then(function(){ A.tab="candidatos"; toast("Pedido de nova foto cancelado"); }); }; });
   $$("[data-delok]").forEach(function(b){ b.onclick=function(){ b.disabled=true; apply(API.delCand(A.t,b.getAttribute("data-delok"))).then(function(){ A.tab="candidatos"; toast("Candidato excluído"); }); }; });
 }
 function closeModal(){ closeQr(); $("#overlay").innerHTML=""; }
@@ -1435,6 +1511,7 @@ function inscStep1(){
     b.disabled=true; b.textContent="Consultando…";
     var m=mi.value;
     function achou(r){
+      if(r.jaNumero && r.fotoPedida){ I.c=r; return novaFotoRender(r); }
       if(r.jaNumero){ $("#app").innerHTML='<div class="card login solo"><h2>Você já está inscrito</h2><p class="muted">'+esc(r.nome)+', sua candidatura já foi registrada com o número <b>'+esc(r.jaNumero)+'</b>. Para alterar algum dado, procure a comissão eleitoral.</p></div>'; return; }
       I.c=r; inscStep2();
     }
@@ -1447,19 +1524,40 @@ function inscStep1(){
   };
   mi.focus();
 }
+function novaFotoRender(r){
+  I.foto="";
+  $("#app").innerHTML='<div class="card login solo" style="max-width:560px"><h2>Envie uma nova foto</h2>'+
+    '<p class="muted" style="margin:0">'+esc(r.nome)+', a comissão eleitoral pediu uma nova foto para a sua candidatura (número <b>'+esc(r.jaNumero)+'</b>).</p>'+
+    '<div class="note warn small" style="margin-top:14px"><b>Motivo:</b> '+esc(r.fotoMotivo||"foto fora do padrão")+'</div>'+
+    (r.fotoAtual?'<div class="row" style="align-items:center;margin-top:14px;gap:12px"><img src="'+esc(r.fotoAtual)+'" alt="Foto atual" style="width:64px;height:80px;object-fit:cover;border-radius:10px;border:1px solid var(--line);opacity:.75"><span class="muted small">Foto atual</span></div>':'')+
+    campoFotoCand('Nova foto para a urna', avatar(r.nome))+
+    '<div id="ierr" class="note bad" hidden style="margin-top:12px"></div>'+
+    '<div class="btns2"><button class="btn" type="button" id="iback">Voltar</button><button class="btn primary" type="button" id="isend">Enviar nova foto</button></div></div>';
+  $("#iback").onclick=inscStep1;
+  wireFotoCand();
+  $("#isend").onclick=function(){ var er=$("#ierr"); er.hidden=true;
+    if(!I.foto){ er.textContent=$("#ip").classList.contains("ruim") ? "A foto não ficou boa. Tire outra foto antes de enviar." : "Tire a nova foto antes de enviar."; er.hidden=false; return; }
+    var b=this; b.disabled=true; b.textContent="Enviando…";
+    API.inscNovaFoto(r.matricula,I.cod,I.foto).then(function(x){
+      $("#app").innerHTML='<div class="card login solo done"><svg class="done-ic" viewBox="0 0 88 88" aria-hidden="true"><circle cx="44" cy="44" r="40"/><path d="M27 45l12 12 23-25"/></svg><div class="lbl">Foto atualizada</div>'+
+        '<h2>Obrigado, '+esc(String(x.nome).split(" ")[0])+'!</h2><p class="muted">A nova foto já está na sua candidatura, número <b>'+esc(x.numero)+'</b>.</p><button class="btn ghost" type="button" id="iNova">Voltar ao início</button></div>';
+      $("#iNova").onclick=inscStep1;
+    }, function(e){ b.disabled=false; b.textContent="Enviar nova foto"; er.textContent=e.message; er.hidden=false; });
+  };
+}
 function inscStep2(){
   var c=I.c;
   $("#app").innerHTML='<div class="card login solo" style="max-width:560px"><h2>Confira seus dados</h2><p class="muted" style="margin:0">Estes dados vêm do cadastro da empresa.</p>'+
     '<div class="whoami"><span class="av" aria-hidden="true">'+esc(initials(c.nome))+'</span><div><span class="lbl">Matrícula '+esc(c.matricula)+'</span><span class="nm">'+esc(c.nome)+'</span></div></div>'+
     '<dl class="idl"><dt>Cargo</dt><dd>'+esc(c.cargo||"—")+'</dd></dl>'+
-    '<div class="ifoto"><img id="ip" alt="Sua foto" src="'+avatar(c.nome)+'"><div><b>Sua foto para a urna <span style="color:var(--bad)">(obrigatória)</span></b><p class="muted small" style="margin:4px 0 10px">De frente, rosto bem iluminado.</p><label class="btn" for="ifin">Tirar foto</label><input id="ifin" type="file" accept="image/*" capture="user" hidden></div></div>'+
+    campoFotoCand('Sua foto para a urna <span style="color:var(--bad)">(obrigatória)</span>', avatar(c.nome))+
     '<label class="idecl"><input type="checkbox" id="iok"> <span>Declaro que desejo me candidatar a representante dos empregados na CIPA e que os dados acima estão corretos.</span></label>'+
     '<div id="ierr" class="note bad" hidden style="margin-top:12px"></div>'+
     '<div class="btns2"><button class="btn" type="button" id="iback">Não sou eu</button><button class="btn primary" type="button" id="isend">Confirmar inscrição</button></div></div>';
   $("#iback").onclick=inscStep1;
-  $("#ifin").onchange=function(){ var f=this.files[0]; if(!f) return; resizePhoto(f).then(function(u){ I.foto=u; $("#ip").src=u; }, function(e){ toast(e.message); }); };
+  wireFotoCand();
   $("#isend").onclick=function(){ var er=$("#ierr"); er.hidden=true;
-    if(!I.foto){ er.textContent="Tire a sua foto para a urna antes de confirmar a inscrição."; er.hidden=false; return; }
+    if(!I.foto){ er.textContent=$("#ip").classList.contains("ruim") ? "A foto não ficou boa. Tire outra foto antes de confirmar." : "Tire a sua foto para a urna antes de confirmar a inscrição."; er.hidden=false; return; }
     if(!$("#iok").checked){ er.textContent="Marque a declaração para confirmar a inscrição."; er.hidden=false; return; }
     var b=this; b.disabled=true; b.textContent="Enviando…";
     API.inscrever(c.matricula,I.cod,I.foto).then(function(r){

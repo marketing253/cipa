@@ -193,5 +193,38 @@ t('substituir: fica só o arquivo', count($d['eleitores']) === 1 && $d['importac
 api_recomecar($A4, true);
 putenv('CIPA_PERMITIR_ZERAR');
 
+// comissão pede nova foto; candidato manda pelo link (mesmo com inscrições fechadas)
+putenv('CIPA_PERMITIR_ZERAR=1');
+$A5 = sessao_nova('admin', 'admin', 3600);
+api_recomecar($A5, true);
+api_saveConfig($A5, ['vagasTitulares' => 2, 'vagasSuplentes' => 2, 'verificacao' => 'cpf3']);
+api_saveAgenda($A5, ['inscricoes' => 'sim', 'inscInicio' => '', 'inscFim' => '', 'votoInicio' => '', 'votoFim' => '']);
+api_importar($A5, [['matricula' => '4001', 'nome' => 'Lia Foto', 'codigo' => '321.000.000-00', 'cargo' => 'Fiscal']], true);
+$r = api_inscrever('4001', '321', 'data:image/jpeg;base64,VELHA');
+$num = $r['numero'];
+erro('sem pedido não troca foto', fn() => api_inscNovaFoto('4001', '321', 'data:image/jpeg;base64,NOVA'), 'Não há pedido');
+$d = api_pedirFoto($A5, $num, 'Foto tremida ou fora de foco');
+t('pedido registrado', $d['candidatos'][0]['foto_pedido'] === '1' && $d['candidatos'][0]['foto_motivo'] === 'Foto tremida ou fora de foco');
+t('cédula não mostra o pedido', !isset(api_ballot()['candidatos'][0]['foto_pedido']));
+api_saveAgenda($A5, ['inscricoes' => 'nao', 'inscInicio' => '', 'inscFim' => '', 'votoInicio' => '', 'votoFim' => '']);
+$c = api_inscConsultar('4001', '321');
+t('com inscrição fechada o candidato com pedido entra', $c['fotoPedida'] && $c['fotoMotivo'] === 'Foto tremida ou fora de foco' && $c['jaNumero'] === $num);
+erro('nova foto exige CPF certo', fn() => api_inscNovaFoto('4001', '999', 'data:image/jpeg;base64,NOVA'), 'não conferem');
+api_inscNovaFoto('4001', '321', 'data:image/jpeg;base64,NOVA');
+$d = api_adminData($A5);
+t('foto trocada e pedido resolvido', $d['candidatos'][0]['foto'] === 'data:image/jpeg;base64,NOVA' && $d['candidatos'][0]['foto_pedido'] === '0');
+erro('sem pedido e inscrição fechada', fn() => api_inscConsultar('4001', '321'), 'encerradas');
+api_pedirFoto($A5, $num, 'Foto escura');
+$cand = $d['candidatos'][0];
+$d = api_saveCand($A5, $cand + ['nome' => 'Lia Foto Editada'], $num);
+t('editar sem trocar a foto mantém o pedido', $d['candidatos'][0]['foto_pedido'] === '1' && $d['candidatos'][0]['foto_motivo'] === 'Foto escura');
+$d = api_saveCand($A5, ['foto' => 'data:image/jpeg;base64,DACOMISSAO'] + $d['candidatos'][0], $num);
+t('comissão troca a foto e resolve o pedido', $d['candidatos'][0]['foto_pedido'] === '0');
+api_pedirFoto($A5, $num, 'x');
+$d = api_pedirFoto($A5, $num, '', true);
+t('cancelar pedido', $d['candidatos'][0]['foto_pedido'] === '0');
+api_recomecar($A5, true);
+putenv('CIPA_PERMITIR_ZERAR');
+
 echo "\n$ok ok, $ko falha(s)\n";
 exit($ko ? 1 : 0);

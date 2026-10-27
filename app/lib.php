@@ -22,7 +22,7 @@ const VERIF = ['nenhuma' => '', 'cpf3' => '3 primeiros dígitos do CPF', 'nascim
 const TENTATIVAS_MATRICULA = 5; // erros de confirmação por matrícula a cada 15 min (3 dígitos = só mil combinações)
 const SESSAO_ELEITOR = 20 * 60;
 const SESSAO_ADMIN = 10 * 3600;
-const FOTO_MAX = 600000; // bytes do data URL (a tela já reduz para 240x300 JPEG, ~20 KB)
+const FOTO_MAX = 900000; // bytes do data URL (a tela grava 480x600 JPEG, ~60-120 KB)
 
 function pasta_dados(): string {
     $d = getenv('CIPA_DATA') ?: dirname(__DIR__) . '/data';
@@ -60,6 +60,10 @@ function db(): PDO {
     $cols = array_column($pdo->query('PRAGMA table_info(eleitores)')->fetchAll(), 'name');
     foreach (['voto_ip' => 'TEXT', 'voto_disp' => 'TEXT', 'voto_aparelho' => 'TEXT', 'voto_totem' => 'INTEGER'] as $c => $tipo)
         if (!in_array($c, $cols, true)) $pdo->exec("ALTER TABLE eleitores ADD COLUMN $c $tipo");
+    // pedido de nova foto feito pela comissão (27/10/2026)
+    $cols = array_column($pdo->query('PRAGMA table_info(candidatos)')->fetchAll(), 'name');
+    foreach (['foto_pedido' => 'INTEGER NOT NULL DEFAULT 0', 'foto_motivo' => 'TEXT'] as $c => $tipo)
+        if (!in_array($c, $cols, true)) $pdo->exec("ALTER TABLE candidatos ADD COLUMN $c $tipo");
     return $pdo;
 }
 
@@ -179,7 +183,7 @@ function registrar(string $acao, string $det = '', string $usuario = 'Comissão'
 
 /* ---------- leituras ---------- */
 function candidatos(): array {
-    $r = db()->query('SELECT numero,matricula,nome,escala,cargo,setor,admissao,foto,origem FROM candidatos')->fetchAll();
+    $r = db()->query('SELECT numero,matricula,nome,escala,cargo,setor,admissao,foto,origem,foto_pedido,foto_motivo FROM candidatos')->fetchAll();
     usort($r, fn($a, $b) => strnatcmp($a['numero'], $b['numero']));
     foreach ($r as &$c) foreach ($c as $k => $v) $c[$k] = (string)($v ?? '');
     return $r;
@@ -262,7 +266,7 @@ function api_ballot(): array {
     $pub = array_intersect_key($c, array_flip(['titulo', 'gestao', 'empresa', 'estabelecimento', 'status', 'verificacao', 'inscInicio', 'inscFim', 'votoInicio', 'votoFim']));
     $pub['inscSituacao'] = insc_situacao($c);
     return ['cfg' => $pub,
-            'candidatos' => array_map(fn($x) => array_diff_key($x, ['matricula' => 1, 'admissao' => 1, 'origem' => 1]), candidatos())];
+            'candidatos' => array_map(fn($x) => array_diff_key($x, ['matricula' => 1, 'admissao' => 1, 'origem' => 1, 'foto_pedido' => 1, 'foto_motivo' => 1]), candidatos())];
 }
 
 /* Confere o segundo dado (ex.: 3 primeiros dígitos do CPF). Fora de transação: o erro
@@ -389,14 +393,17 @@ function api_saveCand($t, $c, $orig): array {
     $p = db();
     $st = $p->prepare('SELECT nome FROM candidatos WHERE numero=? AND numero<>?'); $st->execute([$num, $orig]);
     if ($dono = $st->fetchColumn()) falha("O número $num já pertence a $dono.");
-    $st = $p->prepare('SELECT origem FROM candidatos WHERE numero=?'); $st->execute([$orig ?: $num]);
-    $antes = $st->fetchColumn();
+    $st = $p->prepare('SELECT origem,foto,foto_pedido,foto_motivo FROM candidatos WHERE numero=?'); $st->execute([$orig ?: $num]);
+    $velho = $st->fetch();
+    $antes = $velho ? $velho['origem'] : false;
+    $foto = foto_ok($c['foto'] ?? '');
+    $pedido = $velho && $velho['foto_pedido'] && $foto === (string)$velho['foto'] ? 1 : 0;   // foto nova resolve o pedido
     $p->exec('BEGIN IMMEDIATE');
     if ($antes !== false) $p->prepare('DELETE FROM candidatos WHERE numero=?')->execute([$orig ?: $num]);
-    $p->prepare('INSERT INTO candidatos(numero,matricula,nome,escala,cargo,setor,admissao,foto,origem) VALUES(?,?,?,?,?,?,?,?,?)')
+    $p->prepare('INSERT INTO candidatos(numero,matricula,nome,escala,cargo,setor,admissao,foto,origem,foto_pedido,foto_motivo) VALUES(?,?,?,?,?,?,?,?,?,?,?)')
       ->execute([$num, txt($c['matricula'] ?? '', 20), $nome, txt($c['escala'] ?? '', 60), txt($c['cargo'] ?? '', 120),
-                 txt($c['setor'] ?? '', 120), txt($c['admissao'] ?? '', 10), foto_ok($c['foto'] ?? ''),
-                 txt(($c['origem'] ?? '') ?: ($antes ?: 'comissao'), 20)]);
+                 txt($c['setor'] ?? '', 120), txt($c['admissao'] ?? '', 10), $foto,
+                 txt(($c['origem'] ?? '') ?: ($antes ?: 'comissao'), 20), $pedido, $pedido ? (string)$velho['foto_motivo'] : '']);
     $p->exec('COMMIT');
     registrar($antes !== false ? 'Candidato alterado' : 'Candidato cadastrado', "$num – $nome");
     return admin_data();
@@ -590,18 +597,55 @@ function api_fotoEnviar($tok, $data): array {
     return [];
 }
 
+function candidato_da_matricula($m): ?array {
+    foreach (db()->query('SELECT numero,matricula,foto,foto_pedido,foto_motivo FROM candidatos') as $c)
+        if (mat_norm($c['matricula']) === mat_norm($m)) return $c;
+    return null;
+}
+
 function api_inscConsultar($m, $c = ''): array {
     $cfg = cfg();
-    insc_exige_aberta($cfg);
+    if ($cfg['status'] !== 'preparacao') falha('As inscrições de candidatos estão encerradas.');
     if (mat_norm($m) === '') falha('Digite sua matrícula.');
     $e = eleitor_por_mat($m);
     if (!$e) falha('Matrícula não encontrada no cadastro de colaboradores. Procure a comissão eleitoral.');
     confere($e, $c);
-    $st = db()->prepare('SELECT numero,matricula FROM candidatos'); $st->execute();
-    $ja = '';
-    foreach ($st as $c) if (mat_norm($c['matricula']) === mat_norm($m)) { $ja = $c['numero']; break; }
+    $cand = candidato_da_matricula($m);
+    $pedido = $cand && $cand['foto_pedido'];
+    if (!$pedido) insc_exige_aberta($cfg);
     return ['matricula' => $e['matricula'], 'nome' => $e['nome'], 'escala' => (string)$e['escala'],
-            'cargo' => (string)$e['cargo'], 'setor' => (string)$e['setor'], 'jaNumero' => $ja];
+            'cargo' => (string)$e['cargo'], 'setor' => (string)$e['setor'], 'jaNumero' => $cand ? $cand['numero'] : '',
+            'fotoPedida' => (bool)$pedido, 'fotoMotivo' => $pedido ? (string)$cand['foto_motivo'] : '',
+            'fotoAtual' => $pedido ? (string)$cand['foto'] : ''];
+}
+
+/* a comissão pede (ou cancela o pedido de) uma nova foto ao candidato */
+function api_pedirFoto($t, $n, $motivo, $cancelar = false): array {
+    exige_admin($t);
+    if (cfg()['status'] !== 'preparacao') falha('Candidatos só podem ser alterados antes da abertura da votação.');
+    $st = db()->prepare('SELECT nome FROM candidatos WHERE numero=?'); $st->execute([(string)$n]);
+    $nome = $st->fetchColumn();
+    if ($nome === false) falha('Candidato não encontrado.');
+    if ($cancelar) {
+        db()->prepare("UPDATE candidatos SET foto_pedido=0, foto_motivo='' WHERE numero=?")->execute([(string)$n]);
+        registrar('Pedido de nova foto cancelado', "$n – $nome");
+    } else {
+        $motivo = txt($motivo, 120) ?: 'Foto fora do padrão';
+        db()->prepare('UPDATE candidatos SET foto_pedido=1, foto_motivo=? WHERE numero=?')->execute([$motivo, (string)$n]);
+        registrar('Nova foto pedida ao candidato', "$n – $nome · $motivo");
+    }
+    return admin_data();
+}
+
+/* o candidato manda a foto nova pelo link de inscrição (matrícula + confirmação) */
+function api_inscNovaFoto($m, $c, $foto): array {
+    $r = api_inscConsultar($m, $c);
+    if (!$r['fotoPedida']) falha('Não há pedido de nova foto para esta inscrição.');
+    $foto = foto_ok($foto);
+    if ($foto === '') falha('Tire a nova foto antes de enviar.');
+    db()->prepare("UPDATE candidatos SET foto=?, foto_pedido=0, foto_motivo='' WHERE numero=?")->execute([$foto, $r['jaNumero']]);
+    registrar('Nova foto enviada pelo candidato', $r['jaNumero'] . ' – ' . $r['nome'], 'Colaborador');
+    return ['numero' => $r['jaNumero'], 'nome' => $r['nome']];
 }
 
 function api_inscrever($m, $c, $foto): array {
