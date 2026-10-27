@@ -908,7 +908,7 @@ function voterRender(){
     $("#bvazio").hidden = n>0; }; }
   $$(".cand",app).forEach(function(el){ el.onclick=function(){
     if(V.abrindo) return;
-    somPreparar(); sfxLiberar(); sfxTecla(); vibrar(12);
+    somPreparar(); sfxTecla(); vibrar(12);
     $$(".cand.pick",app).forEach(function(x){ x.classList.remove("pick"); });
     el.classList.add("pick"); V.abrindo=true;
     setTimeout(function(){ V.abrindo=false; openConfirm(el.getAttribute("data-num")); }, 320);
@@ -1073,7 +1073,7 @@ function somTecla(){
 /* Sons como MÍDIA (elemento <audio>): no iPhone tocam mesmo com a chave do silencioso e no
    Android seguem o volume de mídia — o Web Audio fica mudo no silencioso do iPhone. Os arquivos já
    vêm cortados e com volume normalizado (testes/gerar_sons.py). Se a mídia falhar, cai no Web Audio. */
-var SFX={fim:null, tecla:[], k:0, liberado:false, fimPendente:false};
+var SFX={fim:null, tecla:[], k:0, falhou:false};
 function sfxCriar(){
   if(SFX.fim || MODE==="demo") return;
   try{
@@ -1082,29 +1082,22 @@ function sfxCriar(){
     for(var i=0;i<3;i++){ var a=new Audio("tecla.mp3"); a.preload="auto"; SFX.tecla.push(a); }   /* 3 para toques seguidos */
   }catch(e){ SFX.fim=null; }
 }
-/* precisa acontecer dentro do toque: o iPhone só deixa tocar depois, sozinho, a mídia "liberada" num toque */
-function sfxLiberar(){
-  sfxCriar();
-  var a=SFX.fim; if(!a || SFX.liberado) return;
-  try{
-    a.muted=true;
-    var pr=a.play();
-    var ok=function(){ SFX.liberado=true; if(SFX.fimPendente){ SFX.fimPendente=false; a.currentTime=0; a.muted=false; } else { a.pause(); a.currentTime=0; a.muted=false; } };
-    if(pr && pr.then) pr.then(ok,function(){ a.muted=false; }); else ok();
-  }catch(e){}
-}
 function sfxTecla(){
   sfxCriar();
   var a=SFX.tecla[SFX.k++ % (SFX.tecla.length||1)];
   if(!a){ somPreparar(); return somTecla(); }
   try{ a.currentTime=0; var pr=a.play(); if(pr && pr.catch) pr.catch(function(){ somPreparar(); somTecla(); }); }catch(e){ somPreparar(); somTecla(); }
 }
-function sfxFim(){
-  var a=SFX.fim;
-  if(!a){ return somFim(); }
-  if(!SFX.liberado){ SFX.fimPendente=true; return; }   /* a liberação ainda não terminou: toca assim que terminar */
-  try{ a.muted=false; a.currentTime=0; var pr=a.play(); if(pr && pr.catch) pr.catch(function(){ somFim(); }); }catch(e){ somFim(); }
+/* O iPhone só toca som com volume se o play() acontecer DENTRO do toque. Por isso o FIM toca
+   no próprio toque do CONFIRMA (como na urna eletrônica) e é interrompido se o voto não gravar. */
+function sfxFimAgora(){
+  sfxCriar();
+  var a=SFX.fim; SFX.falhou=false;
+  if(!a) return false;
+  try{ a.muted=false; a.currentTime=0; var pr=a.play(); if(pr && pr.catch) pr.catch(function(){ SFX.falhou=true; }); return true; }
+  catch(e){ return false; }
 }
+function sfxFimParar(){ var a=SFX.fim; if(a){ try{ a.pause(); a.currentTime=0; }catch(e){} } }
 function vibrar(p){ try{ if(navigator.vibrate) navigator.vibrate(p); }catch(e){} }
 function somBipes(){
   var c=SOM.ctx; if(!c) return;
@@ -1128,9 +1121,9 @@ function aparelhoId(){
 }
 function confirmVote(){
   var b1=$("#kConfirma"), b2=$("#kCorrige"); b1.disabled=b2.disabled=true; b1.textContent="GRAVANDO…";
-  somPreparar(); sfxLiberar(); sfxTecla(); vibrar(60);
+  somPreparar(); var tocouFim=sfxFimAgora(); vibrar(60);
   API.votar(V.s.token,V.pick,PAGE==="totem",aparelhoId()).then(function(r){
-    sfxFim(); vibrar([40,70,40]);
+    if(!tocouFim || SFX.falhou) somFim(); vibrar([40,70,40]);
     $(".urna").innerHTML='<div class="screen visor" style="display:block"><div class="fim">'+
         '<span class="votou">VOTOU</span>'+
         '<div class="big" aria-label="Fim">FIM</div>'+
@@ -1141,6 +1134,7 @@ function confirmVote(){
       '<div class="keys"><button type="button" class="key confirma" id="kFim">CONCLUIR</button></div>';
     $("#kFim").onclick=finishVote; $("#kFim").focus();
   }, function(e){
+    sfxFimParar();
     $("#verr").textContent=e.message; $("#verr").hidden=false; b2.disabled=false; b1.textContent="CONFIRMA";
     if(/já foi registrado|já votou|encerrada|expirada/.test(e.message)){ b2.textContent="VOLTAR"; b2.onclick=logout; } else b1.disabled=false;
   });
