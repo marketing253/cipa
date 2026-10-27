@@ -266,6 +266,9 @@ table.t tbody tr:hover td{background:var(--surface-2)}
 .yes{color:var(--ok);font-weight:700}
 .no{color:var(--muted)}
 .setor-bars{display:grid;gap:10px}
+.par{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:10px;align-items:end}
+.par.largo{grid-template-columns:1fr}
+.par .matbox{font-size:1.55rem!important;letter-spacing:.12em;padding:12px 4px!important;min-height:66px!important}
 .btn.whats{display:flex;width:100%;margin-top:16px;background:#25d366;border-color:#25d366;color:#08331a;font-weight:700;text-decoration:none}
 .btn.whats:hover{background:#1fbd5a;border-color:#1fbd5a}
 .btn.whats svg{flex:none}
@@ -918,7 +921,8 @@ function voterRender(){
 function loginRender(){
   if(V.found) return confirmIdRender();
   var demo = "";
-  var cfg=V.ballot.cfg;
+  var cfg=V.ballot.cfg, modeId=cfg.verificacao||"nenhuma";
+  if(!VERIF[modeId]) modeId="nenhuma";
   $("#app").innerHTML='<div class="gate"><div class="gate-intro">'+
       '<span class="eyebrow">'+esc(cfg.gestao||"Eleição CIPA")+' · votação aberta'+(cfg.votoFim?' até '+esc(fmtDT(cfg.votoFim)):'')+'</span>'+
       '<h2>Sua escolha deixa o trabalho <em>mais seguro</em>.</h2>'+
@@ -928,27 +932,39 @@ function loginRender(){
         '<li><span class="ic">'+ICO.user+'</span><div><b>Uma matrícula, um voto</b><span>Cada colaborador vota uma única vez.</span></div></li>'+
         '<li><span class="ic">'+ICO.shield+'</span><div><b>Apuração auditável</b><span>Resultado conferido e registrado em ata, conforme a NR-5.</span></div></li>'+
       '</ul></div>'+
-    '<div class="card login">'+stepper(1)+'<h2>Digite sua matrícula</h2><p class="muted" style="margin:0">Use o número que aparece no seu crachá ou holerite.</p>'+
-    '<form id="fmat" autocomplete="off" novalidate><div class="field"><label class="lbl" for="mat">Matrícula</label>'+
-    '<input id="mat" class="matbox" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="00000" autocomplete="off"></div>'+
+    '<div class="card login">'+stepper(1)+'<h2>'+(modeId==="nenhuma"?'Digite sua matrícula':'Identifique-se')+'</h2><p class="muted" style="margin:0">'+(modeId==="nenhuma"?'Use o número que aparece no seu crachá ou holerite.':'Matrícula do crachá ou holerite e '+esc(minusc(VERIF[modeId].campo))+'.')+'</p>'+
+    '<form id="fmat" autocomplete="off" novalidate>'+camposIdent(modeId,"mat")+
     '<div id="lerr" class="note bad" hidden></div><button class="btn primary lg" type="submit" id="btnMat">Continuar</button></form>'+demo+secureLine()+'</div></div>';
   var mi=$("#mat");
-  mi.oninput=function(){ var v=mi.value.replace(/\D/g,"").slice(0,6); if(v!==mi.value) mi.value=v; };
+  mascarasIdent(modeId,"mat");
   $("#fmat").onsubmit=function(ev){
     ev.preventDefault(); var er=$("#lerr"); er.hidden=true;
-    var m=mi.value.replace(/\D/g,"");
-    if(!m){ er.textContent="Digite sua matrícula."; er.hidden=false; return; }
-    var mode=V.ballot.cfg.verificacao||"nenhuma";
+    var id=lerIdent(modeId,"mat",er); if(!id) return;
     function achou(r,cod){ if(r.jaVotou){ return blockedRender(r); } V.found=r; V.found.cod=cod; confirmIdRender(); }
-    if(mode!=="nenhuma"){
-      return telaConf({titulo:"Confirme sua identidade", passo:1, mat:m, mode:mode, voltar:function(){ V.found=null; loginRender(); },
-        enviar:function(cod,falhou){ API.consultar(m,cod).then(function(r){ achou(r,cod); }, function(e){ falhou(e.message); }); }});
-    }
     var btn=$("#btnMat"); btn.disabled=true; btn.textContent="Consultando…";
-    API.consultar(m,"").then(function(r){ achou(r,""); }, function(e){ btn.disabled=false; btn.textContent="Continuar"; er.textContent=e.message; er.hidden=false; mi.select(); });
+    API.consultar(id.m,id.cod).then(function(r){ achou(r,id.cod); }, function(e){ btn.disabled=false; btn.textContent="Continuar"; er.textContent=e.message; er.hidden=false; erroIdent(e.message,"mat"); });
   };
   mi.focus();
 }
+
+/* matrícula e o 2º dado (CPF...) lado a lado, num formulário só */
+function camposIdent(mode, idMat){
+  var mat='<div class="field"><label class="lbl" for="'+idMat+'">Matrícula</label><input id="'+idMat+'" class="matbox" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="00000" autocomplete="off"></div>';
+  if(mode==="nenhuma") return mat;
+  var vf=VERIF[mode]||VERIF.nenhuma, rot = mode==="cpf3" ? "Início do CPF" : (mode==="cpf" ? "Final do CPF" : vf.campo);
+  return '<div class="par'+(mode==="cpf"||mode==="cpf3"?'':' largo')+'">'+mat+'<div class="field"><label class="lbl" for="cod">'+esc(rot)+'</label>'+campoConf(mode)+'</div></div>';
+}
+function lerIdent(mode, idMat, er){
+  var m=$("#"+idMat).value.replace(/\D/g,""), c=$("#cod"), cod=c?c.value.trim():"";
+  if(!m){ er.textContent="Digite sua matrícula."; er.hidden=false; $("#"+idMat).focus(); return null; }
+  if(mode!=="nenhuma" && !cod){ er.textContent="Informe os "+minusc((VERIF[mode]||{}).campo||"dados de confirmação")+"."; er.hidden=false; c.focus(); return null; }
+  return {m:m, cod:cod};
+}
+function mascarasIdent(mode, idMat){
+  var mi=$("#"+idMat); mi.oninput=function(){ var v=mi.value.replace(/\D/g,"").slice(0,6); if(v!==mi.value) mi.value=v; if(v.length===6 && $("#cod")) $("#cod").focus(); };
+  var ci=$("#cod"); if(ci && (mode==="cpf"||mode==="cpf3")) ci.oninput=function(){ var v=ci.value.replace(/\D/g,"").slice(0,mode==="cpf3"?3:4); if(v!==ci.value) ci.value=v; };
+}
+function erroIdent(msg, idMat){ var c=$("#cod"); if(c && /CPF|nascimento|código|conferem|confere/.test(msg)){ c.select(); } else { var mi=$("#"+idMat); if(mi) mi.select(); } }
 
 /* campo do 2º dado (CPF, nascimento, código), pedido logo depois da matrícula */
 function minusc(s){ s=String(s||""); return s.charAt(0).toLowerCase()+s.slice(1); }
@@ -1493,39 +1509,42 @@ var I={c:null,foto:"",cod:"",cfgP:null};
 function inscricaoPage(){
   document.title="Inscrição de candidatos · CIPA";
   I.cfgP = API.ballot ? API.ballot() : Promise.resolve({cfg:{}});
-  I.cfgP.then(function(b){ setHeader(b.cfg); I.cfg=b.cfg; var c=b.cfg, el=$("#iPer"); if(!el) return;
-    var t = c.inscSituacao==="antes" ? "As inscrições abrem em "+fmtDT(c.inscInicio)+(c.inscFim?" e vão até "+fmtDT(c.inscFim):"")+"."
+  I.cfgP.then(function(b){ setHeader(b.cfg); I.cfg=b.cfg; },function(){});
+  inscStep1();
+}
+function periodoInsc(c){
+  if(!c) return "";
+  var t = c.inscSituacao==="antes" ? "As inscrições abrem em "+fmtDT(c.inscInicio)+(c.inscFim?" e vão até "+fmtDT(c.inscFim):"")+"."
       : c.inscSituacao==="aberta" ? (c.inscFim?"Inscrições abertas até "+fmtDT(c.inscFim)+".":"")
       : c.inscSituacao==="depois" ? "As inscrições foram encerradas em "+fmtDT(c.inscFim)+"."
       : c.inscSituacao ? "As inscrições estão encerradas." : "";
-    if(t){ el.textContent=t; el.hidden=false; } },function(){});
-  inscStep1();
+  return t;
 }
 function inscStep1(){
   I.c=null; I.foto=""; I.cod="";
+  $("#app").innerHTML='<div class="loading">Carregando…</div>';
+  (I.cfgP||Promise.resolve({cfg:{}})).then(function(bb){ inscForm(bb.cfg||{}); }, function(){ inscForm({}); });
+}
+function inscForm(cfg){
+  var mode=VERIF[cfg.verificacao] ? cfg.verificacao : "nenhuma", per=periodoInsc(cfg);
   $("#app").innerHTML='<div class="gate"><div class="gate-intro"><span class="eyebrow">Inscrição de candidatos</span>'+
-    '<h2>Candidate-se à <em>CIPA</em>.</h2><p class="lead">Represente seus colegas na Comissão Interna de Prevenção de Acidentes e de Assédio. Informe sua matrícula para começar.</p><p class="eyebrow" id="iPer" hidden style="margin-top:14px"></p></div>'+
-    '<div class="card login"><h2>Digite sua matrícula</h2><p class="muted" style="margin:0">Use o número do seu crachá ou holerite.</p>'+
-    '<form id="fi" autocomplete="off" novalidate><div class="field"><label class="lbl" for="imat">Matrícula</label><input id="imat" class="matbox" inputmode="numeric" maxlength="6" placeholder="00000"></div>'+
+    '<h2>Candidate-se à <em>CIPA</em>.</h2><p class="lead">Represente seus colegas na Comissão Interna de Prevenção de Acidentes e de Assédio. Informe sua matrícula para começar.</p>'+
+    (per?'<p class="eyebrow" id="iPer" style="margin-top:14px">'+esc(per)+'</p>':'')+'</div>'+
+    '<div class="card login"><h2>'+(mode==="nenhuma"?'Digite sua matrícula':'Identifique-se')+'</h2><p class="muted" style="margin:0">'+(mode==="nenhuma"?'Use o número do seu crachá ou holerite.':'Matrícula do crachá ou holerite e '+esc(minusc(VERIF[mode].campo))+'.')+'</p>'+
+    '<form id="fi" autocomplete="off" novalidate>'+camposIdent(mode,"imat")+
     '<div id="ierr" class="note bad" hidden></div><button class="btn primary lg" type="submit" id="ibtn">Continuar</button></form></div></div>';
-  var mi=$("#imat"); mi.oninput=function(){ var v=mi.value.replace(/\D/g,"").slice(0,6); if(v!==mi.value) mi.value=v; };
+  mascarasIdent(mode,"imat");
   $("#fi").onsubmit=function(ev){ ev.preventDefault(); var er=$("#ierr"); er.hidden=true; var b=$("#ibtn");
-    if(!mi.value){ er.textContent="Digite sua matrícula."; er.hidden=false; return; }
+    var id=lerIdent(mode,"imat",er); if(!id) return;
     b.disabled=true; b.textContent="Consultando…";
-    var m=mi.value;
-    function achou(r){
+    API.inscConsultar(id.m,id.cod).then(function(r){
+      I.cod=id.cod;
       if(r.jaNumero && r.fotoPedida){ I.c=r; return novaFotoRender(r); }
       if(r.jaNumero){ $("#app").innerHTML='<div class="card login solo"><h2>Você já está inscrito</h2><p class="muted">'+esc(r.nome)+', sua candidatura já foi registrada com o número <b>'+esc(r.jaNumero)+'</b>. Para alterar algum dado, procure a comissão eleitoral.</p></div>'; return; }
       I.c=r; inscStep2();
-    }
-    function falhou(e){ b.disabled=false; b.textContent="Continuar"; er.textContent=e.message+(/encerradas/.test(e.message)?" Se a comissão acabou de reabrir, toque em Continuar novamente.":""); er.hidden=false; }
-    (I.cfgP||Promise.resolve({cfg:{}})).then(function(bb){ var mode=(bb.cfg&&bb.cfg.verificacao)||"nenhuma";
-      if(mode==="nenhuma") return API.inscConsultar(m,"").then(achou,falhou);
-      telaConf({titulo:"Confirme sua identidade", mat:m, mode:mode, voltar:inscStep1,
-        enviar:function(cod,erroConf){ API.inscConsultar(m,cod).then(function(r){ I.cod=cod; achou(r); }, function(e){ erroConf(e.message); }); }});
-    }, function(){ API.inscConsultar(m,"").then(achou,falhou); });
+    }, function(e){ b.disabled=false; b.textContent="Continuar"; er.textContent=e.message+(/encerradas/.test(e.message)?" Se a comissão acabou de reabrir, toque em Continuar novamente.":""); er.hidden=false; erroIdent(e.message,"imat"); });
   };
-  mi.focus();
+  $("#imat").focus();
 }
 /* divulgação da candidatura: abre o WhatsApp com a mensagem pronta (o candidato escolhe para quem envia) */
 var ICO_WHATS='<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 18.2c-1.5 0-3-.4-4.3-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8s-.4-.1-.6.1-.7.8-.8 1-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.3-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.8 11.9 11.9 0 0 0 4.6 4c1.7.7 2.4.8 3.2.7.5-.1 1.5-.6 1.8-1.2s.2-1.1.1-1.2-.2-.2-.4-.3z"/></svg>';
