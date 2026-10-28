@@ -41,6 +41,17 @@ $tok = preg_replace('/[^a-f0-9]/', '', $tok);
 $html = file_get_contents(dirname(__DIR__) . '/app/urna.html');
 // <base> faz "api.php" e "fim.mp3" funcionarem em /admin, /totem/ etc.
 $html = preg_replace('/<head>/', '<head><base href="/">', $html, 1);
+// prévia do link (WhatsApp): muda conforme a fase da eleição; se o banco falhar, fica a de inscrições
+try {
+    require_once dirname(__DIR__) . '/app/lib.php';
+    agenda_aplicar();
+    $st = cfg()['status'];
+    $og = $st === 'aberta' ? ['Votação aberta', 'Vote nos seus representantes da CIPA pelo celular. O voto é secreto.', 'og-votacao.jpg']
+        : ($st === 'encerrada' ? ['Votação encerrada', 'Obrigado por participar! O resultado sai no edital da comissão eleitoral.', 'og-encerrada.jpg'] : null);
+    if ($og) $html = str_replace(
+        ['content="CIPA 2026 · Inscrições abertas"', 'content="Candidate-se à CIPA pelo celular, em poucos minutos."', 'og-cipa.jpg', 'redentorhub.com.br/inscricao"'],
+        ['content="CIPA 2026 · ' . $og[0] . '"', 'content="' . $og[1] . '"', $og[2], 'redentorhub.com.br/"'], $html);
+} catch (Throwable $e) { error_log('[urna-cipa] prévia: ' . $e->getMessage()); }
 $cfg = '<script>window.__MODE__="php";window.__PAGE__=' . json_encode($p) . ';window.__TOK__=' . json_encode($tok) . ';</script>';
 $pos = strpos($html, "<script>\n(function(){");
 $html = $pos === false ? str_replace('</head>', $cfg . '</head>', $html) : substr_replace($html, $cfg . "\n", $pos, 0);
