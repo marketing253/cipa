@@ -1352,7 +1352,8 @@ function acharColab(m){ var k=matNorm(m); if(!k) return null; return (A.d.eleito
 function tabCandidatos(){
   var d=A.d, locked=d.cfg.status!=="preparacao";
   var head='<div class="row" style="justify-content:space-between;align-items:center"><div><h2 style="font-size:1.6rem">Candidatos</h2><p class="muted" style="margin:2px 0 0">'+d.candidatos.length+' cadastrado'+(d.candidatos.length===1?'':'s')+'. A ordem na urna segue o código.</p></div>'+
-    (locked?'':'<button class="btn primary lg" type="button" id="cAdd">+ Adicionar candidato</button>')+'</div>';
+    '<div class="row">'+(d.candidatos.length?'<button class="btn lg" type="button" id="cEdital">Imprimir lista (edital)</button>':'')+
+    (locked?'':'<button class="btn primary lg" type="button" id="cAdd">+ Adicionar candidato</button>')+'</div></div>';
   var lockNote = locked ? '<div class="note info sect">A votação já foi aberta: os candidatos estão lacrados e não podem ser alterados.'+(API.demo?' <button class="btn" type="button" data-demo2="zerar" style="margin-left:8px">Voltar para preparação (demonstração)</button>':'')+'</div>' : '';
   var cards=d.candidatos.map(function(c){
     var acts = locked ? '' :
@@ -1384,6 +1385,7 @@ function tabCandidatos(){
   }
   $("#tabBody").innerHTML=head+lockNote+insc+'<div class="cgrid sect">'+(cards||'<div class="card pad muted">Nenhum candidato cadastrado. Clique em “Adicionar candidato”.</div>')+'</div>';
   $$("[data-demo2]").forEach(function(b){ b.onclick=function(){ apply(API.status(A.t,"preparacao")).then(function(){ A.res=null; toast("Votação voltou para preparação"); }); }; });
+  if($("#cEdital")) $("#cEdital").onclick=function(){ editalCandidatos(d); };
   if(locked) return;
   $("#cAdd").onclick=function(){ candModal(null); };
   $("#inscTog").onclick=function(){ apply(API.saveConfig(A.t,{inscricoes:d.cfg.inscricoes==="sim"?"nao":"sim"})).then(function(dd){ toast(dd.cfg.inscricoes==="sim"?"Inscrições abertas":"Inscrições fechadas"); }); };
@@ -1912,6 +1914,52 @@ function tabAuditoria(){
   }, function(e){ $("#tabBody").innerHTML='<div class="note bad">'+esc(e.message)+'</div>'; });
 }
 /* Edital de resultado para o quadro de avisos (A4, uma página sempre que der) */
+/* Edital com a relação dos candidatos inscritos (para afixar quando as inscrições fecham) */
+function editalCandidatos(d){
+  var c=d.cfg, logo=new URL($(".mark img").getAttribute("src"),location.href).href;
+  function abs(u){ return new URL(u,location.href).href; }   /* a janela nova é about:blank: endereço relativo não acharia a foto */
+  var cards=d.candidatos.map(function(x){
+    return '<div class="el"><img src="'+esc(abs(x.foto||avatar(x.nome)))+'" alt=""><div class="nn">'+esc(x.numero)+'</div>'+
+      '<b>'+esc(nUrna(x))+'</b>'+(x.escala&&x.escala!==x.nome?'<i>'+esc(x.nome)+'</i>':'')+(x.cargo?'<span>'+esc(x.cargo)+'</span>':'')+'</div>';
+  }).join("");
+  var linhas=d.candidatos.map(function(x){ return '<tr><td class="mono">'+esc(x.numero)+'</td><td><b>'+esc(nUrna(x))+'</b></td><td>'+esc(x.nome)+'</td><td>'+esc(x.cargo||"—")+'</td></tr>'; }).join("");
+  var n=d.candidatos.length, hoje=new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"long",year:"numeric"});
+  var periodo=(c.inscInicio?' de '+esc(fmtDT(c.inscInicio)):'')+(c.inscFim?' a '+esc(fmtDT(c.inscFim)):'');
+  var voto=c.votoInicio ? ' A votação será realizada'+' de '+esc(fmtDT(c.votoInicio))+(c.votoFim?' a '+esc(fmtDT(c.votoFim)):'')+', por votação eletrônica e secreta.' : '';
+  var css='@page{size:A4;margin:10mm 11mm 10mm}*{box-sizing:border-box}body{font:10pt/1.4 "Segoe UI",Arial,sans-serif;color:#16203a;margin:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}'+
+    'header{display:flex;align-items:center;gap:18px;border-bottom:4px solid #d29500;padding-bottom:10px}header img{height:58px}'+
+    '.cab small{display:block;letter-spacing:.14em;text-transform:uppercase;font-weight:700;color:#3e4095;font-size:8.5pt}.cab h1{margin:2px 0 0;font-size:20pt;line-height:1.1}.cab div{color:#5a6380;font-size:9.5pt}'+
+    'h2{font-size:11pt;letter-spacing:.12em;text-transform:uppercase;color:#3e4095;margin:14px 0 8px;display:flex;align-items:center;gap:10px}h2:after{content:"";flex:1;height:2px;background:#e0e5f2}'+
+    '.grade{display:grid;grid-template-columns:repeat('+(n>20?6:5)+',1fr);gap:8px}'+
+    '.el{border:1.5px solid #cdd4e6;border-radius:9px;padding:6px;text-align:center;position:relative;break-inside:avoid}'+
+    '.el img{width:100%;aspect-ratio:4/5;object-fit:cover;border-radius:6px;display:block;margin-bottom:5px;background:#eef0f6}.el .nn{position:absolute;top:10px;right:10px;background:#d1293d;color:#fff;font-weight:800;border-radius:99px;padding:1px 7px;font-size:9pt}'+
+    '.el b{display:block;font-size:9pt;line-height:1.2}.el i{display:block;font-style:normal;color:#5a6380;font-size:7.5pt;line-height:1.25}.el span{display:block;color:#3e4095;font-size:7.5pt;font-weight:600;margin-top:2px}'+
+    'table{width:100%;border-collapse:collapse;font-size:8.8pt}th,td{border-bottom:1px solid #e0e5f2;padding:3px 6px;text-align:left}th{background:#eef0f6;font-size:8pt;text-transform:uppercase;letter-spacing:.06em}tr{break-inside:avoid}'+
+    '.mono{font-family:Consolas,monospace;font-weight:700}.obs{font-size:9pt;color:#3a4260;margin-top:10px}.tab{break-before:page}'+
+    '.sig{display:grid;grid-template-columns:1fr 1fr;gap:28px 40px;margin-top:34px;break-inside:avoid}.sig div{border-top:1px solid #16203a;padding-top:4px;text-align:center;font-size:8.5pt}'+
+    '@media screen{body{max-width:820px;margin:20px auto;padding:0 16px}.tab{margin-top:30px}}';
+  var html='<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Candidatos inscritos - CIPA '+esc(c.gestao||"")+'</title><style>'+css+'</style></head><body>'+
+    '<header><img src="'+esc(logo)+'" alt=""><div class="cab"><small>Edital · Relação de candidatos inscritos</small><h1>'+esc(c.titulo||"Eleição CIPA")+'</h1>'+
+      '<div>Representantes dos empregados na CIPA'+(c.gestao?' · '+esc(c.gestao):'')+'</div>'+
+      '<div>'+esc(c.empresa||"")+(c.cnpj?' · CNPJ '+esc(c.cnpj):'')+(c.estabelecimento?' · '+esc(c.estabelecimento):'')+'</div></div></header>'+
+    '<p class="obs" style="margin-top:12px">A Comissão Eleitoral torna pública a relação dos <b>'+n+' empregado'+(n===1?'':'s')+'</b> que se candidataram a representante dos empregados na Comissão Interna de Prevenção de Acidentes e de Assédio (CIPA)'+
+      (periodo?', com inscrições realizadas'+periodo:'')+', conforme a NR-5.'+voto+'</p>'+
+    '<h2>Candidatos</h2><div class="grade">'+cards+'</div>'+
+    '<p class="obs">O número de cada candidato é o que deve ser digitado na urna. Eventuais impugnações devem ser apresentadas à comissão eleitoral no prazo previsto no edital de convocação.</p>'+
+    '<p class="obs">'+esc((c.estabelecimento?c.estabelecimento+", ":"")+hoje)+'.</p>'+
+    '<div class="sig"><div>Presidente da comissão eleitoral</div><div>Secretário(a) da comissão eleitoral</div></div>'+
+    (n>12?'<div class="tab"><h2>Relação em ordem de número</h2><table><thead><tr><th>Nº</th><th>Nome na urna</th><th>Nome completo</th><th>Cargo</th></tr></thead><tbody>'+linhas+'</tbody></table></div>':'')+
+    '</body></html>';
+  var w=window.open("","_blank");
+  if(!w){ toast("O navegador bloqueou a nova janela. Permita pop-ups para este site."); return; }
+  w.document.open(); w.document.write(html); w.document.close();
+  /* imprime só depois que as fotos carregarem (ou em 6 s, no máximo) */
+  var imgs=[].slice.call(w.document.images), falta=imgs.length, feito=false;
+  function imprimir(){ if(feito) return; feito=true; setTimeout(function(){ try{ w.focus(); w.print(); }catch(e){} },300); }
+  imgs.forEach(function(im){ if(im.complete) { if(--falta<=0) imprimir(); } else im.onload=im.onerror=function(){ if(--falta<=0) imprimir(); }; });
+  if(!imgs.length) imprimir();
+  setTimeout(imprimir,6000);
+}
 function editalResultado(r){
   var c=r.cfg, logo=$(".mark img").getAttribute("src");
   var tit=r.candidatos.filter(function(x){return x.situacao==="Titular";}), sup=r.candidatos.filter(function(x){return x.situacao==="Suplente";});
