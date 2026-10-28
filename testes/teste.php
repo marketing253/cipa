@@ -48,7 +48,7 @@ t('foto consumida', api_fotoBuscar($A, $tk['token']) === []);
 
 api_status($A, 'aberta');
 erro('candidato travado', fn() => api_delCand($A, '07'), 'antes da abertura');
-erro('importar travado', fn() => api_importar($A, $rows, true), 'antes da abertura');
+erro('aberta: substituir lista proibido', fn() => api_importar($A, $rows, true), 'só dá para juntar');
 erro('zerar proibido', fn() => api_status($A, 'preparacao'), 'não é permitido');
 t('consulta por matrícula sem zeros', api_consultar('7048')['nome'] === 'Zero À Esquerda');
 erro('matrícula inexistente', fn() => api_consultar('999'), 'não encontrada');
@@ -190,6 +190,21 @@ t('juntar: quem não veio no arquivo fica', isset($porMat['5000']) && $porMat['5
 t('juntar: pessoa nova entra com CPF', $porMat['9001']['codigo'] === '987');
 $d = api_importar($A4, [['matricula' => '1', 'nome' => 'Só Ela']], true);
 t('substituir: fica só o arquivo', count($d['eleitores']) === 1 && $d['importacao']['substituiu']);
+// votação aberta: inclui admitidos novos (só juntando) sem mexer em quem já votou
+api_importar($A4, [['matricula' => '8001', 'nome' => 'Já Votou', 'codigo' => '111.222.333-44']], false);
+api_saveCand($A4, ['numero' => '10', 'nome' => 'Cand Dez'], '');
+api_status($A4, 'aberta');
+api_votar(api_login('8001', '111')['token'], '10');
+$d = api_importar($A4, [['matricula' => '8001', 'nome' => 'Já Votou Nome Novo', 'cargo' => 'Fiscal'], ['matricula' => '8002', 'nome' => 'Admitido Ontem', 'codigo' => '222.333.444-55']], false);
+$porMat = []; foreach ($d['eleitores'] as $e) $porMat[$e['matricula']] = $e;
+t('aberta: juntar inclui o novo', isset($porMat['8002']) && count($d['eleitores']) === 3);
+t('aberta: quem já estava não muda', $porMat['8001']['votou'] && $porMat['8001']['nome'] === 'Já Votou' && $porMat['8001']['cargo'] === '');
+t('aberta: conta só os novos', $d['importacao']['novos'] === 1 && $d['importacao']['soNovos']);
+erro('aberta: quem votou não vota de novo', fn() => api_login('8001', '111'), 'já votou');
+t('aberta: admitido novo consegue votar', strlen(api_login('8002', '222')['token']) > 10);
+t('aberta: inclusão no registro', (bool)db()->query("SELECT 1 FROM log WHERE acao LIKE 'Eleitores incluídos%'")->fetchColumn());
+api_status($A4, 'encerrada');
+erro('encerrada: lista travada', fn() => api_importar($A4, [['matricula' => '8003', 'nome' => 'Tarde']], false), 'encerrada');
 api_recomecar($A4, true);
 putenv('CIPA_PERMITIR_ZERAR');
 

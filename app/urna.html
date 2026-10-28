@@ -773,7 +773,8 @@ function demoApi(){
     },
     importar:function(t,rows,subst){
       if(!isAdm(t)) return err("Sessão do administrador expirada.");
-      if(S.cfg.status!=="preparacao") return err("A lista de eleitores só pode ser alterada antes da abertura.");
+      if(S.cfg.status==="encerrada") return err("A votação já foi encerrada: a lista de colaboradores não pode mais ser alterada.");
+      var soNovos=S.cfg.status==="aberta"; if(soNovos) subst=false;
       if(subst) S.eleitores=[];
       var idx={}; S.eleitores.forEach(function(e,i){idx[e.matricula]=i;});
       var n=0, seq=S.eleitores.length;
@@ -782,6 +783,7 @@ function demoApi(){
         var cf=String(r.codigo||""); if(/^\d{3}\.?\d{3}\.?\d{3}-?\d{2}$/.test(cf)) cf=cf.replace(/\D/g,"").slice(-4);
         if(!cf && S.cfg.verificacao==="codigo") cf=randCode(6);
         r.matricula=mat;
+        if(soNovos && (mat in idx)) return;
         var rec={matricula:mat,nome:r.nome,escala:r.escala||"",cargo:r.cargo||"",setor:r.setor||"",codigo:cf,votou:false,votouEm:"",comprovante:""};
         if(r.matricula in idx) S.eleitores[idx[r.matricula]]=rec; else { idx[r.matricula]=S.eleitores.length; S.eleitores.push(rec); }
         n++;
@@ -1733,7 +1735,7 @@ function cpfMasc(v){
   return v||"—";
 }
 function tabEleitores(){
-  var d=A.d, locked=d.cfg.status!=="preparacao", q=norm(A.q);
+  var d=A.d, locked=d.cfg.status==="encerrada", aberta=d.cfg.status==="aberta", q=norm(A.q);
   var vm=d.cfg.verificacao||"nenhuma";
   var temCod=d.eleitores.some(function(e){ return e.codigo; }), mostraCod = vm!=="nenhuma" || temCod;
   var cpfModo = vm==="cpf3" || vm==="cpf" || (vm==="nenhuma" && temCod);
@@ -1741,9 +1743,10 @@ function tabEleitores(){
   var semCod = vm!=="nenhuma" ? d.eleitores.filter(function(e){ return !e.codigo; }).length : 0;
   var list=d.eleitores.filter(function(e){ return !q || String(e.matricula).indexOf(A.q.trim())>=0 || norm(e.nome).indexOf(q)>=0 || norm(e.escala).indexOf(q)>=0 || norm(e.setor).indexOf(q)>=0 || norm(e.cargo).indexOf(q)>=0; });
   var rows=list.slice(0,400).map(function(e){ return '<tr><td class="mono">'+esc(e.matricula)+'</td><td>'+esc(e.nome)+'</td><td>'+esc(e.escala||"—")+'</td><td>'+esc(e.cargo||"—")+'</td><td>'+esc(e.setor||"—")+'</td>'+(mostraCod?'<td class="mono">'+esc(cpfModo?cpfMasc(e.codigo):(e.codigo||"—"))+'</td>':'')+'<td>'+(e.votou?'<span class="yes">Votou</span> <span class="muted small">'+esc(fmtDT(e.votouEm))+'</span>':'<span class="no">Não votou</span>')+'</td></tr>'; }).join("");
-  var imp = locked ? '<div class="note info">A votação já foi aberta: o cadastro de colaboradores está lacrado.</div>' :
+  var imp = locked ? '<div class="note info">A votação foi encerrada: o cadastro de colaboradores está lacrado.</div>' :
     '<div class="card pad" id="impCard"><h3 style="font-size:1.25rem">Carregar lista de colaboradores</h3>'+
-    '<p class="muted small" style="margin:4px 0 14px">Selecione a <b>planilha do Excel</b> ou o <b>PDF</b> com as colunas <b>Matrícula</b>, <b>Nome Completo</b>, <b>CPF</b>, <b>Cargo</b> e <b>Lotação</b> (com a linha de títulos). Para <b>incluir pessoas novas</b> sem perder quem já está, use “Juntar com a lista atual”.</p>'+
+    '<p class="muted small" style="margin:4px 0 14px">Selecione a <b>planilha do Excel</b> ou o <b>PDF</b> com as colunas <b>Matrícula</b>, <b>Nome Completo</b>, <b>CPF</b>, <b>Cargo</b> e <b>Lotação</b> (com a linha de títulos).'+(aberta?'':' Para <b>incluir pessoas novas</b> sem perder quem já está, use “Juntar com a lista atual”.')+'</p>'+
+    (aberta?'<div class="note warn small" style="margin-bottom:14px"><b>Votação aberta:</b> entram <b>só os colaboradores que ainda não estão na lista</b>, e já podem votar. Quem já está cadastrado <b>não é alterado</b> e ninguém sai da lista. Pode mandar a planilha completa: o sistema separa sozinho os novos. A inclusão fica no registro da auditoria.</div>':'')+
     '<div class="row" style="align-items:center"><label class="btn primary" for="xfile">Selecionar Excel ou PDF</label><input id="xfile" type="file" accept=".xlsx,.xls,.csv,.pdf,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv" hidden>'+
     '<span class="muted small" id="xname">Nenhum arquivo selecionado</span></div>'+
     '<div id="xprev"></div>'+
@@ -1773,7 +1776,7 @@ function tabEleitores(){
       (semMat?'<br>'+semMat+' linha(s) sem matrícula.':'')+(dup?'<br>'+dup+' matrícula(s) repetida(s): vale a última linha.':'')+(p.erros.length?'<br>Linhas ignoradas (sem nome): '+p.erros.slice(0,10).join(", ")+(p.erros.length>10?"…":""):'')+'</div>'+
       '<div class="tbl-wrap" style="margin-top:12px"><table class="t"><thead><tr><th>Matrícula</th><th>Nome completo</th><th>Nome escala</th><th>Cargo</th><th>Lotação</th><th>CPF</th></tr></thead><tbody>'+
       p.rows.slice(0,5).map(function(r){return '<tr><td class="mono">'+esc(r.matricula)+'</td><td>'+esc(r.nome)+'</td><td>'+esc(r.escala||"—")+'</td><td>'+esc(r.cargo||"—")+'</td><td>'+esc(r.setor||"—")+'</td><td class="mono">'+esc(cpfMasc(r.codigo))+'</td></tr>';}).join("")+'</tbody></table></div>'+
-      (d.eleitores.length
+      (d.eleitores.length && !aberta
         ? '<fieldset class="impmodo"><legend class="lbl">Como importar</legend>'+
             '<label><input type="radio" name="impModo" value="juntar" checked> <span><b>Juntar com a lista atual</b> ('+d.eleitores.length+' colaboradores): inclui quem é novo, atualiza nome, cargo e lotação de quem já está e <b>mantém quem não aparece no arquivo</b>.</span></label>'+
             '<label><input type="radio" name="impModo" value="substituir"> <span><b>Substituir a lista</b>: apaga os '+d.eleitores.length+' atuais e fica só quem está no arquivo.</span></label></fieldset>'
@@ -1781,9 +1784,9 @@ function tabEleitores(){
       '<div class="row" style="margin-top:12px;align-items:center">'+
       '<button class="btn primary" type="button" id="impGo">Importar '+p.rows.length+' colaboradores</button></div></div>';
     $("#impGo").onclick=function(){ this.disabled=true; this.textContent="Importando…";
-      var subst=!!document.querySelector('input[name=impModo][value=substituir]:checked');
+      var subst=!aberta && !!document.querySelector('input[name=impModo][value=substituir]:checked');
       apply(API.importar(A.t,p.rows,subst)).then(function(dd){ var im=dd&&dd.importacao;
-        toast(im ? (im.substituiu ? im.total+" colaboradores importados (lista substituída)" : im.novos+" novos e "+im.atualizados+" atualizados · lista com "+dd.eleitores.length) : p.rows.length+" colaboradores importados"); }, function(){ var b=$("#impGo"); if(b){ b.disabled=false; b.textContent="Importar"; } }); };
+        toast(im ? (im.soNovos ? (im.novos ? im.novos+" colaborador(es) novo(s) incluído(s) · lista com "+dd.eleitores.length : "Nenhum colaborador novo: todos do arquivo já estavam na lista") : im.substituiu ? im.total+" colaboradores importados (lista substituída)" : im.novos+" novos e "+im.atualizados+" atualizados · lista com "+dd.eleitores.length) : p.rows.length+" colaboradores importados"); }, function(){ var b=$("#impGo"); if(b){ b.disabled=false; b.textContent="Importar"; } }); };
   }
   $("#xfile").onchange=function(){ var f=this.files[0]; if(!f) return; $("#xname").textContent=f.name+" · lendo…";
     ((/\.pdf$/i.test(f.name) || f.type==="application/pdf") ? readPdf(f) : readExcel(f)).then(function(p){ $("#xname").textContent=f.name; preview(p); }, function(e){ $("#xname").textContent=f.name; $("#xprev").innerHTML='<div class="note bad" style="margin-top:14px">'+esc(e.message)+'</div>'; });

@@ -422,7 +422,9 @@ function api_delCand($t, $n): array {
 function api_importar($t, $rows, $subst): array {
     exige_admin($t);
     $cfg = cfg();
-    if ($cfg['status'] !== 'preparacao') falha('A lista de eleitores só pode ser alterada antes da abertura.');
+    // com a votação aberta só entra quem ainda não está na lista (admitidos novos): quem já está não muda
+    if ($cfg['status'] === 'encerrada') falha('A votação já foi encerrada: a lista de colaboradores não pode mais ser alterada.');
+    if ($cfg['status'] === 'aberta' && $subst) falha('Com a votação aberta, só dá para juntar com a lista atual (incluir os colaboradores novos).');
     if (!is_array($rows) || count($rows) > 20000) falha('Lista inválida.');
     $p = db();
     $p->exec('BEGIN IMMEDIATE');
@@ -432,11 +434,11 @@ function api_importar($t, $rows, $subst): array {
         $existe = $p->prepare('SELECT 1 FROM eleitores WHERE matricula=?');
         $porNorm = $p->prepare('SELECT matricula FROM eleitores WHERE mnorm=? AND mnorm<>\'\' LIMIT 1');
         // ao juntar listas, campo vazio no arquivo novo mantém o que já estava (ex.: PDF sem a coluna CPF)
+        $soNovos = $cfg['status'] === 'aberta';
         $up = $p->prepare('INSERT INTO eleitores(matricula,mnorm,ordem,nome,escala,cargo,setor,codigo) VALUES(?,?,?,?,?,?,?,?)
             ON CONFLICT(matricula) DO UPDATE SET mnorm=excluded.mnorm,nome=excluded.nome,
             escala=COALESCE(NULLIF(excluded.escala,\'\'),escala),cargo=COALESCE(NULLIF(excluded.cargo,\'\'),cargo),
-            setor=COALESCE(NULLIF(excluded.setor,\'\'),setor),codigo=COALESCE(NULLIF(excluded.codigo,\'\'),codigo),
-            votou=0,votou_em=NULL,comprovante=NULL,voto_ip=NULL,voto_disp=NULL,voto_aparelho=NULL,voto_totem=NULL');
+            setor=COALESCE(NULLIF(excluded.setor,\'\'),setor),codigo=COALESCE(NULLIF(excluded.codigo,\'\'),codigo)');
         $n = 0; $novos = 0; $seq = $ordem;
         foreach ($rows as $r) {
             $r = (array)$r;
@@ -446,7 +448,7 @@ function api_importar($t, $rows, $subst): array {
             // mesma pessoa com ou sem zeros à esquerda ("007048" = "7048"): usa a matrícula que já está cadastrada
             $porNorm->execute([mat_norm($mat)]);
             $ja = $porNorm->fetchColumn();
-            if ($ja !== false) $mat = (string)$ja; else $novos++;
+            if ($ja !== false) { if ($soNovos) continue; $mat = (string)$ja; } else $novos++;
             $cf = txt($r['codigo'] ?? '', 40);
             if (preg_match('/^\d{3}\.?\d{3}\.?\d{3}-?\d{2}$/', $cf)) {   // CPF: guarda só os dígitos que a confirmação usa
                 $d = preg_replace('/\D/', '', $cf);
@@ -458,8 +460,9 @@ function api_importar($t, $rows, $subst): array {
         }
         $p->exec('COMMIT');
     } catch (Throwable $e) { $p->exec('ROLLBACK'); throw $e; }
-    registrar('Eleitores importados', $n . ' registros' . ($subst ? ' (lista substituída)' : " · $novos novos, " . ($n - $novos) . ' atualizados'));
-    return admin_data() + ['importacao' => ['total' => $n, 'novos' => $novos, 'atualizados' => $n - $novos, 'substituiu' => (bool)$subst]];
+    registrar($soNovos ? 'Eleitores incluídos com a votação aberta' : 'Eleitores importados',
+        $soNovos ? "$novos novos (quem já estava na lista não foi alterado)" : $n . ' registros' . ($subst ? ' (lista substituída)' : " · $novos novos, " . ($n - $novos) . ' atualizados'));
+    return admin_data() + ['importacao' => ['total' => $n, 'novos' => $novos, 'atualizados' => $n - $novos, 'substituiu' => (bool)$subst, 'soNovos' => $soNovos]];
 }
 
 function api_status($t, $s): array {
