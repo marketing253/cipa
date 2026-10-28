@@ -188,6 +188,14 @@ function candidatos(): array {
     foreach ($r as &$c) foreach ($c as $k => $v) $c[$k] = (string)($v ?? '');
     return $r;
 }
+/* Nas telas a foto vai como endereço (/foto-cand/07?v=...), não embutida: a cédula e a atualização
+   de 30 s ficam com poucos KB e cada celular baixa cada foto uma vez só (cache por versão). */
+function foto_url(string $numero, string $foto): string {
+    return $foto === '' ? '' : 'foto-cand/' . rawurlencode($numero) . '?v=' . substr(md5($foto), 0, 12);
+}
+function candidatos_leves(): array {
+    return array_map(fn($c) => ['foto' => foto_url($c['numero'], $c['foto'])] + $c, candidatos());
+}
 function eleitores(): array {
     $r = db()->query('SELECT matricula,nome,escala,cargo,setor,codigo,votou,votou_em,comprovante FROM eleitores ORDER BY ordem')->fetchAll();
     return array_map(fn($e) => [
@@ -204,7 +212,7 @@ function eleitor_por_mat($m): ?array {
 function admin_data(): array {
     $p = db();
     return [
-        'cfg' => cfg(), 'candidatos' => candidatos(), 'eleitores' => eleitores(),
+        'cfg' => cfg(), 'candidatos' => candidatos_leves(), 'eleitores' => eleitores(),
         'log' => $p->query('SELECT em,usuario,acao,detalhe FROM log ORDER BY id DESC LIMIT 300')->fetchAll(),
         'votantes' => (int)$p->query('SELECT COUNT(*) FROM eleitores WHERE votou=1')->fetchColumn(),
         'urna' => (int)$p->query('SELECT COUNT(*) FROM votos')->fetchColumn(),
@@ -266,7 +274,7 @@ function api_ballot(): array {
     $pub = array_intersect_key($c, array_flip(['titulo', 'gestao', 'empresa', 'estabelecimento', 'status', 'verificacao', 'inscInicio', 'inscFim', 'votoInicio', 'votoFim']));
     $pub['inscSituacao'] = insc_situacao($c);
     return ['cfg' => $pub,
-            'candidatos' => array_map(fn($x) => array_diff_key($x, ['matricula' => 1, 'admissao' => 1, 'origem' => 1, 'foto_pedido' => 1, 'foto_motivo' => 1]), candidatos())];
+            'candidatos' => array_map(fn($x) => array_diff_key($x, ['matricula' => 1, 'admissao' => 1, 'origem' => 1, 'foto_pedido' => 1, 'foto_motivo' => 1]), candidatos_leves())];
 }
 
 /* Confere o segundo dado (ex.: 3 primeiros dígitos do CPF). Fora de transação: o erro
@@ -396,7 +404,8 @@ function api_saveCand($t, $c, $orig): array {
     $st = $p->prepare('SELECT origem,foto,foto_pedido,foto_motivo FROM candidatos WHERE numero=?'); $st->execute([$orig ?: $num]);
     $velho = $st->fetch();
     $antes = $velho ? $velho['origem'] : false;
-    $foto = foto_ok($c['foto'] ?? '');
+    // a tela devolve o endereço da foto quando ela não foi trocada: mantém a que está gravada
+    $foto = $velho && str_starts_with((string)($c['foto'] ?? ''), 'foto-cand/') ? (string)$velho['foto'] : foto_ok($c['foto'] ?? '');
     $pedido = $velho && $velho['foto_pedido'] && $foto === (string)$velho['foto'] ? 1 : 0;   // foto nova resolve o pedido
     $p->exec('BEGIN IMMEDIATE');
     if ($antes !== false) $p->prepare('DELETE FROM candidatos WHERE numero=?')->execute([$orig ?: $num]);

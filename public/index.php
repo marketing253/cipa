@@ -19,6 +19,18 @@ $partes = $caminho === '' ? [] : explode('/', $caminho);
 $p = (string)($_GET['p'] ?? ($partes[0] ?? ''));
 $tok = (string)($_GET['t'] ?? ($partes[1] ?? ''));
 if ($p === 'index.php') $p = '';
+// foto do candidato como imagem (a versão no ?v= muda quando a foto muda, então pode ficar em cache)
+if ($p === 'foto-cand') {
+    require dirname(__DIR__) . '/app/lib.php';
+    $st = db()->prepare('SELECT foto FROM candidatos WHERE numero=?'); $st->execute([rawurldecode($tok)]);
+    $f = (string)$st->fetchColumn();
+    if (!preg_match('#^data:(image/(?:jpeg|png|webp));base64,(.+)$#s', $f, $m)) { http_response_code(404); exit; }
+    header('Content-Type: ' . $m[1]);
+    header('Cache-Control: public, max-age=31536000, immutable');
+    header('X-Content-Type-Options: nosniff');
+    echo base64_decode($m[2]);
+    exit;
+}
 if ($p === 'admin') $p = 'comissao';
 if (!in_array($p, ['', 'comissao', 'inscricao', 'foto', 'totem'], true)) {
     header('Location: /', true, 302);

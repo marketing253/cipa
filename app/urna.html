@@ -1179,7 +1179,7 @@ function adminRender(){
   $("#app").innerHTML=html;
   $("#aSair").onclick=adminLogout;
   $$("[data-tab]").forEach(function(b){ b.onclick=function(){ A.tab=b.getAttribute("data-tab"); A.confirm=null; adminRender();
-    API.adminData(A.t).then(function(d){ var muda=JSON.stringify([d.candidatos.length,d.votantes,d.eleitores.length,d.cfg])!==JSON.stringify([A.d.candidatos.length,A.d.votantes,A.d.eleitores.length,A.d.cfg]) || d.candidatos.map(function(c){return c.numero+c.nome+(c.foto||"").length;}).join()!==A.d.candidatos.map(function(c){return c.numero+c.nome+(c.foto||"").length;}).join();
+    API.adminData(A.t).then(function(d){ var muda=JSON.stringify([d.candidatos.length,d.votantes,d.eleitores.length,d.cfg])!==JSON.stringify([A.d.candidatos.length,A.d.votantes,A.d.eleitores.length,A.d.cfg]) || d.candidatos.map(function(c){return c.numero+c.nome+(c.foto||"");}).join()!==A.d.candidatos.map(function(c){return c.numero+c.nome+(c.foto||"");}).join();
       A.d=d; if(muda && !$("#overlay").innerHTML) adminRender(); },function(){}); }; });
   ({painel:tabPainel,candidatos:tabCandidatos,eleitores:tabEleitores,apuracao:tabApuracao,registro:tabRegistro,auditoria:tabAuditoria})[A.tab]();
 }

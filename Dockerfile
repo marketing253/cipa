@@ -7,7 +7,7 @@ FROM php:8.2-apache
 ENV TZ=America/Sao_Paulo
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
-RUN docker-php-ext-install -j"$(nproc)" opcache && a2enmod headers
+RUN docker-php-ext-install -j"$(nproc)" opcache && a2enmod headers deflate
 COPY docker/apache.conf /etc/apache2/sites-available/000-default.conf
 COPY docker/seguranca.conf /etc/apache2/conf-available/seguranca.conf
 RUN a2enconf seguranca
