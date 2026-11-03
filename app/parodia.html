@@ -13,26 +13,26 @@
 <meta property="og:title" content="Concurso de Paródias da CIPA">
 <meta property="og:description" content="Inscreva a paródia da sua equipe pelo celular: nome da equipe, música e letra.">
 <meta property="og:image" content="https://cipa.redentorhub.com.br/og-cipa.jpg?v=1">
-<meta name="theme-color" content="#16203a">
+<meta name="theme-color" content="#2a0b30">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap">
 <style>
-/* Mesmo visual da urna (faixa azul com a cruz de segurança, cartões brancos); aqui a letra é a estrela: fonte grande e legível nos cartões dos jurados. */
+/* Mesma estrutura da urna, mas em roxo/magenta para não confundir com a eleição (azul); aqui a letra é a estrela: fonte grande e legível nos cartões dos jurados. */
 :root{
-  --bg:#f1f4ff; --surface:#ffffff; --surface-2:#f5f7fd; --ink:#16203a; --muted:#5a6380; --line:#e0e5f2; --line-2:#cdd4e6;
-  --accent:#3e4095; --accent-strong:#2f3180; --accent-ink:#ffffff; --accent-soft:#e6e8f7;
+  --bg:#fbf2fa; --surface:#ffffff; --surface-2:#fbf5fb; --ink:#2a1030; --muted:#6e5a72; --line:#efdfee; --line-2:#e2cbe0;
+  --accent:#86198f; --accent-strong:#6b1374; --accent-ink:#ffffff; --accent-soft:#f6e3f6;
   --amber:#d29500; --amber-soft:#fbf0d4; --amber-ink:#5c4100;
   --warn:#8a5a00; --warn-soft:#fff3d6; --bad:#b42318; --bad-soft:#fde8e5; --ok:#0a7a40; --ok-soft:#e0f3e8;
   --f-display:"Outfit","Segoe UI",system-ui,sans-serif;
   --f-body:"Plus Jakarta Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
   --r:16px; --r-sm:12px;
-  --shadow:0 1px 2px rgba(22,32,58,.05),0 8px 24px -8px rgba(22,32,58,.14);
+  --shadow:0 1px 2px rgba(42,16,48,.05),0 8px 24px -8px rgba(42,16,48,.16);
 }
 :root[data-theme="dark"]{
-  --bg:#0d1324; --surface:#151d33; --surface-2:#1a2340; --ink:#e8ecf8; --muted:#9aa3bd; --line:#26304d; --line-2:#333e60;
-  --accent:#8f93ea; --accent-strong:#a9acf0; --accent-ink:#0d1324; --accent-soft:#232a55;
+  --bg:#1a0d1d; --surface:#24132a; --surface-2:#2c1832; --ink:#f6e9f6; --muted:#b9a3bd; --line:#3a2340; --line-2:#4b2f52;
+  --accent:#e07ae9; --accent-strong:#eb9bf1; --accent-ink:#1a0d1d; --accent-soft:#3f1a48;
   --amber:#e7b240; --amber-soft:#3a2e10; --amber-ink:#ffe2a0;
   --warn:#ffc760; --warn-soft:#3a2c10; --bad:#ff8b7c; --bad-soft:#3b1a17; --ok:#62d69a; --ok-soft:#143424;
   --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 24px -8px rgba(0,0,0,.45); color-scheme:dark}
@@ -51,7 +51,7 @@ button{cursor:pointer}
 
 .band{margin:0 -16px 22px;color:#fff;padding:18px 16px;border-bottom:4px solid #d29500;
   background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='44'%3E%3Cpath d='M19 14h6v5h5v6h-5v5h-6v-5h-5v-6h5z' fill='%23d29500' fill-opacity='.08'/%3E%3C/svg%3E"),
-  linear-gradient(120deg,#16203a 0%,#1e2b4f 55%,#3e4095 100%)}
+  linear-gradient(120deg,#2a0b30 0%,#5b1366 55%,#a21caf 100%)}
 .bandin{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px 24px}
 .brand{display:flex;align-items:center;gap:14px;min-width:0}
 .mark{flex:none;height:56px;padding:5px 10px;border-radius:14px;background:#fff;display:grid;place-items:center}
@@ -126,7 +126,7 @@ th,td{text-align:left;padding:9px 8px;border-bottom:1px solid var(--line);vertic
 th{font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
 .tbl{overflow-x:auto}
 .pos{font-family:var(--f-display);font-weight:800;font-size:1.2rem;width:40px}
-.dlg{position:fixed;inset:0;background:rgba(10,15,30,.55);display:flex;align-items:flex-start;justify-content:center;padding:24px 12px;overflow:auto;z-index:50}
+.dlg{position:fixed;inset:0;background:rgba(30,8,34,.55);display:flex;align-items:flex-start;justify-content:center;padding:24px 12px;overflow:auto;z-index:50}
 .dlg>.card{width:100%;max-width:760px}
 
 @media print{
