@@ -149,6 +149,13 @@ button{cursor:pointer}
 .telao .t-sec{font:inherit;font-weight:700;padding:10px 20px;border-radius:999px;border:1px solid rgba(255,255,255,.5);background:rgba(255,255,255,.1);color:#fff;cursor:pointer}
 .telao .t-fechar{position:absolute;top:14px;right:14px}
 .telao.ganhou .t-nome{animation:surge .6s ease-out}
+.telao.qr{flex-direction:row;flex-wrap:nowrap;gap:4vw;padding:4vh 3vw}
+.telao .t-col{display:flex;flex-direction:column;gap:2.4vh;align-items:center;max-width:44vw}
+.telao .t-qr{background:#fff;border-radius:3vh;padding:2.4vh;width:min(72vh,44vw);flex:none;aspect-ratio:1}
+.telao .t-qr img,.telao .t-qr canvas{width:100%!important;height:auto!important;display:block}
+.telao .t-passos{text-align:left;font-size:clamp(1.1rem,2.4vw,2rem);line-height:1.5;margin:0;padding-left:1.2em}
+.telao .t-conta{font-family:var(--f-display);font-size:clamp(2.4rem,7vw,6rem);font-weight:800;color:#ffd76a;line-height:1}
+@media (max-aspect-ratio:1/1){.telao.qr{flex-direction:column}.telao .t-col{max-width:92vw}.telao .t-qr{width:min(80vw,46vh)}}
 @keyframes surge{from{transform:scale(.6);opacity:0}to{transform:none;opacity:1}}
 @media (prefers-reduced-motion:reduce){.telao.ganhou .t-nome{animation:none}}
 .evs{display:grid;gap:8px}
@@ -577,13 +584,13 @@ function telaPresenca(){
         return '<div class="ev'+(e.id===d.evento?' atual':'')+'"><div><div class="nm">'+esc(e.nome)+'</div><div class="small muted">'+e.presentes+' presente(s) · '+
           (e.aberto?'<span style="color:var(--ok);font-weight:700">check-in aberto</span>':'check-in encerrado')+'</div></div>'+
           '<div class="acoes">'+(e.id!==d.evento?'<button class="btn sm" data-ev="'+e.id+'">Abrir</button>':'')+
-          '<button class="btn sm" data-qrm="'+e.id+'">QR da mesa</button><button class="btn sm danger" data-delev="'+e.id+'">Excluir</button></div></div>'; }).join("")+'</div>'
+          '<button class="btn sm primary" data-tel="'+e.id+'">📺 Telão</button><button class="btn sm" data-qrm="'+e.id+'">QR da mesa</button><button class="btn sm danger" data-delev="'+e.id+'">Excluir</button></div></div>'; }).join("")+'</div>'
       :'<p class="muted" style="margin:0">Crie o evento (ex.: “SIPAT 2026 – dia 1”). Cada evento ganha um QR para colar na mesa: o colaborador lê com o celular e confirma a presença.</p>')+
     '</div>';
   if(!ev){ app.innerHTML='<div class="narrow stack">'+topo+'</div>'; ligarTopo(); return; }
   app.innerHTML='<div class="narrow stack">'+topo+
     '<div class="card pad stack"><div class="row" style="justify-content:space-between"><div><div class="lbl">'+esc(ev.nome)+' · presentes</div><div class="contador" id="cont">'+d.presentes.length+'</div></div>'+
-      '<div class="row"><button class="btn" id="qrm">QR da mesa</button><button class="btn '+(ev.aberto?'danger':'ok')+'" id="abre">'+(ev.aberto?'Encerrar check-in':'Reabrir check-in')+'</button></div></div>'+
+      '<div class="row"><button class="btn primary" id="telq">📺 Telão do QR</button><button class="btn" id="qrm">QR da mesa</button><button class="btn '+(ev.aberto?'danger':'ok')+'" id="abre">'+(ev.aberto?'Encerrar check-in':'Reabrir check-in')+'</button></div></div>'+
       (ev.aberto?'':'<div class="note warn">Check-in encerrado: quem ler o QR da mesa não consegue mais marcar presença.</div>')+
       '<details><summary class="small" style="cursor:pointer">Ler o QR do celular do colaborador ou digitar a matrícula</summary><div class="stack" style="margin-top:12px">'+
       '<button class="btn primary" id="cam">📷 Ler QR Code</button>'+
@@ -615,6 +622,7 @@ function telaPresenca(){
   ligarLista();
   $("#csv").onclick=function(){ baixarCsv(ev); };
   $("#qrm").onclick=function(){ qrMesa(ev); };
+  $("#telq").onclick=function(){ telaoQr(ev); };
   $("#abre").onclick=function(){ api("preAbrir",AT,ev.id,!ev.aberto).then(function(x){ PRE=x; telaPresenca(); toast(ev.aberto?"Check-in encerrado.":"Check-in reaberto."); }).catch(function(e){ toast(e.message); }); };
 }
 function linhasPres(l){ return l.map(function(x){ return '<tr><td><b>'+esc(x.nome)+'</b><div class="small muted">'+esc(x.matricula)+(x.setor?' · '+esc(x.setor):'')+'</div></td>'+
@@ -630,11 +638,31 @@ function ligarTopo(){
   $("#novo").onclick=function(){ var n=prompt("Nome do evento (ex.: SIPAT 2026 – dia 1):"); if(!n) return;
     api("preEvento",AT,n).then(function(x){ PRE=x; telaPresenca(); toast("Evento criado."); }).catch(function(e){ toast(e.message); }); };
   app.querySelectorAll("[data-ev]").forEach(function(b){ b.onclick=function(){ carregarPresenca(+b.dataset.ev); }; });
+  app.querySelectorAll("[data-tel]").forEach(function(b){ b.onclick=function(){ telaoQr(PRE.eventos.find(function(e){ return e.id===+b.dataset.tel; })); }; });
   app.querySelectorAll("[data-qrm]").forEach(function(b){ b.onclick=function(){ qrMesa(PRE.eventos.find(function(e){ return e.id===+b.dataset.qrm; })); }; });
   app.querySelectorAll("[data-delev]").forEach(function(b){ b.onclick=function(){
     var e=PRE.eventos.find(function(x){ return x.id===+b.dataset.delev; });
     if(!confirm("Excluir o evento “"+e.nome+"” com a lista de presença ("+e.presentes+") e os sorteios? Isso não pode ser desfeito.")) return;
     api("preExcluirEvento",AT,e.id).then(function(x){ PRE=x; telaPresenca(); toast("Evento excluído."); }).catch(function(err){ toast(err.message); }); }; });
+}
+/* telão no início da palestra: QR grande + passo a passo + contador de presentes ao vivo */
+function telaoQr(ev){
+  if(!ev.aberto&&!confirm("O check-in deste evento está encerrado. Reabrir agora para mostrar o QR?")) return;
+  var abrir=ev.aberto?Promise.resolve():api("preAbrir",AT,ev.id,true).then(function(x){ PRE=x; });
+  var link=PRE.urlApp+"checkin/"+ev.token, el, timer;
+  abrir.then(function(){ return carregar("https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"); }).then(function(){
+    el=document.createElement("div"); el.className="telao qr"; document.body.appendChild(el);
+    if(document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(function(){});
+    el.innerHTML='<button class="t-sec t-fechar">✕ Sair</button>'+
+      '<div class="t-col"><div class="t-top">Check-in · CIPA</div><div class="t-nome" style="font-size:clamp(2rem,5.5vw,4.6rem)">'+esc(ev.nome)+'</div>'+
+        '<div class="t-brinde">Faça seu check-in pelo QR Code</div>'+
+        '<ol class="t-passos"><li>Abra a câmera do celular</li><li>Aponte para o QR Code</li><li>Digite a <b>matrícula</b> e os <b>3 primeiros números do CPF</b></li></ol>'+
+        '<div><div class="t-conta" id="tcont">'+ev.presentes+'</div><div class="t-info">presentes · concorrendo aos brindes</div></div></div>'+
+      '<div class="t-qr" id="tqr"></div>';
+    new QRCode(el.querySelector("#tqr"),{text:link,width:720,height:720,correctLevel:QRCode.CorrectLevel.M});
+    el.querySelector(".t-fechar").onclick=function(){ clearInterval(timer); el.remove(); if(document.fullscreenElement&&document.exitFullscreen) document.exitFullscreen().catch(function(){}); carregarPresenca(ev.id); };
+    timer=setInterval(function(){ api("preDados",AT,ev.id).then(function(x){ var e=x.eventos.find(function(y){ return y.id===ev.id; }); if(e) el.querySelector("#tcont").textContent=e.presentes; }).catch(function(){}); },5000);
+  }).catch(function(e){ toast(e.message); });
 }
 /* QR para colar na mesa: mostra na tela e imprime um cartaz A4 */
 function qrMesa(ev){
