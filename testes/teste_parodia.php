@@ -51,45 +51,48 @@ erro('jurado duplicado', fn() => api_parJurado($A, '002004'), 'já é jurado');
 erro('jurado CPF errado', fn() => api_parJuradoLogin('2004', '000'), 'não conferem');
 $J = api_parJuradoLogin('2004', '124')['token'];
 $J1 = api_parJuradoLogin('2001', '121')['token'];
-$jd = api_parJuradoDados($J);
-t('jurado vê 3', count($jd['parodias']) === 3 && !isset($jd['parodias'][0]['celular']));
-t('própria marcada', api_parJuradoDados($J1)['parodias'][0]['propria'] === true);
-erro('validar a própria', fn() => api_parValidar($J1, 1, 'aprovar'), 'responsável');
-erro('ajuste sem motivo', fn() => api_parValidar($J, 2, 'ajuste', ''), 'motivo');
+t('jurado não vê pendentes', api_parJuradoDados($J)['parodias'] === []);
+erro('jurado não aprova', fn() => api_parValidar($J, 1, 'aprovar'), 'expirada');
 erro('nota em pendente', fn() => api_parNota($J, 1, [8, 8, 8]), 'aprovadas');
-api_parValidar($J, 1, 'aprovar');
-api_parValidar($J, 2, 'ajuste', 'Troque o palavrão do refrão');
-api_parValidar($J, 3, 'recusar', 'Letra copiada de outra equipe');
+api_parValidar($A, 1, 'aprovar');
+api_parValidar($A, 2, 'aprovar');
+api_parValidar($A, 3, 'recusar', 'Letra copiada de outra equipe');
+erro('ação antiga de ajuste', fn() => api_parValidar($A, 2, 'ajuste', 'x'), 'inválida');
+$jd = api_parJuradoDados($J);
+t('jurado vê só as 2 aprovadas', count($jd['parodias']) === 2 && !isset($jd['parodias'][0]['celular']));
+t('própria marcada', api_parJuradoDados($J1)['parodias'][0]['propria'] === true);
 erro('nota incompleta', fn() => api_parNota($J, 1, [8, 8]), 'cada critério');
 erro('nota fora da escala', fn() => api_parNota($J, 1, [8, 11, 8]), '0 a 10');
+erro('nota quebrada', fn() => api_parNota($J, 1, [8, 9.5, 8]), '0 a 10');
 erro('nota à própria', fn() => api_parNota($J1, 1, [10, 10, 10]), 'própria');
-api_parNota($J, 1, [8, 9.5, 7], 'Muito boa');
+api_parNota($J, 1, [8, 9, 7], 'Muito boa');
 $J2 = api_parJuradoLogin('2005', '125')['token'];
 api_parNota($J2, 1, [6, 6, 6]);
-api_parNota($J, 1, [9, 9.5, 7]);   // atualiza a própria nota
+api_parNota($J, 1, [9, 10, 7]);   // atualiza a própria nota
 $ad = api_parAdmin($A);
 $p1 = $ad['parodias'][0];
-t('duas notas, média', count($p1['notas']) === 2 && abs($p1['media'] - (25.5 + 18) / 2) < 0.01);
+t('duas notas, média', count($p1['notas']) === 2 && abs($p1['media'] - (26 + 18) / 2) < 0.01);
+t('ninguém falta na 1 (responsável não vota)', $p1['faltam'] === []);
+t('na 2 faltam os 3', count($ad['parodias'][1]['faltam']) === 3);
+$jx = array_column($ad['jurados'], null, 'matricula');
+t('andamento do jurado', $jx['2004']['avaliou'] === 1 && $jx['2004']['deve'] === 2 && $jx['2001']['deve'] === 1);
 erro('critérios travados com nota', fn() => api_parSaveCfg($A, ['criterios' => ['Só um']]), 'não podem mais mudar');
 
 // colaborador: travas por situação
 erro('aprovada não edita', fn() => api_parSalvar('2001', '121', $d, true), 'aprovada');
-erro('recusada não edita', fn() => api_parSalvar('2003', '123', ['equipe' => 'Cinto Afivelado'] + $d, true), 'recusada');
-t('ajuste aparece ao colaborador', api_parConsultar('2002', '122')['parodia']['motivo'] === 'Troque o palavrão do refrão');
+erro('não aprovada não edita', fn() => api_parSalvar('2003', '123', ['equipe' => 'Cinto Afivelado'] + $d, true), 'não aprovada');
+t('motivo aparece ao colaborador', api_parConsultar('2003', '123')['parodia']['motivo'] === 'Letra copiada de outra equipe');
 
-// inscrições encerradas: nova inscrição não, ajuste pedido sim
+// inscrições encerradas
 api_parSaveCfg($A, ['inscricoes' => 'nao']);
 erro('nova com inscrição fechada', fn() => api_parConsultar('2006', '126'), 'encerradas');
-$x = api_parSalvar('2002', '122', ['equipe' => 'Freio de Mão'] + $d, true);
-t('ajuste reenviado com inscrição fechada', api_parConsultar('2002', '122')['parodia']['status'] === 'pendente');
-erro('pendente não edita com fechada', fn() => api_parSalvar('2002', '122', ['equipe' => 'Freio de Mão'] + $d, true), 'encerradas');
 api_parSaveCfg($A, ['inscricoes' => 'sim', 'inicio' => '2099-01-01T08:00']);
 erro('antes de abrir', fn() => api_parConsultar('2006', '126'), 'abrem em');
 erro('datas invertidas', fn() => api_parSaveCfg($A, ['inicio' => '2026-11-10T08:00', 'fim' => '2026-11-01T08:00']), 'depois do início');
 api_parSaveCfg($A, ['inicio' => '', 'fim' => '']);
 
 // reabrir apaga notas; remover jurado derruba a sessão
-api_parValidar($J, 1, 'reabrir');
+api_parValidar($A, 1, 'reabrir');
 t('reabrir zera notas', api_parAdmin($A)['parodias'][0]['notas'] === []);
 api_parJurado($A, '2005', true);
 erro('jurado removido perde acesso', fn() => api_parJuradoDados($J2), 'expirada');

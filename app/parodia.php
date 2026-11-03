@@ -5,13 +5,14 @@
  * Inscrição: o colaborador entra com a matrícula + a mesma confirmação da urna (cfg verificacao,
  * hoje os 3 primeiros dígitos do CPF) e cadastra equipe, música original e letra. Uma inscrição
  * por matrícula (o responsável pela equipe).
- * Jurados: a comissão indica as matrículas; o jurado entra do mesmo jeito (matrícula + CPF)
- * e valida cada paródia (aprovar, pedir ajuste ou recusar) e dá notas às aprovadas.
- * Comissão: usa o login da administração da urna (adminLogin) para configurar e acompanhar.
+ * Comissão: usa o login da administração da urna (adminLogin); aprova ou não cada paródia,
+ * indica os jurados, configura e acompanha a classificação.
+ * Jurados: entram do mesmo jeito que o colaborador (matrícula + CPF), só veem as aprovadas
+ * e dão nota (0 a 10, inteira, escolhida numa lista) em cada critério.
  */
 declare(strict_types=1);
 
-const PAR_STATUS = ['pendente' => 'Aguardando validação', 'aprovada' => 'Aprovada', 'ajuste' => 'Ajuste pedido', 'recusada' => 'Recusada'];
+const PAR_STATUS = ['pendente' => 'Aguardando aprovação', 'aprovada' => 'Aprovada', 'recusada' => 'Não aprovada'];
 const PAR_CRITERIOS = ['Letra e mensagem de segurança', 'Criatividade', 'Encaixe na melodia'];
 const PAR_LETRA_MAX = 8000;
 const SESSAO_JURADO = 10 * 3600;
@@ -73,10 +74,10 @@ function par_da_matricula($m): ?array {
     $r = $st->fetch();
     return $r ? par_linha($r) : null;
 }
-/* pode mexer na própria inscrição: com as inscrições abertas (se ninguém validou ainda) ou quando o júri pediu ajuste */
+/* pode mexer na própria inscrição enquanto as inscrições estão abertas e a comissão ainda não decidiu */
 function par_pode_editar(?array $p, array $c): bool {
     if (!$p) return par_situacao($c) === 'aberta';
-    return $p['status'] === 'ajuste' || ($p['status'] === 'pendente' && par_situacao($c) === 'aberta');
+    return $p['status'] === 'pendente' && par_situacao($c) === 'aberta';
 }
 
 /* =================== colaborador =================== */
@@ -103,8 +104,8 @@ function api_parSalvar($m, $c, $d, $aceite = false): array {
     if ($aceite !== true) falha('Marque a declaração de que a letra é da sua equipe para enviar a inscrição.');
     $r = api_parConsultar($m, $c);   // confirmação fora da transação (o erro conta como tentativa)
     if (!$r['podeEditar']) falha($r['parodia']['status'] === 'pendente'
-        ? 'As inscrições foram encerradas: a sua paródia já está com os jurados.'
-        : 'Esta paródia já foi ' . mb_strtolower(PAR_STATUS[$r['parodia']['status']]) . ' pelos jurados e não pode mais ser alterada.');
+        ? 'As inscrições foram encerradas: a sua paródia já está com a comissão.'
+        : 'A comissão já decidiu sobre esta paródia (' . mb_strtolower(PAR_STATUS[$r['parodia']['status']]) . '): ela não pode mais ser alterada.');
     $d = (array)$d;
     $equipe = txt($d['equipe'] ?? '', 80); $musica = txt($d['musica'] ?? '', 120); $artista = txt($d['artista'] ?? '', 120);
     $letra = trim(str_replace("\r\n", "\n", (string)($d['letra'] ?? '')));
@@ -132,7 +133,7 @@ function api_parSalvar($m, $c, $d, $aceite = false): array {
               ->execute([$r['matricula'], mat_norm($r['matricula']), $r['nome'], $r['setor'], $equipe, $en, $musica, $artista, $letra, $integ, $cel, $agora, $agora]);
             $id = (int)$p->lastInsertId();
         }
-        registrar($ja ? ($ja['status'] === 'ajuste' ? 'Paródia corrigida após pedido de ajuste' : 'Paródia alterada') : 'Paródia inscrita',
+        registrar($ja ? 'Paródia alterada' : 'Paródia inscrita',
             "Equipe $equipe · “{$musica}” ({$artista}) · {$r['matricula']} – {$r['nome']}", 'Colaborador');
         $p->exec('COMMIT');
     } catch (Throwable $e) { $p->exec('ROLLBACK'); throw $e; }
@@ -168,15 +169,16 @@ function par_lista(): array {
     return array_map('par_linha', par_tabelas()->query('SELECT * FROM parodias ORDER BY id')->fetchAll());
 }
 
+/* o jurado só vê as aprovadas pela comissão (sem celular e sem o motivo das decisões) */
 function api_parJuradoDados($t): array {
     $j = exige_jurado($t);
     $minhas = [];
     $st = par_tabelas()->prepare('SELECT parodia,notas,comentario FROM parodia_notas WHERE jurado=?'); $st->execute([$j['mnorm']]);
     foreach ($st as $n) $minhas[(int)$n['parodia']] = ['notas' => json_decode($n['notas'], true), 'comentario' => (string)$n['comentario']];
     $lista = array_map(function ($p) use ($minhas, $j) {
-        unset($p['celular']);
+        unset($p['celular'], $p['motivo'], $p['validadoPor'], $p['validadoEm']);
         return $p + ['minhaNota' => $minhas[$p['id']] ?? null, 'propria' => mat_norm($p['matricula']) === $j['mnorm']];
-    }, par_lista());
+    }, array_values(array_filter(par_lista(), fn($p) => $p['status'] === 'aprovada')));
     return ['jurado' => ['matricula' => $j['matricula'], 'nome' => $j['nome']], 'cfg' => api_parInfo(), 'parodias' => $lista];
 }
 
@@ -185,21 +187,6 @@ function par_busca(int $id): array {
     $r = $st->fetch();
     if (!$r) falha('Paródia não encontrada.');
     return par_linha($r);
-}
-
-function api_parValidar($t, $id, $acao, $motivo = ''): array {
-    $j = exige_jurado($t);
-    $p = par_busca((int)$id);
-    if (mat_norm($p['matricula']) === $j['mnorm']) falha('Você é o responsável por esta equipe: a validação fica com os outros jurados.');
-    $map = ['aprovar' => 'aprovada', 'ajuste' => 'ajuste', 'recusar' => 'recusada', 'reabrir' => 'pendente'];
-    $novo = $map[(string)$acao] ?? falha('Ação inválida.');
-    $motivo = txt($motivo, 400);
-    if (in_array($novo, ['ajuste', 'recusada'], true) && mb_strlen($motivo) < 5) falha('Escreva o motivo, para a equipe saber o que fazer.');
-    if ($novo !== 'aprovada') par_tabelas()->prepare('DELETE FROM parodia_notas WHERE parodia=?')->execute([$p['id']]);   // nota só vale para aprovada
-    par_tabelas()->prepare('UPDATE parodias SET status=?, motivo=?, validado_por=?, validado_em=? WHERE id=?')
-        ->execute([$novo, $novo === 'aprovada' || $novo === 'pendente' ? '' : $motivo, $j['nome'], agora(), $p['id']]);
-    registrar('Paródia: ' . mb_strtolower(PAR_STATUS[$novo]), "Equipe {$p['equipe']}" . ($motivo !== '' && $novo !== 'aprovada' ? " · $motivo" : ''), 'Jurado ' . $j['nome']);
-    return api_parJuradoDados($t);
 }
 
 function api_parNota($t, $id, $notas, $comentario = ''): array {
@@ -211,8 +198,8 @@ function api_parNota($t, $id, $notas, $comentario = ''): array {
     if (count($notas) !== count($crit)) falha('Dê uma nota para cada critério.');
     $limpas = [];
     foreach ($notas as $i => $n) {
-        if (!is_numeric($n) || $n < 0 || $n > 10) falha('Notas de 0 a 10 (' . $crit[$i] . ').');
-        $limpas[] = round((float)$n, 1);
+        if (!is_numeric($n) || $n < 0 || $n > 10 || (float)$n != (int)$n) falha('Escolha uma nota de 0 a 10 (' . $crit[$i] . ').');
+        $limpas[] = (int)$n;
     }
     par_tabelas()->prepare('INSERT INTO parodia_notas(parodia,jurado,notas,comentario,em) VALUES(?,?,?,?,?)
         ON CONFLICT(parodia,jurado) DO UPDATE SET notas=excluded.notas, comentario=excluded.comentario, em=excluded.em')
@@ -227,18 +214,43 @@ function par_admin_dados(): array {
     $p = par_tabelas(); $crit = par_cfg()['criterios'];
     $jur = $p->query('SELECT matricula,nome,mnorm FROM parodia_jurados ORDER BY nome')->fetchAll();
     $nomes = array_column($jur, 'nome', 'mnorm');
-    $notas = [];
-    foreach ($p->query('SELECT parodia,jurado,notas,comentario,em FROM parodia_notas') as $n)
+    $notas = []; $deu = [];
+    foreach ($p->query('SELECT parodia,jurado,notas,comentario,em FROM parodia_notas') as $n) {
         $notas[(int)$n['parodia']][] = ['jurado' => $nomes[$n['jurado']] ?? $n['jurado'], 'notas' => json_decode($n['notas'], true),
             'comentario' => (string)$n['comentario'], 'em' => $n['em']];
-    $lista = array_map(function ($x) use ($notas) {
+        $deu[(int)$n['parodia']][$n['jurado']] = true;
+    }
+    // acompanhamento: quem ainda falta votar em cada aprovada (o responsável pela equipe não vota nela)
+    $avaliou = array_fill_keys(array_column($jur, 'mnorm'), 0); $deve = $avaliou;
+    $lista = array_map(function ($x) use ($notas, $deu, $jur, &$avaliou, &$deve) {
         $ns = $notas[$x['id']] ?? [];
         $tot = array_map(fn($n) => array_sum($n['notas']), $ns);
-        return $x + ['notas' => $ns, 'media' => $tot ? round(array_sum($tot) / count($tot), 2) : null];
+        $faltam = [];
+        if ($x['status'] === 'aprovada') foreach ($jur as $j) {
+            if ($j['mnorm'] === mat_norm($x['matricula'])) continue;
+            $deve[$j['mnorm']]++;
+            if (isset($deu[$x['id']][$j['mnorm']])) $avaliou[$j['mnorm']]++; else $faltam[] = $j['nome'];
+        }
+        return $x + ['notas' => $ns, 'faltam' => $faltam, 'media' => $tot ? round(array_sum($tot) / count($tot), 2) : null];
     }, par_lista());
     return ['cfg' => par_cfg(), 'situacao' => par_situacao(par_cfg()), 'criterios' => $crit,
-            'jurados' => array_map(fn($j) => ['matricula' => $j['matricula'], 'nome' => $j['nome']], $jur),
+            'jurados' => array_map(fn($j) => ['matricula' => $j['matricula'], 'nome' => $j['nome'],
+                'avaliou' => $avaliou[$j['mnorm']], 'deve' => $deve[$j['mnorm']]], $jur),
             'parodias' => $lista, 'agora' => agora_local(), 'urlApp' => url_base()];
+}
+
+/* aprovar | recusar (não aprovar, motivo opcional, a equipe vê) | reabrir (volta para aguardando) */
+function api_parValidar($t, $id, $acao, $motivo = ''): array {
+    exige_admin($t);
+    $p = par_busca((int)$id);
+    $map = ['aprovar' => 'aprovada', 'recusar' => 'recusada', 'reabrir' => 'pendente'];
+    $novo = $map[(string)$acao] ?? falha('Ação inválida.');
+    $motivo = $novo === 'recusada' ? txt($motivo, 400) : '';
+    if ($novo !== 'aprovada') par_tabelas()->prepare('DELETE FROM parodia_notas WHERE parodia=?')->execute([$p['id']]);   // nota só vale para aprovada
+    par_tabelas()->prepare('UPDATE parodias SET status=?, motivo=?, validado_por=?, validado_em=? WHERE id=?')
+        ->execute([$novo, $motivo, 'Comissão', agora(), $p['id']]);
+    registrar('Paródia: ' . mb_strtolower(PAR_STATUS[$novo]), "Equipe {$p['equipe']}" . ($motivo !== '' ? " · $motivo" : ''));
+    return par_admin_dados();
 }
 
 function api_parAdmin($t): array { exige_admin($t); return par_admin_dados(); }

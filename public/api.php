@@ -3,6 +3,7 @@
 declare(strict_types=1);
 require dirname(__DIR__) . '/app/lib.php';
 require dirname(__DIR__) . '/app/parodia.php';
+require dirname(__DIR__) . '/app/presenca.php';
 
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
@@ -13,7 +14,9 @@ const PERMITIDAS = ['ballot', 'consultar', 'login', 'votar', 'adminLogin', 'admi
     'fotoEnviar', 'inscConsultar', 'inscrever', 'auditoria', 'saveAgenda', 'recomecar', 'pedirFoto', 'inscNovaFoto',
     // concurso de paródias
     'parInfo', 'parConsultar', 'parSalvar', 'parJuradoLogin', 'parJuradoDados', 'parValidar', 'parNota',
-    'parAdmin', 'parSaveCfg', 'parJurado', 'parExcluir'];
+    'parAdmin', 'parSaveCfg', 'parJurado', 'parExcluir',
+    // presença nos eventos e sorteio de brindes
+    'preQr', 'preDados', 'preEvento', 'preExcluirEvento', 'preMarcar', 'preDesmarcar', 'preSortear', 'preAnular'];
 
 function responder($v, int $code = 200): never {
     http_response_code($code);

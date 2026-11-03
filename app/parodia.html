@@ -96,7 +96,6 @@ button{cursor:pointer}
 .pill::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
 .pill.pendente{background:var(--amber-soft);color:var(--amber-ink)}
 .pill.aprovada{background:var(--ok-soft);color:var(--ok)}
-.pill.ajuste{background:var(--warn-soft);color:var(--warn)}
 .pill.recusada{background:var(--bad-soft);color:var(--bad)}
 .hero{text-align:center;padding:8px 0 4px}
 .hero .ico{font-size:2.6rem;line-height:1}
@@ -119,7 +118,26 @@ button{cursor:pointer}
 .letra-txt{white-space:pre-wrap;font-size:1.05rem;line-height:1.7;background:var(--surface-2);border:1px solid var(--line);border-radius:var(--r-sm);padding:18px;max-height:60vh;overflow:auto}
 .notas{display:grid;gap:10px}
 .nota{display:grid;grid-template-columns:1fr 92px;gap:10px;align-items:center}
-.nota input{text-align:center;font-weight:700}
+.nota select{text-align:center;font-weight:700;font-size:1.05rem;border:1.5px solid var(--line-2);border-radius:12px;min-height:46px;padding:0 10px;background:var(--surface)}
+.passo{font-size:.8rem;color:var(--muted);font-weight:600}
+.big input{font-size:1.5rem;font-weight:700;text-align:center;letter-spacing:.08em;min-height:60px}
+.link{background:none;border:0;color:var(--accent);font-weight:600;padding:6px 0}
+.ao-vivo{display:inline-flex;align-items:center;gap:6px;font-size:.8rem;color:var(--ok);font-weight:700}
+.ao-vivo::before{content:"";width:8px;height:8px;border-radius:50%;background:currentColor;animation:pulsa 1.6s infinite}
+@keyframes pulsa{50%{opacity:.25}}
+.qrbox{display:grid;place-items:center;background:#fff;border-radius:var(--r);padding:18px;margin:0 auto;width:min(100%,320px)}
+.qrbox img,.qrbox canvas{width:100%!important;height:auto!important;display:block}
+.camera{position:relative;background:#000;border-radius:var(--r);overflow:hidden;aspect-ratio:4/3;max-height:60vh;margin:0 auto;width:100%}
+.camera video{width:100%;height:100%;object-fit:cover;display:block}
+.camera .mira{position:absolute;inset:18% 22%;border:3px solid rgba(255,255,255,.85);border-radius:18px;box-shadow:0 0 0 999px rgba(0,0,0,.25)}
+.leitura{border-radius:var(--r);padding:16px 18px;font-size:1.05rem}
+.leitura b{font-size:1.25rem;display:block}
+.leitura.ok{background:var(--ok-soft);color:var(--ok)} .leitura.ja{background:var(--amber-soft);color:var(--amber-ink)} .leitura.bad{background:var(--bad-soft);color:var(--bad)}
+.contador{font-family:var(--f-display);font-size:2.6rem;font-weight:800;line-height:1;color:var(--accent)}
+.ganhador{text-align:center;padding:26px 16px;border-radius:var(--r);background:linear-gradient(120deg,#2a0b30,#a21caf);color:#fff}
+.ganhador .nm{font-family:var(--f-display);font-size:clamp(1.6rem,5vw,2.6rem);font-weight:800;line-height:1.1;margin-top:6px}
+.barra{height:8px;border-radius:99px;background:var(--line);overflow:hidden;min-width:80px}
+.barra>i{display:block;height:100%;background:var(--ok)}
 .total{font-family:var(--f-display);font-size:1.4rem;font-weight:700}
 table{width:100%;border-collapse:collapse;font-size:.9rem}
 th,td{text-align:left;padding:9px 8px;border-bottom:1px solid var(--line);vertical-align:top}
@@ -172,19 +190,45 @@ function toast(m){ var t=$(".toast"); if(!t){ t=document.createElement("div"); t
 function store(k,v){ try{ if(v===undefined) return sessionStorage.getItem(k); if(v===null) sessionStorage.removeItem(k); else sessionStorage.setItem(k,v); }catch(e){ return null; } }
 function dataBr(iso){ if(!iso) return ""; var d=new Date(iso); if(isNaN(d)) return iso; return d.toLocaleDateString("pt-BR")+" "+d.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"}); }
 function localBr(v){ if(!v) return ""; var p=v.split("T"); var d=p[0].split("-"); return d[2]+"/"+d[1]+"/"+d[0]+" às "+p[1]; }
-var STATUS={pendente:"Aguardando validação",aprovada:"Aprovada",ajuste:"Ajuste pedido",recusada:"Recusada"};
+var STATUS={pendente:"Aguardando aprovação",aprovada:"Aprovada",recusada:"Não aprovada"};
 function pill(s){ return '<span class="pill '+esc(s)+'">'+esc(STATUS[s]||s)+'</span>'; }
 function busy(btn,on,txt){ if(!btn) return; if(on){ btn.dataset.t=btn.textContent; btn.textContent=txt||"Aguarde…"; btn.disabled=true; } else { btn.textContent=btn.dataset.t||btn.textContent; btn.disabled=false; } }
 function erroEm(el,msg){ el.innerHTML=msg?'<div class="note bad">'+esc(msg)+'</div>':""; if(msg) el.scrollIntoView({block:"nearest",behavior:"smooth"}); }
 function quem(html){ var q=$("#quem"); q.innerHTML=html||""; q.hidden=!html; }
 
 var INFO=null;
-function campoConf(){
-  if(!INFO || INFO.verificacao==="nenhuma") return "";
-  var num=/cpf/.test(INFO.verificacao);
-  return '<label class="field"><span>'+esc(INFO.verificacaoLbl)+'</span>'+
-    '<input id="conf" '+(num?'inputmode="numeric" maxlength="'+(INFO.verificacao==="cpf3"?3:4)+'" autocomplete="off"':'autocomplete="off"')+' required>'+
-    (INFO.verificacao==="cpf3"?'<small>Só os 3 primeiros números do seu CPF, para confirmar que é você.</small>':'')+'</label>';
+/* igual à urna: 1) matrícula → Avançar; 2) 3 primeiros dígitos do CPF → Entrar */
+function doisPassos(alvo, topo, botao, enviar){
+  var mat="";
+  function passo1(erro){
+    alvo.innerHTML=topo+'<form id="f" class="stack" novalidate><div class="passo">Passo 1 de 2</div>'+
+      '<label class="field big"><span>Digite sua matrícula</span><input id="mat" inputmode="numeric" autocomplete="off" value="'+esc(mat)+'"></label>'+
+      '<div id="err"></div><button class="btn primary lg">Avançar</button></form>';
+    if(erro) erroEm($("#err"),erro);
+    var i=$("#mat"); i.focus();
+    $("#f").onsubmit=function(ev){ ev.preventDefault(); mat=i.value.trim();
+      if(!mat){ erroEm($("#err"),"Digite sua matrícula."); return; }
+      if(!INFO||INFO.verificacao==="nenhuma") ir(""); else passo2(); };
+  }
+  function passo2(){
+    var cpf3=INFO.verificacao==="cpf3", num=/cpf/.test(INFO.verificacao);
+    alvo.innerHTML=topo+'<form id="f" class="stack" novalidate><div class="passo">Passo 2 de 2 · matrícula <b>'+esc(mat)+'</b></div>'+
+      '<label class="field big"><span>'+esc(cpf3?"Digite os 3 primeiros números do seu CPF":INFO.verificacaoLbl)+'</span>'+
+      '<input id="conf" '+(num?'inputmode="numeric" maxlength="'+(cpf3?3:4)+'"':'')+' autocomplete="off"></label>'+
+      '<div id="err"></div><button class="btn primary lg" id="go">'+esc(botao)+'</button>'+
+      '<button type="button" class="link" id="volta">← Trocar matrícula</button></form>';
+    var i=$("#conf"); i.focus();
+    $("#volta").onclick=function(){ passo1(); };
+    $("#f").onsubmit=function(ev){ ev.preventDefault(); ir(i.value.trim()); };
+  }
+  function ir(c){
+    var b=$("#go"); busy(b,true,"Conferindo…");
+    enviar(mat,c).catch(function(e){
+      busy(b,false);
+      if(/matr[ií]cula/i.test(e.message)) passo1(e.message); else { erroEm($("#err"),e.message); var i=$("#conf"); if(i){ i.value=""; i.focus(); } }
+    });
+  }
+  passo1();
 }
 function situacaoTxt(){
   var s=INFO.situacao;
@@ -197,23 +241,9 @@ function situacaoTxt(){
 var EU={m:"",c:""};
 function telaEntrada(){
   quem("");
-  app.innerHTML='<div class="narrow"><div class="card pad stack">'+
-    '<div><div class="lbl">Inscrição da equipe</div><h2 style="margin-top:4px">Mostre a paródia da sua equipe</h2>'+
-    '<p class="muted" style="margin:8px 0 0">Tema: <b>'+esc(INFO.tema)+'</b>. O responsável pela equipe entra com a matrícula e envia o nome da equipe, a música original e a letra.</p></div>'+
-    situacaoTxt()+
-    '<form id="f" class="stack" novalidate>'+
-      '<label class="field"><span>Sua matrícula</span><input id="mat" inputmode="numeric" autocomplete="off" required></label>'+
-      campoConf()+
-      '<div id="err"></div>'+
-      '<button class="btn primary lg" id="go">Continuar</button>'+
-    '</form></div></div>';
-  $("#mat").focus();
-  $("#f").onsubmit=function(ev){ ev.preventDefault();
-    var b=$("#go"), m=$("#mat").value.trim(), c=$("#conf")?$("#conf").value.trim():"";
-    busy(b,true,"Conferindo…");
-    api("parConsultar",m,c).then(function(r){ EU={m:m,c:c}; telaEquipe(r); })
-      .catch(function(e){ busy(b,false); erroEm($("#err"),e.message); });
-  };
+  app.innerHTML='<div class="narrow"><div class="card pad stack" id="caixa"></div></div>';
+  var topo='<div><h2>Inscrição da paródia</h2><p class="muted" style="margin:6px 0 0">Tema: <b>'+esc(INFO.tema)+'</b></p></div>'+situacaoTxt();
+  doisPassos($("#caixa"),topo,"Entrar",function(m,c){ return api("parConsultar",m,c).then(function(r){ EU={m:m,c:c}; telaEquipe(r); }); });
 }
 function telaEquipe(r){
   quem('<span>'+esc(r.nome.split(" ")[0])+'</span><button class="btn sm" id="sair">Sair</button>');
@@ -222,16 +252,15 @@ function telaEquipe(r){
   if(r.parodia){
     st='<div class="card pad stack"><div class="row" style="justify-content:space-between"><div><div class="lbl">Sua inscrição</div><h2 style="margin-top:4px">'+esc(p.equipe)+'</h2></div>'+pill(p.status)+'</div>'+
       '<div class="muted">“'+esc(p.musica)+'” · '+esc(p.artista)+' · enviada em '+esc(dataBr(p.criada))+'</div>'+
-      (p.status==="ajuste"?'<div class="note warn"><b>Os jurados pediram um ajuste:</b> '+esc(p.motivo)+'<br>Corrija abaixo e envie de novo.</div>':'')+
-      (p.status==="recusada"?'<div class="note bad"><b>Paródia recusada pelos jurados:</b> '+esc(p.motivo)+'</div>':'')+
-      (p.status==="aprovada"?'<div class="note ok">A paródia da sua equipe foi aprovada. Agora é ensaiar para a apresentação!</div>':'')+
-      (p.status==="pendente"?'<div class="note info">Os jurados ainda vão ler a letra. '+(r.podeEditar?'Até lá você pode alterar o que quiser.':'')+'</div>':'')+
+      (p.status==="recusada"?'<div class="note bad"><b>A comissão não aprovou esta paródia.</b>'+(p.motivo?' '+esc(p.motivo):'')+'</div>':'')+
+      (p.status==="aprovada"?'<div class="note ok">Paródia aprovada! Agora é ensaiar para a apresentação.</div>':'')+
+      (p.status==="pendente"?'<div class="note info">Aguardando a aprovação da comissão.'+(r.podeEditar?' Até lá você pode alterar.':'')+'</div>':'')+
       (!r.podeEditar?'<details><summary class="small" style="cursor:pointer">Ver a letra enviada</summary><div class="letra-txt" style="margin-top:10px">'+esc(p.letra)+'</div></details>':'')+
     '</div>';
   }
   var form = !r.podeEditar ? "" :
     '<form id="f" class="card pad stack" novalidate>'+
-      (r.parodia?'<h3>Alterar inscrição</h3>':'<div><div class="lbl">Olá, '+esc(r.nome)+'</div><h2 style="margin-top:4px">Dados da paródia</h2></div>')+
+      (r.parodia?'<h3>Alterar inscrição</h3>':'<div><div class="lbl">Olá, '+esc(r.nome.split(" ")[0])+'</div><h2 style="margin-top:4px">Dados da paródia</h2></div>')+
       '<label class="field"><span>Nome da equipe</span><input id="equipe" maxlength="80" value="'+esc(p.equipe)+'" required></label>'+
       '<div class="grid2">'+
         '<label class="field"><span>Música original</span><input id="musica" maxlength="120" value="'+esc(p.musica)+'" placeholder="Ex.: Evidências" required></label>'+
@@ -258,8 +287,7 @@ function telaEquipe(r){
 function telaEnviada(x){
   app.innerHTML='<div class="narrow"><div class="card pad stack hero">'+
     '<div class="ico">🎤</div><h2>'+(x.alterou?'Inscrição atualizada!':'Inscrição recebida!')+'</h2>'+
-    '<p class="muted" style="margin:0">Equipe <b>'+esc(x.equipe)+'</b>. Os jurados vão ler a letra e validar a paródia. '+
-    'Para acompanhar, volte a este endereço e entre com a sua matrícula.</p>'+
+    '<p class="muted" style="margin:0">Equipe <b>'+esc(x.equipe)+'</b>. Agora a comissão vai ler e aprovar. Para acompanhar, entre de novo com a sua matrícula.</p>'+
     '<button class="btn" id="volta">Ver minha inscrição</button></div></div>';
   window.scrollTo(0,0);
   $("#volta").onclick=function(){ api("parConsultar",EU.m,EU.c).then(telaEquipe).catch(function(e){ toast(e.message); telaEntrada(); }); };
@@ -272,31 +300,32 @@ function telaLoginJuri(modo){
   quem("");
   modo=modo||"jurado";
   app.innerHTML='<div class="narrow"><div class="card pad stack">'+
-    '<div class="tabs" role="group"><button data-m="jurado" aria-pressed="'+(modo==="jurado")+'">Sou jurado</button><button data-m="comissao" aria-pressed="'+(modo==="comissao")+'">Comissão da CIPA</button></div>'+
-    (modo==="jurado"
-      ? '<div><h2>Área dos jurados</h2><p class="muted" style="margin:6px 0 0">Entre com a sua matrícula, como na urna.</p></div>'+
-        '<form id="f" class="stack" novalidate><label class="field"><span>Matrícula</span><input id="mat" inputmode="numeric" autocomplete="off"></label>'+campoConf()+'<div id="err"></div><button class="btn primary lg" id="go">Entrar</button></form>'
-      : '<div><h2>Comissão</h2><p class="muted" style="margin:6px 0 0">Mesmo usuário e senha da administração da urna.</p></div>'+
-        '<form id="f" class="stack" novalidate><label class="field"><span>Usuário</span><input id="usu" autocomplete="username" value="admin"></label>'+
-        '<label class="field"><span>Senha</span><input id="sen" type="password" autocomplete="current-password"></label><div id="err"></div><button class="btn primary lg" id="go">Entrar</button></form>')+
-  '</div></div>';
+    (PAGE==="presenca"?'':'<div class="tabs" role="group"><button data-m="jurado" aria-pressed="'+(modo==="jurado")+'">Sou jurado</button><button data-m="comissao" aria-pressed="'+(modo==="comissao")+'">Comissão da CIPA</button></div>')+
+    '<div id="caixa" class="stack"></div></div></div>';
   app.querySelectorAll(".tabs button").forEach(function(b){ b.onclick=function(){ telaLoginJuri(b.dataset.m); }; });
-  var first=$("#mat")||$("#sen"); first.focus();
+  if(modo==="jurado"){
+    doisPassos($("#caixa"),'<h2>Área dos jurados</h2>',"Entrar",function(m,c){
+      return api("parJuradoLogin",m,c).then(function(r){ JT=r.token; store("par_jur",JT); return carregarJurado(); }); });
+    return;
+  }
+  $("#caixa").innerHTML='<h2>Comissão</h2><form id="f" class="stack" novalidate><label class="field"><span>Usuário</span><input id="usu" autocomplete="username" value="admin"></label>'+
+    '<label class="field"><span>Senha</span><input id="sen" type="password" autocomplete="current-password"></label><div id="err"></div><button class="btn primary lg" id="go">Entrar</button></form>'+
+    '<p class="small muted" style="margin:0">Mesmo usuário e senha do /admin da urna.</p>';
+  $("#sen").focus();
   $("#f").onsubmit=function(ev){ ev.preventDefault(); var b=$("#go"); busy(b,true,"Entrando…");
-    var pr = modo==="jurado" ? api("parJuradoLogin",$("#mat").value.trim(),$("#conf")?$("#conf").value.trim():"").then(function(r){ JT=r.token; store("par_jur",JT); return carregarJurado(); })
-                             : api("adminLogin",$("#usu").value,$("#sen").value).then(function(r){ AT=r.token; store("par_adm",AT); return carregarAdmin(); });
-    pr.catch(function(e){ busy(b,false); erroEm($("#err"),e.message); });
+    api("adminLogin",$("#usu").value,$("#sen").value).then(function(r){ AT=r.token; store("par_adm",AT); return PAGE==="presenca"?carregarPresenca():carregarAdmin(); })
+      .catch(function(e){ busy(b,false); erroEm($("#err"),e.message); });
   };
 }
-function sair(){ store("par_jur",null); store("par_adm",null); JT=AT=null; DADOS=null; telaLoginJuri(); }
+function sair(){ pararCamera(); store("par_jur",null); store("par_adm",null); JT=AT=null; DADOS=null; telaLoginJuri(PAGE==="presenca"?"comissao":undefined); }
 
 function carregarJurado(){ return api("parJuradoDados",JT).then(function(d){ DADOS=d; telaJurado(); }).catch(function(e){ store("par_jur",null); JT=null; toast(e.message); telaLoginJuri(); }); }
 function carregarAdmin(){ return api("parAdmin",AT).then(function(d){ DADOS=d; telaAdmin(); }).catch(function(e){ store("par_adm",null); AT=null; toast(e.message); telaLoginJuri("comissao"); }); }
 
-function contagem(lista){ var c={todas:lista.length,pendente:0,aprovada:0,ajuste:0,recusada:0}; lista.forEach(function(p){ c[p.status]++; }); return c; }
+function contagem(lista){ var c={todas:lista.length,pendente:0,aprovada:0,recusada:0}; lista.forEach(function(p){ c[p.status]++; }); return c; }
 function filtros(lista,render){
   var c=contagem(lista);
-  return '<div class="tabs noprint" id="filtros">'+[["todas","Todas"],["pendente","Aguardando"],["aprovada","Aprovadas"],["ajuste","Ajuste pedido"],["recusada","Recusadas"]].map(function(f){
+  return '<div class="tabs noprint" id="filtros">'+[["todas","Todas"],["pendente","Aguardando"],["aprovada","Aprovadas"],["recusada","Não aprovadas"]].map(function(f){
     return '<button data-f="'+f[0]+'" aria-pressed="'+(FILTRO===f[0])+'">'+f[1]+'<span class="n">'+c[f[0]]+'</span></button>'; }).join("")+'</div>';
 }
 function ligarFiltros(render){ app.querySelectorAll("#filtros button").forEach(function(b){ b.onclick=function(){ FILTRO=b.dataset.f; render(); }; }); }
@@ -304,25 +333,22 @@ function somaNota(n){ return n?n.notas.reduce(function(a,b){ return a+Number(b);
 function fmt(n){ return n==null?"—":(Math.round(n*10)/10).toLocaleString("pt-BR"); }
 
 function telaJurado(){
-  var d=DADOS;
+  var d=DADOS, lista=d.parodias;
   quem('<span>Jurado: '+esc(d.jurado.nome.split(" ")[0])+'</span><button class="btn sm" id="sair">Sair</button>');
   $("#sair").onclick=sair;
-  var lista=d.parodias.filter(function(p){ return FILTRO==="todas"||p.status===FILTRO; });
-  var semNota=d.parodias.filter(function(p){ return p.status==="aprovada"&&!p.propria&&!p.minhaNota; }).length;
+  var semNota=lista.filter(function(p){ return !p.propria&&!p.minhaNota; }).length;
   app.innerHTML='<div class="stack">'+
-    '<div class="row" style="justify-content:space-between"><div><div class="lbl">Área dos jurados</div><h2 style="margin-top:4px">'+esc(d.cfg.titulo)+'</h2></div>'+
-    '<button class="btn" id="imp">Imprimir letras aprovadas</button></div>'+
-    (semNota?'<div class="note info">Falta a sua nota em <b>'+semNota+'</b> paródia(s) aprovada(s).</div>':'')+
-    filtros(d.parodias)+
-    (lista.length?'<div class="lista">'+lista.map(function(p){
-      return '<button class="item" data-id="'+p.id+'"><div><h3>'+esc(p.equipe)+'</h3><div class="meta">“'+esc(p.musica)+'” · '+esc(p.artista)+'</div>'+
-        '<div class="meta">'+esc(p.responsavel)+(p.setor?' · '+esc(p.setor):'')+'</div></div>'+
-        '<div class="lado">'+pill(p.status)+(p.propria?'<span class="small muted">sua equipe</span>':(p.minhaNota?'<span class="small">sua nota: <b>'+fmt(somaNota(p.minhaNota))+'</b></span>':''))+'</div></button>';
-    }).join("")+'</div>':'<div class="card pad muted">Nenhuma paródia aqui ainda.</div>')+
+    '<div class="row" style="justify-content:space-between"><h2>Paródias para avaliar</h2>'+
+    (lista.length?'<button class="btn" id="imp">Imprimir letras</button>':'')+'</div>'+
+    (!lista.length?'<div class="card pad muted">A comissão ainda não aprovou nenhuma paródia. Volte mais tarde.</div>':
+      (semNota?'<div class="note info">Falta a sua nota em <b>'+semNota+'</b> paródia(s).</div>':'<div class="note ok">Você já deu nota em todas.</div>')+
+      '<div class="lista">'+lista.map(function(p){
+        return '<button class="item" data-id="'+p.id+'"><div><h3>'+esc(p.equipe)+'</h3><div class="meta">“'+esc(p.musica)+'” · '+esc(p.artista)+'</div></div>'+
+          '<div class="lado">'+(p.propria?'<span class="small muted">sua equipe</span>':(p.minhaNota?'<span class="pill aprovada">Nota '+fmt(somaNota(p.minhaNota))+'</span>':'<span class="pill pendente">Dar nota</span>'))+'</div></button>';
+      }).join("")+'</div>')+
   '</div>';
-  ligarFiltros(telaJurado);
   app.querySelectorAll(".item").forEach(function(b){ b.onclick=function(){ abrirJurado(+b.dataset.id); }; });
-  $("#imp").onclick=function(){ imprimir(d.parodias.filter(function(p){ return p.status==="aprovada"; })); };
+  var imp=$("#imp"); if(imp) imp.onclick=function(){ imprimir(lista); };
 }
 
 function fecharDlg(){ $("#dlg").innerHTML=""; document.body.style.overflow=""; }
@@ -337,39 +363,26 @@ function detalhe(p){
     (p.validadoPor?'<div class="small muted">Última validação: '+esc(p.validadoPor)+' em '+esc(dataBr(p.validadoEm))+'</div>':'')+
     '<div class="letra-txt">'+esc(p.letra)+'</div>';
 }
+function opcoesNota(v){ var o='<option value="">–</option>'; for(var n=10;n>=0;n--) o+='<option value="'+n+'"'+(v===n?" selected":"")+'>'+n+'</option>'; return o; }
 function abrirJurado(id){
   var p=DADOS.parodias.find(function(x){ return x.id===id; }); if(!p) return;
   var crit=DADOS.cfg.criterios, mn=p.minhaNota;
-  var acoes = p.propria ? '<div class="note info">Esta é a paródia da sua equipe: a validação e as notas ficam com os outros jurados.</div>' :
-    '<div class="stack"><div class="lbl">Validação</div>'+
-      '<label class="field"><span>Motivo <span class="muted">(obrigatório para pedir ajuste ou recusar)</span></span><textarea id="mot" maxlength="400" style="min-height:70px">'+esc(p.status!=="aprovada"?p.motivo:"")+'</textarea></label>'+
-      '<div class="row">'+
-        (p.status!=="aprovada"?'<button class="btn ok" data-a="aprovar">Aprovar</button>':'')+
-        (p.status!=="ajuste"?'<button class="btn warn" data-a="ajuste">Pedir ajuste</button>':'')+
-        (p.status!=="recusada"?'<button class="btn danger" data-a="recusar">Recusar</button>':'')+
-        (p.status!=="pendente"?'<button class="btn ghost" data-a="reabrir">Voltar para “aguardando”</button>':'')+
-      '</div><div id="errv"></div></div>'+
-    (p.status==="aprovada"?
-      '<form id="fn" class="stack" novalidate style="border-top:1px solid var(--line);padding-top:16px"><div class="lbl">Sua nota (0 a 10 em cada critério)</div><div class="notas">'+
-      crit.map(function(c,i){ return '<label class="nota"><span>'+esc(c)+'</span><input class="field" type="number" min="0" max="10" step="0.5" inputmode="decimal" data-i="'+i+'" value="'+(mn?mn.notas[i]:"")+'" style="border:1.5px solid var(--line-2);border-radius:12px;min-height:46px"></label>'; }).join("")+
-      '</div><div class="row" style="justify-content:space-between"><span class="muted">Total</span><span class="total" id="tot">'+fmt(somaNota(mn))+'</span></div>'+
-      '<label class="field"><span>Comentário <span class="muted">(opcional)</span></span><textarea id="com" maxlength="400" style="min-height:60px">'+esc(mn?mn.comentario:"")+'</textarea></label>'+
-      '<div id="errn"></div><button class="btn primary" id="sn">'+(mn?'Atualizar nota':'Salvar nota')+'</button></form>':'');
+  var acoes = p.propria ? '<div class="note info">Esta é a paródia da sua equipe: as notas ficam com os outros jurados.</div>' :
+    '<form id="fn" class="stack" novalidate style="border-top:1px solid var(--line);padding-top:16px"><div class="lbl">Sua nota (0 a 10)</div><div class="notas">'+
+      crit.map(function(c,i){ return '<label class="nota"><span>'+esc(c)+'</span><select data-i="'+i+'">'+opcoesNota(mn?Number(mn.notas[i]):null)+'</select></label>'; }).join("")+
+    '</div><div class="row" style="justify-content:space-between"><span class="muted">Total</span><span class="total" id="tot">'+fmt(somaNota(mn))+'</span></div>'+
+    '<label class="field"><span>Comentário <span class="muted">(opcional)</span></span><textarea id="com" maxlength="400" style="min-height:60px">'+esc(mn?mn.comentario:"")+'</textarea></label>'+
+    '<div id="errn"></div><button class="btn primary lg" id="sn">'+(mn?'Atualizar nota':'Salvar nota')+'</button></form>';
   dlg(detalhe(p)+acoes);
   $("#fx").onclick=fecharDlg;
-  $("#dlg").querySelectorAll("[data-a]").forEach(function(b){ b.onclick=function(){
-    var a=b.dataset.a; busy(b,true);
-    api("parValidar",JT,id,a,$("#mot").value).then(function(d){ DADOS=d; telaJurado(); toast(a==="aprovar"?"Paródia aprovada.":(a==="ajuste"?"Pedido de ajuste enviado à equipe.":(a==="recusar"?"Paródia recusada.":"Voltou para aguardando.")));
-      if(a==="aprovar") abrirJurado(id); else fecharDlg(); })
-      .catch(function(e){ busy(b,false); erroEm($("#errv"),e.message); });
-  }; });
   var fn=$("#fn"); if(!fn) return;
-  var ins=fn.querySelectorAll("input[type=number]");
+  var ins=fn.querySelectorAll("select");
   function tot(){ var s=0,ok=true; ins.forEach(function(i){ if(i.value==="") ok=false; s+=Number(i.value||0); }); $("#tot").textContent=ok?fmt(s):"—"; }
-  ins.forEach(function(i){ i.oninput=tot; });
-  fn.onsubmit=function(ev){ ev.preventDefault(); var b=$("#sn"); busy(b,true,"Salvando…");
+  ins.forEach(function(i){ i.onchange=tot; });
+  fn.onsubmit=function(ev){ ev.preventDefault(); var b=$("#sn");
     var notas=Array.prototype.map.call(ins,function(i){ return i.value===""?null:Number(i.value); });
-    if(notas.some(function(n){ return n===null; })){ busy(b,false); erroEm($("#errn"),"Dê uma nota para cada critério."); return; }
+    if(notas.some(function(n){ return n===null; })){ erroEm($("#errn"),"Escolha uma nota para cada critério."); return; }
+    busy(b,true,"Salvando…");
     api("parNota",JT,id,notas,$("#com").value).then(function(d){ DADOS=d; telaJurado(); fecharDlg(); toast("Nota salva."); })
       .catch(function(e){ busy(b,false); erroEm($("#errn"),e.message); });
   };
@@ -388,7 +401,7 @@ function telaAdmin(){
   quem('<span>Comissão</span><button class="btn sm" id="sair">Sair</button>');
   $("#sair").onclick=sair;
   var link=d.urlApp+"parodia";
-  var abas=[["parodias","Paródias"],["ranking","Classificação"],["jurados","Jurados ("+d.jurados.length+")"],["config","Configuração"]];
+  var abas=[["parodias","Paródias"],["ranking","Apuração"],["jurados","Jurados ("+d.jurados.length+")"],["config","Configuração"]];
   var corpo="";
   if(ABA==="parodias"){
     var lista=d.parodias.filter(function(p){ return FILTRO==="todas"||p.status===FILTRO; });
@@ -399,13 +412,20 @@ function telaAdmin(){
         '<td><button class="btn sm" data-ver="'+p.id+'">Ver</button></td></tr>'; }).join("")+'</tbody></table></div>':'<div class="card pad muted">Nenhuma paródia aqui ainda.</div>');
   } else if(ABA==="ranking"){
     var ap=d.parodias.filter(function(p){ return p.status==="aprovada"; }).sort(function(a,b){ return (b.media==null?-1:b.media)-(a.media==null?-1:a.media); });
-    var nj=d.jurados.length;
-    corpo='<div class="note info">Média da soma das notas de cada jurado ('+d.criterios.length+' critérios de 0 a 10, máximo '+d.criterios.length*10+'). '+
-      'O jurado responsável por uma equipe não dá nota a ela.</div>'+
-      (ap.length?'<div class="card tbl"><table><thead><tr><th>#</th><th>Equipe</th><th>Média</th><th>Jurados que avaliaram</th></tr></thead><tbody>'+
-      ap.map(function(p,i){ return '<tr><td class="pos">'+(p.media==null?'—':(i+1)+'º')+'</td><td><b>'+esc(p.equipe)+'</b><div class="small muted">“'+esc(p.musica)+'”</div></td><td class="total">'+fmt(p.media)+'</td>'+
-        '<td>'+p.notas.length+' de '+nj+(p.notas.length?'<div class="small muted">'+p.notas.map(function(n){ return esc(n.jurado.split(" ")[0])+': '+fmt(somaNota(n)); }).join(" · ")+'</div>':'')+'</td></tr>'; }).join("")+
-      '</tbody></table></div><div class="row"><button class="btn" id="imp">Imprimir letras aprovadas</button></div>':'<div class="card pad muted">Ainda não há paródias aprovadas.</div>');
+    var feitas=0, devidas=0; ap.forEach(function(p){ feitas+=p.notas.length; devidas+=p.notas.length+p.faltam.length; });
+    corpo='<div class="row" style="justify-content:space-between"><span class="ao-vivo">Ao vivo · atualiza sozinho</span>'+
+      '<span class="small muted">'+feitas+' de '+devidas+' notas dadas</span></div>'+
+      (ap.length?'<div class="card tbl"><table><thead><tr><th>#</th><th>Equipe</th><th>Média</th><th>Andamento</th><th>Falta votar</th></tr></thead><tbody>'+
+      ap.map(function(p,i){ var tot=p.notas.length+p.faltam.length, pc=tot?Math.round(100*p.notas.length/tot):0;
+        return '<tr><td class="pos">'+(p.media==null?'—':(i+1)+'º')+'</td><td><b>'+esc(p.equipe)+'</b><div class="small muted">“'+esc(p.musica)+'”</div></td><td class="total">'+fmt(p.media)+'</td>'+
+        '<td><div class="barra"><i style="width:'+pc+'%"></i></div><div class="small muted">'+p.notas.length+' de '+tot+'</div></td>'+
+        '<td class="small">'+(p.faltam.length?esc(p.faltam.join(", ")):'<span style="color:var(--ok);font-weight:700">Completo</span>')+'</td></tr>'; }).join("")+
+      '</tbody></table></div>'+
+      '<div class="card tbl"><table><thead><tr><th>Jurado</th><th>Avaliou</th><th>Falta</th></tr></thead><tbody>'+
+      d.jurados.map(function(j){ return '<tr><td>'+esc(j.nome)+'</td><td>'+j.avaliou+' de '+j.deve+'</td><td>'+(j.deve-j.avaliou?'<b>'+(j.deve-j.avaliou)+'</b>':'<span style="color:var(--ok);font-weight:700">ok</span>')+'</td></tr>'; }).join("")+
+      '</tbody></table></div>'+
+      '<p class="small muted" style="margin:0">Média = média da soma das notas de cada jurado ('+d.criterios.length+' critérios de 0 a 10, máximo '+d.criterios.length*10+'). Clique em “Paródias” → Ver para as notas de cada jurado.</p>'+
+      '<div class="row"><button class="btn" id="imp">Imprimir letras aprovadas</button></div>':'<div class="card pad muted">Aprove as paródias na aba “Paródias” para os jurados começarem a votar.</div>');
   } else if(ABA==="jurados"){
     corpo='<div class="card pad stack"><p class="muted" style="margin:0">Os jurados entram em <b>'+esc(d.urlApp)+'jurados</b> com a matrícula e a mesma confirmação da urna.</p>'+
       '<form id="fj" class="row" novalidate><label class="field" style="flex:1 1 200px"><span>Matrícula do jurado</span><input id="jm" inputmode="numeric"></label><button class="btn primary" id="ja">Incluir jurado</button></form><div id="errj"></div>'+
@@ -424,7 +444,7 @@ function telaAdmin(){
   app.innerHTML='<div class="stack">'+
     '<div class="row" style="justify-content:space-between"><div><div class="lbl">Comissão</div><h2 style="margin-top:4px">'+esc(d.cfg.titulo)+'</h2></div>'+
       '<span class="pill '+(d.situacao==="aberta"?"aprovada":"recusada")+'">Inscrições '+(d.situacao==="aberta"?"abertas":(d.situacao==="antes"?"ainda não abertas":"encerradas"))+'</span></div>'+
-    '<div class="card pad row" style="justify-content:space-between"><div style="min-width:0"><div class="lbl">Link da inscrição</div><div style="word-break:break-all"><b>'+esc(link)+'</b></div></div><button class="btn" id="cp">Copiar link</button></div>'+
+    '<div class="card pad row" style="justify-content:space-between"><div style="min-width:0"><div class="lbl">Link da inscrição</div><div style="word-break:break-all"><b>'+esc(link)+'</b></div></div><div class="row"><button class="btn" id="cp">Copiar link</button><a class="btn" href="presenca">Presença e sorteio</a></div></div>'+
     '<div class="tabs" id="abas">'+abas.map(function(a){ return '<button data-a="'+a[0]+'" aria-pressed="'+(ABA===a[0])+'">'+esc(a[1])+'</button>'; }).join("")+'</div>'+
     corpo+'</div>';
   $("#cp").onclick=function(){ (navigator.clipboard?navigator.clipboard.writeText(link):Promise.reject()).then(function(){ toast("Link copiado."); },function(){ prompt("Copie o link:",link); }); };
@@ -438,9 +458,20 @@ function telaAdmin(){
     app.querySelectorAll("[data-rm]").forEach(function(b){ b.onclick=function(){ if(!confirm("Remover este jurado? As notas que ele já deu continuam valendo.")) return;
       api("parJurado",AT,b.dataset.rm,true).then(function(x){ DADOS=x; telaAdmin(); }).catch(function(e){ toast(e.message); }); }; });
   }
+  agendarAoVivo();
   var fc=$("#fc"); if(fc) fc.onsubmit=function(ev){ ev.preventDefault(); var b=$("#cs"); busy(b,true,"Salvando…");
     api("parSaveCfg",AT,{titulo:$("#ct").value,tema:$("#ctema").value,inscricoes:$("#ci").value,inicio:$("#cini").value,fim:$("#cfim").value,criterios:$("#ccr").value.split("\n")})
       .then(function(x){ DADOS=x; telaAdmin(); toast("Configuração salva."); }).catch(function(e){ busy(b,false); erroEm($("#errc"),e.message); }); };
+}
+/* apuração ao vivo: recarrega a cada 15 s (sem atrapalhar quem está com uma janela aberta ou digitando) */
+var VIVO;
+function agendarAoVivo(){
+  clearTimeout(VIVO);
+  if(ABA!=="ranking"&&ABA!=="parodias") return;
+  VIVO=setTimeout(function(){
+    if(!AT||$("#dlg").innerHTML||document.hidden){ agendarAoVivo(); return; }
+    api("parAdmin",AT).then(function(x){ DADOS=x; telaAdmin(); }).catch(function(){ agendarAoVivo(); });
+  },15000);
 }
 function abrirAdmin(id){
   var p=DADOS.parodias.find(function(x){ return x.id===id; }); if(!p) return;
@@ -449,18 +480,191 @@ function abrirAdmin(id){
     (p.notas.length?'<div class="tbl"><table><thead><tr><th>Jurado</th>'+crit.map(function(c){ return '<th>'+esc(c)+'</th>'; }).join("")+'<th>Total</th></tr></thead><tbody>'+
       p.notas.map(function(n){ return '<tr><td>'+esc(n.jurado)+(n.comentario?'<div class="small muted">'+esc(n.comentario)+'</div>':'')+'</td>'+n.notas.map(function(v){ return '<td>'+fmt(v)+'</td>'; }).join("")+'<td><b>'+fmt(somaNota(n))+'</b></td></tr>'; }).join("")+
       '</tbody></table></div>':'')+
-    '<div class="row end"><button class="btn danger" id="del">Excluir inscrição</button></div>');
+    '<div class="stack" style="border-top:1px solid var(--line);padding-top:16px"><div class="lbl">Decisão da comissão</div>'+
+      (p.status!=="aprovada"?'<label class="field"><span>Motivo, se não aprovar <span class="muted">(opcional, a equipe vê)</span></span><textarea id="mot" maxlength="400" style="min-height:60px">'+esc(p.motivo)+'</textarea></label>':'')+
+      '<div class="row">'+
+        (p.status!=="aprovada"?'<button class="btn ok" data-a="aprovar">Aprovar</button>':'')+
+        (p.status!=="recusada"?'<button class="btn danger" data-a="recusar">Não aprovar</button>':'')+
+        (p.status!=="pendente"?'<button class="btn ghost" data-a="reabrir">Voltar para “aguardando”</button>':'')+
+      '</div><div id="errv"></div></div>'+
+    '<div class="row end"><button class="btn sm ghost" id="del">Excluir inscrição</button></div>');
   $("#fx").onclick=fecharDlg;
+  $("#dlg").querySelectorAll("[data-a]").forEach(function(b){ b.onclick=function(){
+    var a=b.dataset.a;
+    if(a!=="aprovar"&&p.notas.length&&!confirm("Os jurados já deram "+p.notas.length+" nota(s) a esta paródia. Elas serão apagadas. Continuar?")) return;
+    busy(b,true);
+    api("parValidar",AT,id,a,$("#mot")?$("#mot").value:"").then(function(x){ DADOS=x; fecharDlg(); telaAdmin(); toast(a==="aprovar"?"Aprovada: já aparece para os jurados.":(a==="recusar"?"Paródia não aprovada.":"Voltou para aguardando.")); })
+      .catch(function(e){ busy(b,false); erroEm($("#errv"),e.message); });
+  }; });
   $("#del").onclick=function(){ if(!confirm("Excluir a inscrição da equipe "+p.equipe+"? Isso não pode ser desfeito.")) return;
     api("parExcluir",AT,id).then(function(x){ DADOS=x; fecharDlg(); telaAdmin(); toast("Inscrição excluída."); }).catch(function(e){ toast(e.message); }); };
 }
 document.addEventListener("keydown",function(e){ if(e.key==="Escape") fecharDlg(); });
 
+/* =================== presença e sorteio =================== */
+function carregar(src){ return new Promise(function(ok,ko){ var x=document.createElement("script"); x.src=src; x.onload=ok; x.onerror=function(){ ko(new Error("Não foi possível carregar o leitor. Verifique a internet.")); }; document.head.appendChild(x); }); }
+
+/* colaborador: mostra o QR para a comissão ler no evento */
+function telaQr(){
+  quem("");
+  app.innerHTML='<div class="narrow"><div class="card pad stack" id="caixa"></div></div>';
+  doisPassos($("#caixa"),'<div><h2>Meu QR de presença</h2><p class="muted" style="margin:6px 0 0">Mostre o QR para a comissão da CIPA na entrada do evento.</p></div>',"Mostrar meu QR",function(m,c){
+    return api("preQr",m,c).then(function(r){
+      $("#caixa").innerHTML='<div class="hero"><div class="lbl">Presença · CIPA</div><h2>'+esc(r.nome)+'</h2><div class="muted">Matrícula '+esc(r.matricula)+'</div></div>'+
+        '<div class="qrbox" id="qr"></div><p class="small muted" style="text-align:center;margin:0">Aumente o brilho da tela. Dá para tirar um print e mostrar depois.</p>';
+      return carregar("https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js").then(function(){
+        new QRCode($("#qr"),{text:r.codigo,width:512,height:512,correctLevel:QRCode.CorrectLevel.M});
+      });
+    });
+  });
+}
+
+/* comissão */
+var PRE=null, CAM=null, ULT={t:"",em:0};
+function carregarPresenca(ev){ return api("preDados",AT,ev||(PRE&&PRE.evento)||null).then(function(d){ PRE=d; telaPresenca(); })
+  .catch(function(e){ store("par_adm",null); AT=null; toast(e.message); telaLoginJuri("comissao"); }); }
+function evAtual(){ return PRE.eventos.find(function(e){ return e.id===PRE.evento; })||null; }
+
+function telaPresenca(){
+  pararCamera();
+  var d=PRE, ev=evAtual();
+  quem('<span>Comissão</span><button class="btn sm" id="sair">Sair</button>');
+  $("#sair").onclick=sair;
+  var topo='<div class="card pad stack"><div class="row" style="justify-content:space-between"><h2>Presença e sorteio</h2>'+
+      '<button class="btn sm" id="novo">+ Novo evento</button></div>'+
+    (d.eventos.length?'<label class="field"><span>Evento</span><select id="evsel">'+d.eventos.map(function(e){ return '<option value="'+e.id+'"'+(e.id===d.evento?" selected":"")+'>'+esc(e.nome)+' ('+e.presentes+')</option>'; }).join("")+'</select></label>'
+      :'<p class="muted" style="margin:0">Crie o evento (ex.: “SIPAT 2026 – dia 1”) para começar a marcar presença.</p>')+
+    '<div class="small muted">Os colaboradores abrem <b>'+esc(d.urlApp)+'qr</b> no celular para mostrar o QR.</div></div>';
+  if(!ev){ app.innerHTML='<div class="narrow stack">'+topo+'</div>'; ligarTopo(); return; }
+  app.innerHTML='<div class="narrow stack">'+topo+
+    '<div class="card pad stack"><div class="row" style="justify-content:space-between"><div><div class="lbl">Presentes</div><div class="contador" id="cont">'+d.presentes.length+'</div></div>'+
+      '<button class="btn primary" id="cam">📷 Ler QR Code</button></div>'+
+      '<div id="camarea" hidden><div class="camera"><video id="vid" playsinline muted></video><div class="mira"></div></div>'+
+        '<div class="row" style="justify-content:center;margin-top:10px"><button class="btn" id="camfecha">Fechar câmera</button></div></div>'+
+      '<div id="leitura"></div>'+
+      '<form id="fm" class="row" novalidate><label class="field" style="flex:1 1 160px"><span>Ou digite a matrícula</span><input id="mm" inputmode="numeric" autocomplete="off"></label><button class="btn" id="mb">Marcar</button></form>'+
+    '</div>'+
+    '<div class="card pad stack"><h3>Sorteio de brindes</h3>'+
+      '<form id="fs" class="row" novalidate><label class="field" style="flex:1 1 200px"><span>Brinde <span class="muted">(opcional)</span></span><input id="br" maxlength="100" placeholder="Ex.: Caixa de som"></label><button class="btn primary" id="sb">🎁 Sortear</button></form>'+
+      '<div id="ganhou"></div>'+
+      (d.sorteios.length?'<div class="tbl"><table><thead><tr><th>#</th><th>Ganhador</th><th>Brinde</th><th></th></tr></thead><tbody>'+d.sorteios.map(function(x,i){
+        return '<tr><td>'+(i+1)+'º</td><td><b>'+esc(x.nome)+'</b><div class="small muted">'+esc(x.matricula)+(x.setor?' · '+esc(x.setor):'')+'</div></td><td>'+esc(x.brinde||"—")+'</td>'+
+          '<td style="text-align:right"><button class="btn sm ghost" data-anula="'+x.id+'">Ausente</button></td></tr>'; }).join("")+'</tbody></table></div>'+
+        '<p class="small muted" style="margin:0">“Ausente” anula o sorteio e tira a presença da pessoa; depois é só sortear de novo.</p>':'')+
+    '</div>'+
+    '<div class="card pad stack"><div class="row" style="justify-content:space-between"><h3>Lista de presença</h3><button class="btn sm" id="csv">Baixar planilha</button></div>'+
+      (d.presentes.length?'<input id="busca" class="field" placeholder="Buscar nome ou matrícula" style="border:1.5px solid var(--line-2);border-radius:12px;min-height:44px;padding:0 14px;width:100%">'+
+        '<div class="tbl"><table><tbody id="lp">'+linhasPres(d.presentes)+'</tbody></table></div>':'<p class="muted" style="margin:0">Ninguém marcado ainda.</p>')+
+      '<div class="row end"><button class="btn sm ghost" id="delev">Excluir evento</button></div>'+
+    '</div></div>';
+  ligarTopo();
+  $("#cam").onclick=abrirCamera;
+  $("#camfecha").onclick=pararCamera;
+  $("#fm").onsubmit=function(ev2){ ev2.preventDefault(); var v=$("#mm").value.trim(); if(!v) return; marcar(v); $("#mm").value=""; };
+  $("#fs").onsubmit=function(ev2){ ev2.preventDefault(); sortear(); };
+  app.querySelectorAll("[data-anula]").forEach(function(b){ b.onclick=function(){
+    if(!confirm("Anular este sorteio? A pessoa sai da lista de presença deste evento.")) return;
+    api("preAnular",AT,+b.dataset.anula).then(function(x){ PRE=x; telaPresenca(); toast("Sorteio anulado. Pode sortear de novo."); }).catch(function(e){ toast(e.message); }); }; });
+  ligarLista();
+  $("#csv").onclick=function(){ baixarCsv(ev); };
+  $("#delev").onclick=function(){ if(!confirm("Excluir o evento “"+ev.nome+"” com a lista de presença e os sorteios? Isso não pode ser desfeito.")) return;
+    api("preExcluirEvento",AT,ev.id).then(function(x){ PRE=x; telaPresenca(); toast("Evento excluído."); }).catch(function(e){ toast(e.message); }); };
+}
+function linhasPres(l){ return l.map(function(x){ return '<tr><td><b>'+esc(x.nome)+'</b><div class="small muted">'+esc(x.matricula)+(x.setor?' · '+esc(x.setor):'')+'</div></td>'+
+  '<td class="small muted">'+esc(dataBr(x.em).split(" ")[1]||"")+'</td><td style="text-align:right"><button class="btn sm ghost" data-tira="'+esc(x.matricula)+'" aria-label="Tirar presença">✕</button></td></tr>'; }).join(""); }
+function ligarLista(){
+  var b=$("#busca"); if(b) b.oninput=function(){ var q=b.value.toLowerCase().trim();
+    $("#lp").innerHTML=linhasPres(PRE.presentes.filter(function(x){ return !q||x.nome.toLowerCase().indexOf(q)>=0||String(x.matricula).indexOf(q)>=0; })); ligarTira(); };
+  ligarTira();
+}
+function ligarTira(){ app.querySelectorAll("[data-tira]").forEach(function(b){ b.onclick=function(){ if(!confirm("Tirar a presença desta pessoa?")) return;
+  api("preDesmarcar",AT,PRE.evento,b.dataset.tira).then(function(x){ PRE=x; telaPresenca(); }).catch(function(e){ toast(e.message); }); }; }); }
+function ligarTopo(){
+  $("#novo").onclick=function(){ var n=prompt("Nome do evento (ex.: SIPAT 2026 – dia 1):"); if(!n) return;
+    api("preEvento",AT,n).then(function(x){ PRE=x; telaPresenca(); toast("Evento criado."); }).catch(function(e){ toast(e.message); }); };
+  var sel=$("#evsel"); if(sel) sel.onchange=function(){ carregarPresenca(+sel.value); };
+}
+
+function apito(ok){ try{ var C=window.AudioContext||window.webkitAudioContext; var c=apito.c||(apito.c=new C()); var o=c.createOscillator(), g=c.createGain();
+  o.frequency.value=ok?880:330; g.gain.value=.15; o.connect(g); g.connect(c.destination); o.start(); o.stop(c.currentTime+(ok?.15:.35)); }catch(e){}
+  if(navigator.vibrate) navigator.vibrate(ok?80:[60,60,60]); }
+
+function marcar(cod){
+  var el=$("#leitura");
+  return api("preMarcar",AT,PRE.evento,cod).then(function(r){
+    apito(r.novo);
+    el.innerHTML='<div class="leitura '+(r.novo?"ok":"ja")+'"><b>'+(r.novo?"✔ ":"")+esc(r.nome)+'</b>'+esc(r.matricula)+(r.setor?' · '+esc(r.setor):'')+' — '+(r.novo?'presença registrada':'já estava marcado')+'</div>';
+    $("#cont").textContent=r.total;
+    if(r.novo){ PRE.presentes.unshift({matricula:r.matricula,nome:r.nome,setor:r.setor,em:new Date().toISOString()});
+      var lp=$("#lp"); if(lp){ lp.innerHTML=linhasPres(PRE.presentes); ligarTira(); } }
+  }).catch(function(e){ apito(false); el.innerHTML='<div class="leitura bad"><b>Não marcou</b>'+esc(e.message)+'</div>'; });
+}
+
+function abrirCamera(){
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){ toast("Este navegador não libera a câmera. Use o Chrome ou o Safari."); return; }
+  var temBD=("BarcodeDetector" in window);
+  var lib=temBD?Promise.resolve():carregar("https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js");
+  lib.then(function(){ return navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"},audio:false}); }).then(function(st){
+    var v=$("#vid"); if(!v){ st.getTracks().forEach(function(t){ t.stop(); }); return; }
+    $("#camarea").hidden=false; $("#cam").hidden=true;
+    v.srcObject=st; v.play();
+    var bd=null; if(temBD){ try{ bd=new BarcodeDetector({formats:["qr_code"]}); }catch(e){ bd=null; } }
+    var cv=document.createElement("canvas"), cx=cv.getContext("2d",{willReadFrequently:true}), ocupado=false;
+    CAM={st:st,timer:setInterval(function(){
+      if(ocupado||v.readyState<2) return;
+      ocupado=true;
+      var achou=function(txt){
+        ocupado=false;
+        if(!txt) return;
+        var agora=Date.now();
+        if(txt===ULT.t&&agora-ULT.em<4000) return;   // mesma pessoa ainda na frente da câmera
+        ULT={t:txt,em:agora}; marcar(txt);
+      };
+      if(bd){ bd.detect(v).then(function(r){ achou(r[0]&&r[0].rawValue); }).catch(function(){ ocupado=false; }); return; }
+      var w=v.videoWidth, h=v.videoHeight, k=Math.min(1,640/w); cv.width=w*k; cv.height=h*k;
+      cx.drawImage(v,0,0,cv.width,cv.height);
+      var r=window.jsQR(cx.getImageData(0,0,cv.width,cv.height).data,cv.width,cv.height,{inversionAttempts:"dontInvert"});
+      achou(r&&r.data);
+    },250)};
+  }).catch(function(e){ toast(e&&e.name==="NotAllowedError"?"Libere o acesso à câmera para ler os QR Codes.":(e.message||"Não foi possível abrir a câmera.")); });
+}
+function pararCamera(){
+  if(!CAM) return;
+  clearInterval(CAM.timer); CAM.st.getTracks().forEach(function(t){ t.stop(); }); CAM=null;
+  var a=$("#camarea"); if(a) a.hidden=true; var b=$("#cam"); if(b) b.hidden=false;
+}
+
+function sortear(){
+  var b=$("#sb"); busy(b,true,"Sorteando…");
+  var nomes=PRE.presentes.map(function(x){ return x.nome; }), g=$("#ganhou"), i=0;
+  var roda=setInterval(function(){ if(nomes.length) g.innerHTML='<div class="ganhador"><div class="lbl" style="color:#fff">Sorteando…</div><div class="nm">'+esc(nomes[(i++)%nomes.length])+'</div></div>'; },70);
+  api("preSortear",AT,PRE.evento,$("#br").value).then(function(x){
+    setTimeout(function(){
+      clearInterval(roda); busy(b,false);
+      var w=x.ganhador; delete x.ganhador; PRE=x;
+      telaPresenca();
+      $("#ganhou").innerHTML='<div class="ganhador"><div class="lbl" style="color:#fff">🎉 Ganhador'+(w.brinde?' · '+esc(w.brinde):'')+'</div><div class="nm">'+esc(w.nome)+'</div>'+
+        '<div style="opacity:.85;margin-top:6px">Matrícula '+esc(w.matricula)+(w.setor?' · '+esc(w.setor):'')+' · entre '+x.concorreram+' presentes</div></div>';
+      apito(true);
+    },1800);
+  }).catch(function(e){ clearInterval(roda); busy(b,false); g.innerHTML='<div class="note bad">'+esc(e.message)+'</div>'; });
+}
+function baixarCsv(ev){
+  var l=[["Matrícula","Nome","Setor","Chegada","Como"]].concat(PRE.presentes.slice().reverse().map(function(x){ return [x.matricula,x.nome,x.setor||"",dataBr(x.em),x.como||""]; }));
+  var csv="\ufeff"+l.map(function(r){ return r.map(function(c){ return '"'+String(c).replace(/"/g,'""')+'"'; }).join(";"); }).join("\r\n");
+  var a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"})); a.download="presenca - "+ev.nome.replace(/[\\/:*?"<>|]/g,"")+".csv"; a.click();
+}
+document.addEventListener("visibilitychange",function(){ if(document.hidden) pararCamera(); });
+
 /* ---------- início ---------- */
 api("parInfo").then(function(i){
-  INFO=i; $("#titulo").textContent=i.titulo; $("#sub").textContent="CIPA · "+(i.empresa||"Auto Viação Redentor");
-  document.title=PAGE==="jurados"?"Jurados · "+i.titulo:i.titulo;
+  INFO=i; $("#sub").textContent="CIPA · "+(i.empresa||"Auto Viação Redentor");
+  var tit=PAGE==="qr"||PAGE==="presenca"?"Presença nos eventos da CIPA":i.titulo;
+  $("#titulo").textContent=tit;
+  document.title=PAGE==="jurados"?"Jurados · "+tit:tit;
   if(PAGE==="jurados"){ if(JT) carregarJurado(); else if(AT) carregarAdmin(); else telaLoginJuri(); }
+  else if(PAGE==="presenca"){ if(AT) carregarPresenca(); else telaLoginJuri("comissao"); }
+  else if(PAGE==="qr") telaQr();
   else telaEntrada();
 }).catch(function(e){ app.innerHTML='<div class="narrow"><div class="note bad">'+esc(e.message)+'</div></div>'; });
 })();
