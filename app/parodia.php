@@ -15,6 +15,8 @@ declare(strict_types=1);
 const PAR_STATUS = ['pendente' => 'Aguardando aprovação', 'aprovada' => 'Aprovada', 'recusada' => 'Não aprovada'];
 const PAR_CRITERIOS = ['Letra e mensagem de segurança', 'Criatividade', 'Encaixe na melodia'];
 const PAR_LETRA_MAX = 8000;
+const PAR_FOTOS_MAX = 4;             // fotos da letra (papel), além ou no lugar da letra digitada
+const PAR_FOTO_BYTES = 1500000;      // por foto, já reduzida no celular
 const SESSAO_JURADO = 10 * 3600;
 const PAR_URL_PUBLICA = 'https://parodia.redentorhub.com.br/';   // endereço dos links e QR Codes (muda na Configuração)
 
@@ -32,6 +34,7 @@ function par_tabelas(): PDO {
         CREATE TABLE IF NOT EXISTS parodia_notas (
             parodia INTEGER NOT NULL, jurado TEXT NOT NULL, notas TEXT NOT NULL, comentario TEXT, em TEXT NOT NULL,
             PRIMARY KEY (parodia, jurado));
+        CREATE TABLE IF NOT EXISTS parodia_fotos (chave TEXT PRIMARY KEY, parodia INTEGER NOT NULL, ordem INTEGER NOT NULL, dados TEXT NOT NULL);
     SQL);
     $feito = true;
     return $p;
@@ -71,7 +74,27 @@ function par_linha(array $r): array {
         'equipe' => $r['equipe'], 'musica' => $r['musica'], 'artista' => $r['artista'], 'letra' => $r['letra'],
         'integrantes' => (string)$r['integrantes'], 'celular' => (string)$r['celular'], 'status' => $r['status'],
         'motivo' => (string)$r['motivo'], 'validadoPor' => (string)$r['validado_por'], 'validadoEm' => (string)$r['validado_em'],
-        'criada' => $r['criada'], 'atualizada' => $r['atualizada']];
+        'criada' => $r['criada'], 'atualizada' => $r['atualizada'], 'fotos' => par_fotos((int)$r['id'])];
+}
+/* fotos da letra: saem como /letra-foto/CHAVE (chave aleatória, a imagem não vai dentro do JSON) */
+function par_fotos(int $id): array {
+    $st = par_tabelas()->prepare('SELECT chave FROM parodia_fotos WHERE parodia=? ORDER BY ordem'); $st->execute([$id]);
+    return array_map(fn($c) => 'letra-foto/' . $c, $st->fetchAll(PDO::FETCH_COLUMN));
+}
+/* confere a lista vinda do celular: "letra-foto/CHAVE" (já gravada) ou data:image/... (nova) */
+function par_fotos_ok($fotos, ?int $id): array {
+    $fotos = array_values(array_filter((array)$fotos, 'is_string'));
+    if (count($fotos) > PAR_FOTOS_MAX) falha('Mande no máximo ' . PAR_FOTOS_MAX . ' fotos da letra.');
+    $tem = $id ? array_map(fn($u) => substr($u, 11), par_fotos($id)) : [];
+    $ok = [];
+    foreach ($fotos as $f) {
+        if (preg_match('#^letra-foto/([0-9a-f]{32})$#', $f, $m)) { if (in_array($m[1], $tem, true)) $ok[] = ['chave' => $m[1]]; continue; }
+        if (!preg_match('#^data:image/(jpeg|png|webp);base64,([A-Za-z0-9+/=]+)$#', $f, $m)) falha('Foto da letra inválida. Tire a foto de novo.');
+        $bin = base64_decode($m[2], true);
+        if ($bin === false || strlen($bin) > PAR_FOTO_BYTES || !@getimagesizefromstring($bin)) falha('Foto da letra muito grande ou com defeito. Tire a foto de novo.');
+        $ok[] = ['dados' => $f];
+    }
+    return $ok;
 }
 function par_da_matricula($m): ?array {
     $st = par_tabelas()->prepare('SELECT * FROM parodias WHERE mnorm=?'); $st->execute([mat_norm($m)]);
@@ -120,6 +143,7 @@ function api_parSalvar($m, $c, $d, $aceite = false): array {
     if (mb_strlen($artista) < 2) falha('Informe o cantor ou banda da música original.');
     // a letra é opcional (a equipe pode apresentar sem mandar por escrito)
     if (mb_strlen($letra) > PAR_LETRA_MAX) falha('A letra passou de ' . PAR_LETRA_MAX . ' caracteres. Resuma um pouco.');
+    $fotos = array_key_exists('fotos', $d) ? par_fotos_ok($d['fotos'], $r['parodia']['id'] ?? null) : null;   // sem a chave: mantém as fotos
     $p = par_tabelas(); $en = equipe_norm($equipe); $agora = agora();
     $p->exec('BEGIN IMMEDIATE');
     try {
@@ -136,6 +160,15 @@ function api_parSalvar($m, $c, $d, $aceite = false): array {
                          VALUES(?,?,?,?,?,?,?,?,?,?,?,'pendente',?,?)")
               ->execute([$r['matricula'], mat_norm($r['matricula']), $r['nome'], $r['setor'], $equipe, $en, $musica, $artista, $letra, $integ, $cel, $agora, $agora]);
             $id = (int)$p->lastInsertId();
+        }
+        if ($fotos !== null) {
+            $fica = array_filter(array_column($fotos, 'chave'));
+            $del = $p->prepare('DELETE FROM parodia_fotos WHERE parodia=? AND chave NOT IN (' . implode(',', array_fill(0, count($fica), '?') ?: ["''"]) . ')');
+            $del->execute(array_merge([$id], $fica));
+            foreach ($fotos as $k => $f) {
+                if (isset($f['chave'])) $p->prepare('UPDATE parodia_fotos SET ordem=? WHERE chave=?')->execute([$k, $f['chave']]);
+                else $p->prepare('INSERT INTO parodia_fotos(chave,parodia,ordem,dados) VALUES(?,?,?,?)')->execute([bin2hex(random_bytes(16)), $id, $k, $f['dados']]);
+            }
         }
         registrar($ja ? 'Paródia alterada' : 'Paródia inscrita',
             "Equipe $equipe · “{$musica}” ({$artista}) · {$r['matricula']} – {$r['nome']}", 'Colaborador');
@@ -310,6 +343,7 @@ function api_parExcluir($t, $id): array {
     $x = par_busca((int)$id);
     $p = par_tabelas();
     $p->prepare('DELETE FROM parodia_notas WHERE parodia=?')->execute([$x['id']]);
+    $p->prepare('DELETE FROM parodia_fotos WHERE parodia=?')->execute([$x['id']]);
     $p->prepare('DELETE FROM parodias WHERE id=?')->execute([$x['id']]);
     registrar('Paródia excluída pela comissão', "Equipe {$x['equipe']} · {$x['matricula']} – {$x['responsavel']}");
     return par_admin_dados();

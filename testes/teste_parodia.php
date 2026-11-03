@@ -41,6 +41,18 @@ erro('nome de equipe repetido', fn() => api_parSalvar('2002', '122', ['equipe' =
 $x = api_parSalvar('2001', '121', ['musica' => 'Evidências (ao vivo)'] + $d, true);
 t('alterou a própria', $x['alterou'] && api_parConsultar('2001', '121')['parodia']['musica'] === 'Evidências (ao vivo)');
 api_parSalvar('2002', '122', ['equipe' => 'Freio de Mão'] + $d, true);
+
+// fotos da letra (papel)
+$PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==';
+erro('foto inválida', fn() => api_parSalvar('2002', '122', ['equipe' => 'Freio de Mão', 'fotos' => ['data:image/png;base64,AAAA']] + $d, true), 'defeito');
+erro('fotos demais', fn() => api_parSalvar('2002', '122', ['equipe' => 'Freio de Mão', 'fotos' => array_fill(0, 5, $PNG)] + $d, true), 'no máximo');
+api_parSalvar('2002', '122', ['equipe' => 'Freio de Mão', 'letra' => '', 'fotos' => [$PNG, $PNG]] + $d, true);
+$fs = api_parConsultar('2002', '122')['parodia']['fotos'];
+t('2 fotos gravadas', count($fs) === 2 && preg_match('#^letra-foto/[0-9a-f]{32}$#', $fs[0]));
+api_parSalvar('2002', '122', ['equipe' => 'Freio de Mão', 'fotos' => [$fs[1]]] + $d, true);
+t('tirou uma foto e manteve a outra', api_parConsultar('2002', '122')['parodia']['fotos'] === [$fs[1]]);
+api_parSalvar('2002', '122', ['equipe' => 'Freio de Mão'] + $d, true);
+t('sem a chave fotos mantém', count(api_parConsultar('2002', '122')['parodia']['fotos']) === 1);
 api_parSalvar('2003', '123', ['equipe' => 'Cinto Afivelado'] + $d, true);
 
 // jurados

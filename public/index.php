@@ -26,6 +26,19 @@ $tok = (string)($_GET['t'] ?? ($partes[1] ?? ''));
 if ($p === 'index.php') $p = '';
 // parodia.redentorhub.com.br: a raiz já abre a inscrição da paródia (o resto do sistema segue igual)
 if ($p === '' && str_starts_with(strtolower((string)($_SERVER['HTTP_HOST'] ?? '')), 'parodia.')) $p = 'parodia';
+// foto da letra da paródia (chave aleatória de 32 hex; a imagem não muda, então fica em cache)
+if ($p === 'letra-foto') {
+    require dirname(__DIR__) . '/app/lib.php';
+    require dirname(__DIR__) . '/app/parodia.php';
+    $st = par_tabelas()->prepare('SELECT dados FROM parodia_fotos WHERE chave=?'); $st->execute([preg_replace('/[^0-9a-f]/', '', $tok)]);
+    $f = (string)$st->fetchColumn();
+    if (!preg_match('#^data:(image/(?:jpeg|png|webp));base64,(.+)$#s', $f, $m)) { http_response_code(404); exit; }
+    header('Content-Type: ' . $m[1]);
+    header('Cache-Control: private, max-age=31536000, immutable');
+    header('X-Content-Type-Options: nosniff');
+    echo base64_decode($m[2]);
+    exit;
+}
 // foto do candidato como imagem (a versão no ?v= muda quando a foto muda, então pode ficar em cache)
 if ($p === 'foto-cand') {
     require dirname(__DIR__) . '/app/lib.php';

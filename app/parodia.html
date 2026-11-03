@@ -323,6 +323,12 @@ html.redentor .telao:not(.qr){background:url("data:image/svg+xml,%3Csvg xmlns='h
 @keyframes gira{to{transform:rotate(360deg)}}
 @keyframes cresce{from{transform:scaleY(0)}to{transform:none}}
 @media (prefers-reduced-motion:reduce){.tv *{animation-duration:.01s!important;animation-delay:0s!important}}
+.fotosl{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:8px}
+.fotosl .f{position:relative;display:block}
+.fotosl img{width:100%;aspect-ratio:3/4;object-fit:cover;border-radius:10px;border:1px solid var(--line);display:block;background:var(--surface-2)}
+.fotosl .x{position:absolute;top:5px;right:5px;width:30px;height:30px;border-radius:50%;border:0;background:rgba(22,32,58,.8);color:#fff;font-weight:800;line-height:1}
+.fotosl .n{position:absolute;left:6px;bottom:6px;background:rgba(22,32,58,.75);color:#fff;font-size:.72rem;font-weight:700;border-radius:999px;padding:2px 8px}
+.btn.foto{border-style:dashed;border-color:var(--accent);color:var(--accent);background:var(--accent-soft);width:100%;min-height:52px}
 @keyframes surge{from{transform:scale(.6);opacity:0}to{transform:none;opacity:1}}
 @media (prefers-reduced-motion:reduce){.telao.ganhou .t-nome{animation:none}}
 .evs{display:grid;gap:8px}
@@ -350,6 +356,7 @@ th{font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--mu
   .print-only{display:block!important}
   .folha{page-break-after:always;padding:0 8mm}
   .folha h2{font-size:20pt} .folha pre{white-space:pre-wrap;font-family:inherit;font-size:12.5pt;line-height:1.6}
+  .folha img{display:block;max-width:100%;max-height:250mm;margin:4mm auto;page-break-inside:avoid}
 }
 .print-only{display:none}
 </style>
@@ -395,6 +402,28 @@ function erroEm(el,msg){ el.innerHTML=msg?'<div class="note bad">'+esc(msg)+'</d
 function quem(html){ var q=$("#quem"); q.innerHTML=html||""; q.hidden=!html; }
 
 var INFO=null;
+function fotosHtml(l){ return l&&l.length?'<div class="fotosl">'+l.map(function(u,i){ return '<a class="f" href="'+esc(u)+'" target="_blank" rel="noopener"><img src="'+esc(u)+'" alt="Foto '+(i+1)+' da letra" loading="lazy"><span class="n">'+(i+1)+'/'+l.length+'</span></a>'; }).join("")+'</div>':""; }
+/* letra digitada e/ou fotos da letra; aviso quando a equipe não mandou nenhuma das duas */
+function letraHtml(p, estilo){
+  var t=(p.letra?'<div class="letra-txt"'+(estilo||"")+'>'+esc(p.letra)+'</div>':"")+(p.fotos&&p.fotos.length?'<div style="margin-top:10px">'+fotosHtml(p.fotos)+'</div>':"");
+  return t||'<div class="vazio" style="margin-top:10px">A equipe não enviou a letra por escrito.</div>';
+}
+/* foto do celular → JPEG de até 1600 px (cabe folgado no limite do servidor) */
+function reduzirFoto(arq){
+  return new Promise(function(ok,ko){
+    var url=URL.createObjectURL(arq), im=new Image();
+    im.onload=function(){
+      var k=Math.min(1,1600/Math.max(im.naturalWidth,im.naturalHeight)), c=document.createElement("canvas");
+      c.width=Math.round(im.naturalWidth*k); c.height=Math.round(im.naturalHeight*k);
+      var x=c.getContext("2d"); x.fillStyle="#fff"; x.fillRect(0,0,c.width,c.height); x.drawImage(im,0,0,c.width,c.height);
+      URL.revokeObjectURL(url);
+      var q=.82, d=c.toDataURL("image/jpeg",q); while(d.length>1900000&&q>.4){ q-=.12; d=c.toDataURL("image/jpeg",q); }
+      ok(d);
+    };
+    im.onerror=function(){ URL.revokeObjectURL(url); ko(new Error("Não deu para abrir essa imagem. Tire a foto de novo.")); };
+    im.src=url;
+  });
+}
 /* igual à urna: 1) matrícula → Avançar; 2) 3 primeiros dígitos do CPF → Entrar */
 function doisPassos(alvo, topo, botao, enviar){
   var mat="";
@@ -453,7 +482,7 @@ function telaEquipe(r){
       (p.status==="recusada"?'<div class="note bad"><b>A comissão não aprovou esta paródia.</b>'+(p.motivo?' '+esc(p.motivo):'')+'</div>':'')+
       (p.status==="aprovada"?'<div class="note ok">Paródia aprovada! Agora é ensaiar para a apresentação.</div>':'')+
       (p.status==="pendente"?'<div class="note info">Aguardando a aprovação da comissão.'+(r.podeEditar?' Até lá você pode alterar.':'')+'</div>':'')+
-      (!r.podeEditar&&p.letra?'<details><summary class="small" style="cursor:pointer">Ver a letra enviada</summary><div class="letra-txt" style="margin-top:10px">'+esc(p.letra)+'</div></details>':'')+
+      (!r.podeEditar&&(p.letra||(p.fotos&&p.fotos.length))?'<details><summary class="small" style="cursor:pointer">Ver a letra enviada</summary><div style="margin-top:10px">'+letraHtml(p)+'</div></details>':'')+
     '</div>';
   }
   var form = !r.podeEditar ? "" :
@@ -467,6 +496,9 @@ function telaEquipe(r){
       '<label class="field"><span>Integrantes da equipe</span><textarea id="integ" maxlength="1500" placeholder="Um por linha: nome e matrícula">'+esc(p.integrantes)+'</textarea><small>Você ('+esc(r.nome)+') já entra como responsável.</small></label>'+
       '<label class="field"><span>Celular para contato <span class="muted">(opcional)</span></span><input id="cel" inputmode="tel" maxlength="20" value="'+esc(p.celular)+'"></label>'+
       '<label class="field"><span>Letra da paródia <span class="muted">(opcional)</span></span><textarea id="letra" class="letra" maxlength="8000" placeholder="Se quiser, escreva a letra completa, com os refrões.">'+esc(p.letra)+'</textarea><div class="cont" id="cont"></div></label>'+
+      '<div class="field"><span>Ou mande foto da letra <span class="muted">(opcional, até 4 fotos)</span></span><div id="fl"></div>'+
+        '<label class="btn foto" for="ffoto" id="lfoto">📷 Tirar foto da letra</label><input type="file" id="ffoto" accept="image/*" multiple hidden>'+
+        '<small>Escreveu no papel? Fotografe de perto, com boa luz, uma folha por foto.</small></div>'+
       '<label class="check"><input type="checkbox" id="aceite"><span>Declaro que a letra foi criada pela nossa equipe, respeita colegas e a empresa, e autorizo a CIPA a divulgá-la e a apresentá-la nos eventos de segurança.</span></label>'+
       '<div id="err"></div>'+
       '<button class="btn primary lg" id="go">'+(r.parodia?'Salvar alterações':'Enviar inscrição')+'</button>'+
@@ -474,10 +506,24 @@ function telaEquipe(r){
   app.innerHTML='<div class="narrow stack">'+st+form+'</div>';
   if(!r.podeEditar) return;
   var le=$("#letra"); function cont(){ $("#cont").textContent=le.value.length+" / 8000"; } le.oninput=cont; cont();
+  var FOTOS=(p.fotos||[]).slice();
+  function mostraFotos(){
+    $("#fl").innerHTML=FOTOS.length?'<div class="fotosl" style="margin-bottom:8px">'+FOTOS.map(function(u,i){ return '<div class="f"><img src="'+esc(u)+'" alt="Foto '+(i+1)+' da letra"><button type="button" class="x" data-x="'+i+'" aria-label="Tirar esta foto">✕</button><span class="n">'+(i+1)+'</span></div>'; }).join("")+'</div>':"";
+    $("#fl").querySelectorAll("[data-x]").forEach(function(b){ b.onclick=function(){ FOTOS.splice(+b.dataset.x,1); mostraFotos(); }; });
+    $("#lfoto").hidden=FOTOS.length>=4; $("#lfoto").textContent=FOTOS.length?"📷 Tirar mais uma foto":"📷 Tirar foto da letra";
+  }
+  mostraFotos();
+  $("#ffoto").onchange=function(){
+    var arqs=Array.prototype.slice.call(this.files||[],0,4-FOTOS.length); this.value="";
+    if(!arqs.length) return;
+    $("#lfoto").textContent="Preparando a foto…";
+    arqs.reduce(function(pr,a){ return pr.then(function(){ return reduzirFoto(a).then(function(d){ FOTOS.push(d); }); }); },Promise.resolve())
+      .then(mostraFotos,function(e){ mostraFotos(); erroEm($("#err"),e.message); });
+  };
   $("#f").onsubmit=function(ev){ ev.preventDefault();
     var b=$("#go");
-    var d={equipe:$("#equipe").value,musica:$("#musica").value,artista:$("#artista").value,integrantes:$("#integ").value,celular:$("#cel").value,letra:le.value};
-    busy(b,true,"Enviando…");
+    var d={equipe:$("#equipe").value,musica:$("#musica").value,artista:$("#artista").value,integrantes:$("#integ").value,celular:$("#cel").value,letra:le.value,fotos:FOTOS};
+    busy(b,true,FOTOS.some(function(u){ return /^data:/.test(u); })?"Enviando as fotos…":"Enviando…");
     api("parSalvar",EU.m,EU.c,d,$("#aceite").checked).then(function(x){ telaEnviada(x); })
       .catch(function(e){ busy(b,false); erroEm($("#err"),e.message); });
   };
@@ -559,7 +605,7 @@ function detalhe(p){
     (p.integrantes?'<div class="small"><b>Integrantes:</b><br>'+esc(p.integrantes).replace(/\n/g,"<br>")+'</div>':'')+
     (p.motivo?'<div class="note '+(p.status==="recusada"?"bad":"warn")+'"><b>Motivo:</b> '+esc(p.motivo)+'</div>':'')+
     (p.validadoPor?'<div class="small muted">Última validação: '+esc(p.validadoPor)+' em '+esc(dataBr(p.validadoEm))+'</div>':'')+
-    (p.letra?'<div class="letra-txt">'+esc(p.letra)+'</div>':'<div class="vazio">A equipe não enviou a letra por escrito.</div>');
+    letraHtml(p);
 }
 function opcoesNota(v){ var o='<option value="">–</option>'; for(var n=10;n>=0;n--) o+='<option value="'+n+'"'+(v===n?" selected":"")+'>'+n+'</option>'; return o; }
 function abrirJurado(id){
@@ -589,7 +635,8 @@ function abrirJurado(id){
 function imprimir(lista){
   if(!lista.length){ toast("Nenhuma paródia aprovada para imprimir."); return; }
   $("#impressao").innerHTML=lista.map(function(p){ return '<section class="folha"><p style="font-size:10pt;color:#555">'+esc((DADOS.cfg.titulo||""))+'</p><h2>'+esc(p.equipe)+'</h2>'+
-    '<p><b>Música original:</b> “'+esc(p.musica)+'” – '+esc(p.artista)+'<br><b>Responsável:</b> '+esc(p.responsavel)+(p.integrantes?'<br><b>Integrantes:</b> '+esc(p.integrantes).replace(/\n/g,", "):'')+'</p><pre>'+esc(p.letra||"(letra não enviada por escrito)")+'</pre></section>'; }).join("");
+    '<p><b>Música original:</b> “'+esc(p.musica)+'” – '+esc(p.artista)+'<br><b>Responsável:</b> '+esc(p.responsavel)+(p.integrantes?'<br><b>Integrantes:</b> '+esc(p.integrantes).replace(/\n/g,", "):'')+'</p>'+(p.letra?'<pre>'+esc(p.letra)+'</pre>':'')+(p.fotos||[]).map(function(u){ return '<img src="'+esc(u)+'" alt="">'; }).join("")+
+    (!p.letra&&!(p.fotos&&p.fotos.length)?'<p><i>(letra não enviada por escrito)</i></p>':'')+'</section>'; }).join("");
   setTimeout(function(){ window.print(); },50);
 }
 
@@ -610,7 +657,7 @@ function telaAdmin(){
           '<div class="meta">👤 '+esc(p.matricula)+' – '+esc(p.responsavel)+(p.setor?' · '+esc(p.setor):'')+(p.celular?' · '+esc(p.celular):'')+'</div></div>'+
           '<div style="text-align:right">'+pill(p.status)+(p.notas.length?'<div class="small muted" style="margin-top:4px">média <b>'+fmt(p.media)+'</b> ('+p.notas.length+')</div>':'')+'</div></div>'+
         (p.motivo&&p.status==="recusada"?'<div class="note bad" style="margin-top:10px">'+esc(p.motivo)+'</div>':'')+
-        '<details'+(p.status==="pendente"?' open':'')+'><summary>Ler a letra</summary>'+(p.letra?'<div class="letra-txt">'+esc(p.letra)+'</div>':'<div class="vazio" style="margin-top:10px">A equipe não enviou a letra por escrito.</div>')+
+        '<details'+(p.status==="pendente"?' open':'')+'><summary>Ler a letra'+(p.fotos&&p.fotos.length?' · 📷 '+p.fotos.length+' foto(s)':'')+'</summary>'+letraHtml(p)+
           (p.integrantes?'<div class="small" style="margin-top:8px"><b>Integrantes:</b> '+esc(p.integrantes).replace(/\n/g,", ")+'</div>':'')+'</details>'+
         (p.status==="pendente"
           ?'<div class="decide"><button class="btn ok" data-ap="'+p.id+'" data-a="aprovar">✔ Aprovar</button><button class="btn danger" data-ap="'+p.id+'" data-a="recusar">✕ Não aprovar</button></div>'
