@@ -16,7 +16,7 @@ const PERMITIDAS = ['ballot', 'consultar', 'login', 'votar', 'adminLogin', 'admi
     'parInfo', 'parConsultar', 'parSalvar', 'parJuradoLogin', 'parJuradoDados', 'parValidar', 'parNota',
     'parAdmin', 'parSaveCfg', 'parJurado', 'parExcluir',
     // presença nos eventos e sorteio de brindes
-    'preQr', 'preDados', 'preEvento', 'preExcluirEvento', 'preMarcar', 'preDesmarcar', 'preSortear', 'preAnular'];
+    'preQr', 'preDados', 'preEvento', 'preExcluirEvento', 'preMarcar', 'preDesmarcar', 'preSortear', 'preAnular', 'preEventoInfo', 'preCheckin', 'preAbrir'];
 
 function responder($v, int $code = 200): never {
     http_response_code($code);

@@ -55,6 +55,21 @@ $d2 = api_preEvento($A, 'SIPAT 2026 – dia 2'); $ev2 = $d2['evento'];
 api_preMarcar($A, $ev2, $q['codigo']);
 t('outro evento é separado', count(api_preDados($A, $ev2)['presentes']) === 1);
 t('quem ganhou no dia 1 concorre no dia 2', api_preSortear($A, $ev2)['ganhador']['matricula'] === '3001');
+// check-in pelo celular com o QR da mesa
+$tk = api_preDados($A, $ev2)['eventos'][0]['token'];
+t('evento tem token', (bool)preg_match('/^[0-9a-f]{24}$/', $tk));
+erro('token inválido', fn() => api_preCheckin('abc', '3004', '454'), 'inválido');
+erro('check-in com CPF errado', fn() => api_preCheckin($tk, '3004', '000'), 'não conferem');
+$r = api_preCheckin($tk, '3004', '454');
+t('check-in marcou', $r['novo'] && $r['nome'] === 'Pessoa 4');
+t('check-in repetido', !api_preCheckin($tk, '3004', '454')['novo']);
+t('info do evento', api_preEventoInfo($tk)['aberto'] === true);
+api_preAbrir($A, $ev2, false);
+erro('check-in encerrado', fn() => api_preCheckin($tk, '3005', '455'), 'encerrado');
+api_preAbrir($A, $ev2, true);
+t('reaberto', api_preCheckin($tk, '3005', '455')['novo']);
+t('presentes do dia 2', count(api_preDados($A, $ev2)['presentes']) === 3);
+
 $fica = api_preDados($A, $ev)['presentes'][0]['matricula'];   // o anulado já saiu; tira um dos que ficaram
 $d = api_preDesmarcar($A, $ev, $fica);
 t('desmarcou', count($d['presentes']) === 1);

@@ -12,6 +12,7 @@ o servidor é PHP 8.2 + SQLite (`app/lib.php`, chamado por `public/api.php`).
 | `/jurados` | comissão aprova (ou não) as paródias e acompanha a apuração ao vivo; jurados (matrícula + CPF) dão nota às aprovadas |
 | `/qr` | colaborador mostra o QR de presença (matrícula + CPF) |
 | `/presenca` | comissão lê os QR no evento (câmera ou matrícula) e sorteia brindes entre os presentes |
+| `/checkin/TOKEN` | QR da mesa de cada evento: o colaborador lê com o celular e confirma a presença (matrícula + CPF) |
 | `/totem` | tablet fixo: toque para iniciar em tela cheia, tela sempre ligada, volta à matrícula após 60 s sem uso (a tela FIM espera o CONCLUIR) |
 
 Os endereços antigos com `?p=comissao`, `?p=totem`, `?p=inscricao` continuam funcionando.
