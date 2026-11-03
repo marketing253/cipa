@@ -19,7 +19,7 @@ function erro(string $nome, callable $f, string $trecho) {
 $A = api_adminLogin('admin', 'senha-teste-1')['token'];
 api_saveConfig($A, ['verificacao' => 'cpf3', 'vagasTitulares' => 4]);
 $rows = [];
-for ($i = 1; $i <= 5; $i++) $rows[] = ['matricula' => (string)(3000 + $i), 'nome' => "Pessoa $i", 'setor' => 'Tráfego', 'codigo' => "45$i.456.789-00"];
+for ($i = 1; $i <= 5; $i++) $rows[] = ['matricula' => (string)(3000 + $i), 'nome' => "Pessoa $i", 'escala' => "Apelido $i", 'setor' => 'Tráfego', 'codigo' => "45$i.456.789-00"];
 api_importar($A, $rows, true);
 
 erro('QR com CPF errado', fn() => api_preQr('3001', '999'), 'não conferem');
@@ -42,7 +42,8 @@ $d = api_preDados($A, $ev);
 t('3 presentes', count($d['presentes']) === 3 && $d['eventos'][0]['presentes'] === 3);
 
 $ganhou = [];
-for ($i = 0; $i < 3; $i++) $ganhou[] = api_preSortear($A, $ev, "Brinde $i")['ganhador']['matricula'];
+for ($i = 0; $i < 3; $i++) { $g = api_preSortear($A, $ev, "Brinde $i")['ganhador']; $ganhou[] = $g['matricula']; }
+t('ganhador traz nome de escala e id', str_starts_with($g['escala'], 'Apelido ') && $g['id'] > 0);
 t('sorteio sem repetir', count(array_unique($ganhou)) === 3);
 erro('acabaram os presentes', fn() => api_preSortear($A, $ev), 'Não há mais');
 $d = api_preDados($A, $ev);
@@ -54,7 +55,8 @@ $d2 = api_preEvento($A, 'SIPAT 2026 – dia 2'); $ev2 = $d2['evento'];
 api_preMarcar($A, $ev2, $q['codigo']);
 t('outro evento é separado', count(api_preDados($A, $ev2)['presentes']) === 1);
 t('quem ganhou no dia 1 concorre no dia 2', api_preSortear($A, $ev2)['ganhador']['matricula'] === '3001');
-$d = api_preDesmarcar($A, $ev, '3002');
+$fica = api_preDados($A, $ev)['presentes'][0]['matricula'];   // o anulado já saiu; tira um dos que ficaram
+$d = api_preDesmarcar($A, $ev, $fica);
 t('desmarcou', count($d['presentes']) === 1);
 $d = api_preExcluirEvento($A, $ev);
 t('evento excluído', count($d['eventos']) === 1 && $d['evento'] === $ev2);

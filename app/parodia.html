@@ -100,7 +100,7 @@ button{cursor:pointer}
 .hero{text-align:center;padding:8px 0 4px}
 .hero .ico{font-size:2.6rem;line-height:1}
 .hero h2{font-size:1.5rem;margin-top:6px}
-.toast{position:fixed;left:50%;bottom:calc(22px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:12px 20px;border-radius:12px;font-weight:600;z-index:60;max-width:calc(100% - 32px)}
+.toast{position:fixed;left:50%;bottom:calc(22px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:12px 20px;border-radius:12px;font-weight:600;z-index:90;max-width:calc(100% - 32px)}
 .loading{padding:70px 0;text-align:center;color:var(--muted)}
 .cont{font-size:.8rem;color:var(--muted);text-align:right}
 
@@ -135,6 +135,22 @@ button{cursor:pointer}
 .leitura.ok{background:var(--ok-soft);color:var(--ok)} .leitura.ja{background:var(--amber-soft);color:var(--amber-ink)} .leitura.bad{background:var(--bad-soft);color:var(--bad)}
 .contador{font-family:var(--f-display);font-size:2.6rem;font-weight:800;line-height:1;color:var(--accent)}
 .ganhador{text-align:center;padding:26px 16px;border-radius:var(--r);background:linear-gradient(120deg,#2a0b30,#a21caf);color:#fff}
+.telao{position:fixed;inset:0;z-index:80;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3vh;padding:4vh 4vw;text-align:center;color:#fff;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='44'%3E%3Cpath d='M19 14h6v5h5v6h-5v5h-6v-5h-5v-6h5z' fill='%23d29500' fill-opacity='.10'/%3E%3C/svg%3E"),linear-gradient(135deg,#2a0b30 0%,#5b1366 55%,#a21caf 100%)}
+.telao .t-top{font-family:var(--f-display);font-size:clamp(1.2rem,3vw,2.2rem);font-weight:700;opacity:.9;letter-spacing:.04em;text-transform:uppercase}
+.telao .t-brinde{font-size:clamp(1.4rem,4vw,3rem);font-weight:700;color:#ffd76a}
+.telao .t-nome{font-family:var(--f-display);font-size:clamp(2.6rem,9vw,8rem);font-weight:800;line-height:1.02;text-wrap:balance;max-width:95vw}
+.telao .t-escala{font-family:var(--f-display);font-size:clamp(1.8rem,5.5vw,4.6rem);font-weight:700;color:#ffd76a;line-height:1.05}
+.telao .t-info{font-size:clamp(1rem,2.4vw,1.8rem);opacity:.85}
+.telao .t-rodando{font-family:var(--f-display);font-size:clamp(2.2rem,7vw,6rem);font-weight:800;opacity:.75;min-height:1.2em}
+.telao input{font:inherit;font-size:clamp(1.1rem,2.4vw,1.6rem);text-align:center;border:0;border-radius:14px;padding:12px 18px;width:min(560px,90vw);color:#2a0b30}
+.telao .t-btn{font:inherit;font-family:var(--f-display);font-weight:800;font-size:clamp(1.4rem,3.5vw,2.6rem);padding:.45em 1.6em;border-radius:999px;border:0;background:#ffd76a;color:#2a0b30;cursor:pointer}
+.telao .t-btn:disabled{opacity:.6}
+.telao .t-acoes{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
+.telao .t-sec{font:inherit;font-weight:700;padding:10px 20px;border-radius:999px;border:1px solid rgba(255,255,255,.5);background:rgba(255,255,255,.1);color:#fff;cursor:pointer}
+.telao .t-fechar{position:absolute;top:14px;right:14px}
+.telao.ganhou .t-nome{animation:surge .6s ease-out}
+@keyframes surge{from{transform:scale(.6);opacity:0}to{transform:none;opacity:1}}
+@media (prefers-reduced-motion:reduce){.telao.ganhou .t-nome{animation:none}}
 .ganhador .nm{font-family:var(--f-display);font-size:clamp(1.6rem,5vw,2.6rem);font-weight:800;line-height:1.1;margin-top:6px}
 .barra{height:8px;border-radius:99px;background:var(--line);overflow:hidden;min-width:80px}
 .barra>i{display:block;height:100%;background:var(--ok)}
@@ -545,7 +561,7 @@ function telaPresenca(){
       '<form id="fm" class="row" novalidate><label class="field" style="flex:1 1 160px"><span>Ou digite a matrícula</span><input id="mm" inputmode="numeric" autocomplete="off"></label><button class="btn" id="mb">Marcar</button></form>'+
     '</div>'+
     '<div class="card pad stack"><h3>Sorteio de brindes</h3>'+
-      '<form id="fs" class="row" novalidate><label class="field" style="flex:1 1 200px"><span>Brinde <span class="muted">(opcional)</span></span><input id="br" maxlength="100" placeholder="Ex.: Caixa de som"></label><button class="btn primary" id="sb">🎁 Sortear</button></form>'+
+      '<form id="fs" class="row" novalidate><label class="field" style="flex:1 1 200px"><span>Brinde <span class="muted">(opcional)</span></span><input id="br" maxlength="100" placeholder="Ex.: Caixa de som"></label><button class="btn primary" id="sb">🎁 Sortear em tela cheia</button></form>'+
       '<div id="ganhou"></div>'+
       (d.sorteios.length?'<div class="tbl"><table><thead><tr><th>#</th><th>Ganhador</th><th>Brinde</th><th></th></tr></thead><tbody>'+d.sorteios.map(function(x,i){
         return '<tr><td>'+(i+1)+'º</td><td><b>'+esc(x.nome)+'</b><div class="small muted">'+esc(x.matricula)+(x.setor?' · '+esc(x.setor):'')+'</div></td><td>'+esc(x.brinde||"—")+'</td>'+
@@ -561,7 +577,7 @@ function telaPresenca(){
   $("#cam").onclick=abrirCamera;
   $("#camfecha").onclick=pararCamera;
   $("#fm").onsubmit=function(ev2){ ev2.preventDefault(); var v=$("#mm").value.trim(); if(!v) return; marcar(v); $("#mm").value=""; };
-  $("#fs").onsubmit=function(ev2){ ev2.preventDefault(); sortear(); };
+  $("#fs").onsubmit=function(ev2){ ev2.preventDefault(); abrirTelao($("#br").value); };
   app.querySelectorAll("[data-anula]").forEach(function(b){ b.onclick=function(){
     if(!confirm("Anular este sorteio? A pessoa sai da lista de presença deste evento.")) return;
     api("preAnular",AT,+b.dataset.anula).then(function(x){ PRE=x; telaPresenca(); toast("Sorteio anulado. Pode sortear de novo."); }).catch(function(e){ toast(e.message); }); }; });
@@ -634,20 +650,68 @@ function pararCamera(){
   var a=$("#camarea"); if(a) a.hidden=true; var b=$("#cam"); if(b) b.hidden=false;
 }
 
-function sortear(){
-  var b=$("#sb"); busy(b,true,"Sorteando…");
-  var nomes=PRE.presentes.map(function(x){ return x.nome; }), g=$("#ganhou"), i=0;
-  var roda=setInterval(function(){ if(nomes.length) g.innerHTML='<div class="ganhador"><div class="lbl" style="color:#fff">Sorteando…</div><div class="nm">'+esc(nomes[(i++)%nomes.length])+'</div></div>'; },70);
-  api("preSortear",AT,PRE.evento,$("#br").value).then(function(x){
-    setTimeout(function(){
-      clearInterval(roda); busy(b,false);
-      var w=x.ganhador; delete x.ganhador; PRE=x;
-      telaPresenca();
-      $("#ganhou").innerHTML='<div class="ganhador"><div class="lbl" style="color:#fff">🎉 Ganhador'+(w.brinde?' · '+esc(w.brinde):'')+'</div><div class="nm">'+esc(w.nome)+'</div>'+
-        '<div style="opacity:.85;margin-top:6px">Matrícula '+esc(w.matricula)+(w.setor?' · '+esc(w.setor):'')+' · entre '+x.concorreram+' presentes</div></div>';
-      apito(true);
-    },1800);
-  }).catch(function(e){ clearInterval(roda); busy(b,false); g.innerHTML='<div class="note bad">'+esc(e.message)+'</div>'; });
+/* telão do sorteio: tela cheia, nome completo + nome de escala, e a voz anuncia o ganhador */
+function nomeFalado(n){ return String(n||"").toLowerCase().replace(/(^|\s)(\S)/g,function(m,a,b){ return a+b.toUpperCase(); }); }
+function falar(txt){
+  try{ var sy=window.speechSynthesis; if(!sy) return; sy.cancel();
+    var u=new SpeechSynthesisUtterance(txt); u.lang="pt-BR"; u.rate=.92;
+    var v=sy.getVoices().filter(function(x){ return /^pt(-|_)BR/i.test(x.lang); });
+    if(v.length) u.voice=v.find(function(x){ return /google|francisca|luciana|maria/i.test(x.name); })||v[0];
+    sy.speak(u);
+  }catch(e){}
+}
+if(window.speechSynthesis) speechSynthesis.getVoices();   // carrega as vozes antes do primeiro sorteio
+function abrirTelao(brinde){
+  var el=document.createElement("div"); el.className="telao"; document.body.appendChild(el);
+  var raiz=document.documentElement;
+  if(raiz.requestFullscreen) raiz.requestFullscreen().catch(function(){});
+  function fechar(){ el.remove(); if(document.fullscreenElement&&document.exitFullscreen) document.exitFullscreen().catch(function(){}); if(window.speechSynthesis) speechSynthesis.cancel(); telaPresenca(); }
+  function pronto(){
+    var faltam=PRE.presentes.length-PRE.sorteios.length;
+    el.className="telao";
+    el.innerHTML='<button class="t-sec t-fechar">✕ Sair</button>'+
+      '<div class="t-top">Sorteio de brindes · CIPA</div>'+
+      '<div class="t-info">'+esc(evAtual().nome)+' · <b>'+faltam+'</b> concorrendo</div>'+
+      '<input id="tbr" maxlength="100" placeholder="Brinde (opcional)" value="'+esc(brinde)+'">'+
+      '<button class="t-btn" id="tgo">🎁 SORTEAR</button>';
+    el.querySelector(".t-fechar").onclick=fechar;
+    el.querySelector("#tgo").onclick=girar;
+  }
+  function girar(){
+    brinde=el.querySelector("#tbr").value.trim();
+    var nomes=PRE.presentes.map(function(x){ return x.nome; }), i=0;
+    el.innerHTML='<div class="t-top">Sorteando…</div>'+(brinde?'<div class="t-brinde">'+esc(brinde)+'</div>':'')+'<div class="t-rodando" id="trod"></div>';
+    var rod=el.querySelector("#trod");
+    var roda=setInterval(function(){ if(nomes.length) rod.textContent=nomes[Math.floor(Math.random()*nomes.length)]; },80);
+    var t0=Date.now();
+    api("preSortear",AT,PRE.evento,brinde).then(function(x){
+      setTimeout(function(){
+        clearInterval(roda);
+        var w=x.ganhador; delete x.ganhador; PRE=x;
+        mostrar(w,x.concorreram);
+      },Math.max(0,3000-(Date.now()-t0)));
+    }).catch(function(e){ clearInterval(roda); el.innerHTML='<div class="t-top">'+esc(e.message)+'</div><button class="t-sec" id="tok">Voltar</button>'; el.querySelector("#tok").onclick=fechar; });
+  }
+  function mostrar(w,n){
+    el.className="telao ganhou";
+    var esc2=w.escala&&w.escala.toLowerCase()!==w.nome.toLowerCase()?w.escala:"";
+    el.innerHTML='<button class="t-sec t-fechar">✕ Sair</button>'+
+      '<div class="t-top">🎉 Ganhador'+(w.brinde?'':'')+'</div>'+
+      (w.brinde?'<div class="t-brinde">'+esc(w.brinde)+'</div>':'')+
+      '<div class="t-nome">'+esc(w.nome)+'</div>'+
+      (esc2?'<div class="t-escala">'+esc(esc2)+'</div>':'')+
+      '<div class="t-info">Matrícula '+esc(w.matricula)+(w.setor?' · '+esc(w.setor):'')+' · entre '+n+' presentes</div>'+
+      '<div class="t-acoes"><button class="t-btn" id="tnovo">Sortear outro</button><button class="t-sec" id="tfala">🔊 Falar de novo</button><button class="t-sec" id="taus">Ausente (anular)</button></div>';
+    var frase="O ganhador"+(w.brinde?" "+w.brinde.replace(/^\s+/,"")+",":"")+" é: "+nomeFalado(w.nome)+(esc2?". "+nomeFalado(esc2):"")+"!";
+    if(w.brinde) frase="O ganhador do brinde "+w.brinde+" é: "+nomeFalado(w.nome)+(esc2?". "+nomeFalado(esc2):"")+"!";
+    apito(true); setTimeout(function(){ falar(frase); },350);
+    el.querySelector(".t-fechar").onclick=fechar;
+    el.querySelector("#tnovo").onclick=function(){ brinde=""; pronto(); };
+    el.querySelector("#tfala").onclick=function(){ falar(frase); };
+    el.querySelector("#taus").onclick=function(){
+      api("preAnular",AT,w.id).then(function(x){ PRE=x; brinde=w.brinde; pronto(); toast("Sorteio anulado. Sorteie de novo."); }).catch(function(e){ toast(e.message); }); };
+  }
+  pronto();
 }
 function baixarCsv(ev){
   var l=[["Matrícula","Nome","Setor","Chegada","Como"]].concat(PRE.presentes.slice().reverse().map(function(x){ return [x.matricula,x.nome,x.setor||"",dataBr(x.em),x.como||""]; }));

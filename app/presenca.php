@@ -132,8 +132,11 @@ function api_preSortear($t, $evento, $brinde = ''): array {
     $brinde = txt($brinde, 100);
     $p->prepare('INSERT INTO sorteios(evento,mnorm,matricula,nome,setor,brinde,em) VALUES(?,?,?,?,?,?,?)')
       ->execute([$ev['id'], $g['mnorm'], $g['matricula'], $g['nome'], $g['setor'], $brinde, agora()]);
+    $idS = (int)$p->lastInsertId();
     registrar('Sorteio de brinde', "{$ev['nome']} · " . ($brinde ?: 'brinde') . " · {$g['matricula']} – {$g['nome']} (entre " . count($c) . ')');
-    return ['ganhador' => ['matricula' => $g['matricula'], 'nome' => $g['nome'], 'setor' => (string)$g['setor'], 'brinde' => $brinde],
+    $e = eleitor_por_mat($g['matricula']);   // nome de escala (apelido) para o telão
+    return ['ganhador' => ['id' => $idS, 'matricula' => $g['matricula'], 'nome' => $g['nome'],
+            'escala' => (string)($e['escala'] ?? ''), 'setor' => (string)$g['setor'], 'brinde' => $brinde],
             'concorreram' => count($c)] + pre_dados($ev['id']);
 }
 
