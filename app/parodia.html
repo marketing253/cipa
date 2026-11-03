@@ -667,7 +667,7 @@ function telaAdmin(){
         '<div class="row"><a class="btn sm primary" href="presenca">Abrir</a></div></div>'+
       '<div class="lk"><div class="top"><div class="ic">🪪</div><div style="min-width:0"><b>QR do colaborador</b><div class="url">'+esc(d.urlApp)+'qr</div><div class="small muted">Para quem vai mostrar o QR na entrada</div></div></div>'+
         '<div class="row"><button class="btn sm" data-cp="'+esc(d.urlApp)+'qr">Copiar link</button></div></div>'+
-      '<div class="lk"><div class="top"><div class="ic">🗳️</div><div style="min-width:0"><b>Eleição da CIPA</b><div class="url">'+esc(d.urlApp)+'admin</div><div class="small muted">Urna, candidatos e resultado</div></div></div>'+
+      '<div class="lk"><div class="top"><div style="min-width:0"><b>Eleição da CIPA</b><div class="url">'+esc(d.urlApp)+'admin</div><div class="small muted">Urna, candidatos e resultado</div></div></div>'+
         '<div class="row"><a class="btn sm" href="admin">Abrir</a></div></div>'+
     '</div>'+
     '<div class="tabs" id="abas">'+abas.map(function(a){ return '<button data-a="'+a[0]+'" aria-pressed="'+(ABA===a[0])+'">'+esc(a[1])+'</button>'; }).join("")+'</div>'+
