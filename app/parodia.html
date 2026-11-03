@@ -156,15 +156,45 @@ button{cursor:pointer}
 .telao .t-passos{text-align:left;font-size:clamp(1.1rem,2.4vw,2rem);line-height:1.5;margin:0;padding-left:1.2em}
 .telao .t-conta{font-family:var(--f-display);font-size:clamp(2.4rem,7vw,6rem);font-weight:800;color:#ffd76a;line-height:1}
 @media (max-aspect-ratio:1/1){.telao.qr{flex-direction:column}.telao .t-col{max-width:92vw}.telao .t-qr{width:min(80vw,46vh)}}
+/* check-in com as cores da Redentor (azul e dourado), logo em destaque e efeitos */
+html.redentor{--bg:#eef2fb;--surface-2:#f5f7fd;--ink:#16203a;--muted:#5a6380;--line:#e0e5f2;--line-2:#cdd4e6;
+  --accent:#3e4095;--accent-strong:#2f3180;--accent-soft:#e6e8f7;--gold:#d29500}
+html.redentor body{background:radial-gradient(1200px 500px at 50% -10%,#dfe5fb 0%,var(--bg) 60%)}
+html.redentor .band{background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='44'%3E%3Cpath d='M19 14h6v5h5v6h-5v5h-6v-5h-5v-6h5z' fill='%23d29500' fill-opacity='.10'/%3E%3C/svg%3E"),linear-gradient(120deg,#16203a 0%,#1e2b4f 55%,#3e4095 100%)}
+html.redentor .btn.primary{background:linear-gradient(135deg,#3e4095,#2f3180);border-color:#2f3180;box-shadow:0 6px 18px -6px rgba(62,64,149,.55)}
+html.redentor .card{border-top:4px solid var(--gold)}
+.ci-logo{display:grid;place-items:center;margin:-4px auto 4px}
+.ci-logo span{display:grid;place-items:center;background:#fff;border-radius:20px;padding:10px 18px;box-shadow:0 10px 28px -12px rgba(22,32,58,.35);position:relative;overflow:hidden}
+.ci-logo img{height:64px;width:auto;display:block}
+.ci-logo span::after{content:"";position:absolute;inset:0;background:linear-gradient(110deg,transparent 30%,rgba(255,255,255,.85) 50%,transparent 70%);transform:translateX(-120%);animation:brilho 3.2s ease-in-out 1s infinite}
+@keyframes brilho{0%{transform:translateX(-120%)}35%,100%{transform:translateX(120%)}}
+.ci-ev{text-align:center} .ci-ev .lbl{color:var(--gold)} .ci-ev h2{font-size:1.55rem}
+.entra{animation:entra .55s cubic-bezier(.2,.8,.2,1) both}
+@keyframes entra{from{opacity:0;transform:translateY(18px) scale(.98)}to{opacity:1;transform:none}}
+.ok-anim{width:96px;height:96px;margin:0 auto;display:block}
+.ok-anim circle{stroke:#0a7a40;stroke-width:6;fill:#e0f3e8;stroke-dasharray:290;stroke-dashoffset:290;animation:traco .6s ease-out forwards}
+.ok-anim path{stroke:#0a7a40;stroke-width:8;fill:none;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:80;stroke-dashoffset:80;animation:traco .4s .5s ease-out forwards}
+@keyframes traco{to{stroke-dashoffset:0}}
+.ci-nome{font-family:var(--f-display);font-size:1.5rem;font-weight:800;color:var(--accent);margin:8px 0 0}
+.ci-sorte{margin-top:16px;border-radius:var(--r-sm);padding:14px;background:linear-gradient(135deg,#16203a,#3e4095);color:#fff;font-weight:600}
+.ci-sorte b{color:#ffd76a}
+#confete{position:fixed;inset:0;pointer-events:none;z-index:95}
+@media (prefers-reduced-motion:reduce){.entra,.ok-anim circle,.ok-anim path,.ci-logo span::after{animation:none!important;stroke-dashoffset:0}}
+.telao.qr{background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='44'%3E%3Cpath d='M19 14h6v5h5v6h-5v5h-6v-5h-5v-6h5z' fill='%23d29500' fill-opacity='.12'/%3E%3C/svg%3E"),linear-gradient(135deg,#16203a 0%,#1e2b4f 50%,#3e4095 100%);border-bottom:1.2vh solid #d29500}
+.telao .t-logo{background:#fff;border-radius:2vh;padding:1.4vh 2.4vh;display:inline-grid}
+.telao .t-logo img{height:clamp(48px,9vh,110px);width:auto;display:block}
+.telao.qr .t-qr{box-shadow:0 0 0 1.2vh #d29500,0 3vh 8vh -2vh rgba(0,0,0,.5);animation:pulsaqr 2.6s ease-in-out infinite}
+@keyframes pulsaqr{50%{box-shadow:0 0 0 1.8vh #ffd76a,0 3vh 8vh -2vh rgba(0,0,0,.5)}}
+@media (prefers-reduced-motion:reduce){.telao.qr .t-qr{animation:none}}
 @keyframes surge{from{transform:scale(.6);opacity:0}to{transform:none;opacity:1}}
 @media (prefers-reduced-motion:reduce){.telao.ganhou .t-nome{animation:none}}
 .evs{display:grid;gap:8px}
 .ev{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;justify-content:space-between;padding:10px 12px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface)}
 .ev.atual{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
 .ev .nm{font-weight:700} .ev .acoes{display:flex;gap:6px;flex-wrap:wrap}
-.cartaz{text-align:center;font-family:var(--f-display);color:#2a0b30}
-.cartaz h1{font-size:30pt;margin:0} .cartaz h2{font-size:20pt;margin:6mm 0 0;color:#86198f}
-.cartaz .q{width:120mm;height:120mm;margin:10mm auto 6mm} .cartaz .q img,.cartaz .q canvas{width:100%!important;height:auto!important}
+.cartaz{text-align:center;font-family:var(--f-display);color:#16203a;border-top:6mm solid #3e4095;border-bottom:4mm solid #d29500;padding:8mm 0}
+.cartaz h1{font-size:30pt;margin:4mm 0 0;color:#3e4095} .cartaz h2{font-size:20pt;margin:4mm 0 0;color:#d29500}
+.cartaz .q{width:115mm;height:115mm;margin:8mm auto 6mm;padding:4mm;border:2mm solid #d29500;border-radius:6mm} .cartaz .q img,.cartaz .q canvas{width:100%!important;height:auto!important}
 .cartaz ol{text-align:left;display:inline-block;font-family:var(--f-body);font-size:15pt;line-height:1.6;margin:0}
 .ganhador .nm{font-family:var(--f-display);font-size:clamp(1.6rem,5vw,2.6rem);font-weight:800;line-height:1.1;margin-top:6px}
 .barra{height:8px;border-radius:99px;background:var(--line);overflow:hidden;min-width:80px}
@@ -551,20 +581,39 @@ function telaQr(){
 }
 
 /* colaborador leu o QR da mesa: confirma a presença com matrícula + CPF */
+function confete(){
+  if(window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  var c=document.createElement("canvas"); c.id="confete"; document.body.appendChild(c);
+  var x=c.getContext("2d"), W=c.width=innerWidth, H=c.height=innerHeight, cores=["#3e4095","#d29500","#ffd76a","#16203a","#ffffff","#6f73d6"];
+  var ps=[]; for(var i=0;i<140;i++) ps.push({x:W/2+(Math.random()-.5)*80,y:H*.38,vx:(Math.random()-.5)*14,vy:-Math.random()*15-4,r:Math.random()*6+4,a:Math.random()*6,va:(Math.random()-.5)*.3,c:cores[i%cores.length]});
+  var t0=performance.now();
+  (function quadro(t){
+    x.clearRect(0,0,W,H);
+    ps.forEach(function(p){ p.vy+=.38; p.vx*=.99; p.x+=p.vx; p.y+=p.vy; p.a+=p.va;
+      x.save(); x.translate(p.x,p.y); x.rotate(p.a); x.fillStyle=p.c; x.fillRect(-p.r/2,-p.r/4,p.r,p.r/2); x.restore(); });
+    if(t-t0<3200) requestAnimationFrame(quadro); else c.remove();
+  })(t0);
+}
 function telaCheckin(){
   quem("");
-  app.innerHTML='<div class="narrow"><div class="card pad stack" id="caixa"><div class="loading">Carregando…</div></div></div>';
+  document.documentElement.classList.add("redentor");
+  $('meta[name="theme-color"]').setAttribute("content","#16203a");
+  app.innerHTML='<div class="narrow"><div class="card pad stack entra" id="caixa"><div class="loading">Carregando…</div></div></div>';
+  var logo='<div class="ci-logo"><span><img src="logo-redentor.png" alt="Auto Viação Redentor"></span></div>';
   api("preEventoInfo",window.__TOK__||"").then(function(ev){
-    if(!ev.aberto){ $("#caixa").innerHTML='<h2>'+esc(ev.nome)+'</h2><div class="note warn">O check-in deste evento está encerrado. Procure a comissão da CIPA.</div>'; return; }
-    doisPassos($("#caixa"),'<div><div class="lbl">Check-in</div><h2 style="margin-top:4px">'+esc(ev.nome)+'</h2></div>',"Confirmar presença",function(m,c){
+    if(!ev.aberto){ $("#caixa").innerHTML=logo+'<div class="ci-ev"><h2>'+esc(ev.nome)+'</h2></div><div class="note warn">O check-in deste evento está encerrado. Procure a comissão da CIPA.</div>'; return; }
+    doisPassos($("#caixa"),logo+'<div class="ci-ev"><div class="lbl">Check-in · CIPA</div><h2 style="margin-top:4px">'+esc(ev.nome)+'</h2></div>',"Confirmar presença",function(m,c){
       return api("preCheckin",window.__TOK__,m,c).then(function(r){
-        $("#caixa").innerHTML='<div class="hero"><div class="ico">✅</div><h2>'+(r.novo?'Presença confirmada!':'Você já estava na lista!')+'</h2>'+
-          '<p style="font-size:1.15rem;margin:10px 0 0"><b>'+esc(r.nome)+'</b></p><p class="muted" style="margin:4px 0 0">'+esc(r.evento)+'</p>'+
-          '<div class="note ok" style="margin-top:16px">Você já está concorrendo ao sorteio de brindes. Boa sorte!</div></div>';
-        if(navigator.vibrate) navigator.vibrate(120);
+        var cx=$("#caixa"); cx.classList.remove("entra"); void cx.offsetWidth; cx.classList.add("entra");
+        cx.innerHTML=logo+'<div class="hero"><svg class="ok-anim" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="45"/><path d="M30 52 l14 14 l27 -30"/></svg>'+
+          '<h2 style="margin-top:12px">'+(r.novo?'Presença confirmada!':'Você já estava na lista!')+'</h2>'+
+          '<p class="ci-nome">'+esc(r.nome)+'</p><p class="muted" style="margin:4px 0 0">'+esc(r.evento)+'</p>'+
+          '<div class="ci-sorte">🎁 Você já está <b>concorrendo aos brindes</b>. Boa sorte!</div></div>';
+        if(navigator.vibrate) navigator.vibrate([60,40,120]);
+        if(r.novo) setTimeout(confete,350);
       });
     });
-  }).catch(function(e){ $("#caixa").innerHTML='<div class="note bad">'+esc(e.message)+'</div>'; });
+  }).catch(function(e){ $("#caixa").innerHTML=logo+'<div class="note bad">'+esc(e.message)+'</div>'; });
 }
 
 /* comissão */
@@ -654,7 +703,7 @@ function telaoQr(ev){
     el=document.createElement("div"); el.className="telao qr"; document.body.appendChild(el);
     if(document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(function(){});
     el.innerHTML='<button class="t-sec t-fechar">✕ Sair</button>'+
-      '<div class="t-col"><div class="t-top">Check-in · CIPA</div><div class="t-nome" style="font-size:clamp(2rem,5.5vw,4.6rem)">'+esc(ev.nome)+'</div>'+
+      '<div class="t-col"><div class="t-logo"><img src="logo-redentor.png" alt="Auto Viação Redentor"></div><div class="t-top">Check-in · CIPA</div><div class="t-nome" style="font-size:clamp(2rem,5.5vw,4.6rem)">'+esc(ev.nome)+'</div>'+
         '<div class="t-brinde">Faça seu check-in pelo QR Code</div>'+
         '<ol class="t-passos"><li>Abra a câmera do celular</li><li>Aponte para o QR Code</li><li>Digite a <b>matrícula</b> e os <b>3 primeiros números do CPF</b></li></ol>'+
         '<div><div class="t-conta" id="tcont">'+ev.presentes+'</div><div class="t-info">presentes · concorrendo aos brindes</div></div></div>'+
