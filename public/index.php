@@ -24,6 +24,8 @@ $partes = $caminho === '' ? [] : explode('/', $caminho);
 $p = (string)($_GET['p'] ?? ($partes[0] ?? ''));
 $tok = (string)($_GET['t'] ?? ($partes[1] ?? ''));
 if ($p === 'index.php') $p = '';
+// parodia.redentorhub.com.br: a raiz já abre a inscrição da paródia (o resto do sistema segue igual)
+if ($p === '' && str_starts_with(strtolower((string)($_SERVER['HTTP_HOST'] ?? '')), 'parodia.')) $p = 'parodia';
 // foto do candidato como imagem (a versão no ?v= muda quando a foto muda, então pode ficar em cache)
 if ($p === 'foto-cand') {
     require dirname(__DIR__) . '/app/lib.php';
