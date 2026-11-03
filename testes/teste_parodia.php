@@ -31,10 +31,12 @@ erro('matrícula inexistente', fn() => api_parConsultar('9999', '121'), 'não en
 $r = api_parConsultar('02001', '121');
 t('consulta ok, sem inscrição', $r['nome'] === 'Pessoa 1' && $r['parodia'] === null && $r['podeEditar']);
 erro('sem aceite', fn() => api_parSalvar('2001', '121', $d, false), 'declaração');
-erro('letra curta', fn() => api_parSalvar('2001', '121', ['letra' => 'lá lá'] + $d, true), 'muito curta');
+erro('letra longa demais', fn() => api_parSalvar('2001', '121', ['letra' => str_repeat('a', 8001)] + $d, true), 'passou de');
 erro('sem música', fn() => api_parSalvar('2001', '121', ['musica' => ''] + $d, true), 'música original');
+$x = api_parSalvar('2001', '121', ['letra' => ''] + $d, true);
+t('inscreve sem letra (opcional)', api_parConsultar('2001', '121')['parodia']['letra'] === '');
 $x = api_parSalvar('2001', '121', $d, true);
-t('inscreveu', $x['equipe'] === 'Os Prevenidos' && !$x['alterou']);
+t('completou a letra depois', $x['equipe'] === 'Os Prevenidos' && $x['alterou'] && api_parConsultar('2001', '121')['parodia']['letra'] !== '');
 erro('nome de equipe repetido', fn() => api_parSalvar('2002', '122', ['equipe' => '  os   PREVENIDOS '] + $d, true), 'Já existe');
 $x = api_parSalvar('2001', '121', ['musica' => 'Evidências (ao vivo)'] + $d, true);
 t('alterou a própria', $x['alterou'] && api_parConsultar('2001', '121')['parodia']['musica'] === 'Evidências (ao vivo)');

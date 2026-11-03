@@ -118,7 +118,7 @@ function api_parSalvar($m, $c, $d, $aceite = false): array {
     if (mb_strlen($equipe) < 2) falha('Informe o nome da equipe.');
     if (mb_strlen($musica) < 2) falha('Informe o nome da música original.');
     if (mb_strlen($artista) < 2) falha('Informe o cantor ou banda da música original.');
-    if (mb_strlen($letra) < 40) falha('A letra da paródia está muito curta. Escreva a letra completa.');
+    // a letra é opcional (a equipe pode apresentar sem mandar por escrito)
     if (mb_strlen($letra) > PAR_LETRA_MAX) falha('A letra passou de ' . PAR_LETRA_MAX . ' caracteres. Resuma um pouco.');
     $p = par_tabelas(); $en = equipe_norm($equipe); $agora = agora();
     $p->exec('BEGIN IMMEDIATE');

@@ -453,7 +453,7 @@ function telaEquipe(r){
       (p.status==="recusada"?'<div class="note bad"><b>A comissão não aprovou esta paródia.</b>'+(p.motivo?' '+esc(p.motivo):'')+'</div>':'')+
       (p.status==="aprovada"?'<div class="note ok">Paródia aprovada! Agora é ensaiar para a apresentação.</div>':'')+
       (p.status==="pendente"?'<div class="note info">Aguardando a aprovação da comissão.'+(r.podeEditar?' Até lá você pode alterar.':'')+'</div>':'')+
-      (!r.podeEditar?'<details><summary class="small" style="cursor:pointer">Ver a letra enviada</summary><div class="letra-txt" style="margin-top:10px">'+esc(p.letra)+'</div></details>':'')+
+      (!r.podeEditar&&p.letra?'<details><summary class="small" style="cursor:pointer">Ver a letra enviada</summary><div class="letra-txt" style="margin-top:10px">'+esc(p.letra)+'</div></details>':'')+
     '</div>';
   }
   var form = !r.podeEditar ? "" :
@@ -466,7 +466,7 @@ function telaEquipe(r){
       '</div>'+
       '<label class="field"><span>Integrantes da equipe</span><textarea id="integ" maxlength="1500" placeholder="Um por linha: nome e matrícula">'+esc(p.integrantes)+'</textarea><small>Você ('+esc(r.nome)+') já entra como responsável.</small></label>'+
       '<label class="field"><span>Celular para contato <span class="muted">(opcional)</span></span><input id="cel" inputmode="tel" maxlength="20" value="'+esc(p.celular)+'"></label>'+
-      '<label class="field"><span>Letra da paródia</span><textarea id="letra" class="letra" maxlength="8000" placeholder="Escreva a letra completa, com os refrões.">'+esc(p.letra)+'</textarea><div class="cont" id="cont"></div></label>'+
+      '<label class="field"><span>Letra da paródia <span class="muted">(opcional)</span></span><textarea id="letra" class="letra" maxlength="8000" placeholder="Se quiser, escreva a letra completa, com os refrões.">'+esc(p.letra)+'</textarea><div class="cont" id="cont"></div></label>'+
       '<label class="check"><input type="checkbox" id="aceite"><span>Declaro que a letra foi criada pela nossa equipe, respeita colegas e a empresa, e autorizo a CIPA a divulgá-la e a apresentá-la nos eventos de segurança.</span></label>'+
       '<div id="err"></div>'+
       '<button class="btn primary lg" id="go">'+(r.parodia?'Salvar alterações':'Enviar inscrição')+'</button>'+
@@ -559,7 +559,7 @@ function detalhe(p){
     (p.integrantes?'<div class="small"><b>Integrantes:</b><br>'+esc(p.integrantes).replace(/\n/g,"<br>")+'</div>':'')+
     (p.motivo?'<div class="note '+(p.status==="recusada"?"bad":"warn")+'"><b>Motivo:</b> '+esc(p.motivo)+'</div>':'')+
     (p.validadoPor?'<div class="small muted">Última validação: '+esc(p.validadoPor)+' em '+esc(dataBr(p.validadoEm))+'</div>':'')+
-    '<div class="letra-txt">'+esc(p.letra)+'</div>';
+    (p.letra?'<div class="letra-txt">'+esc(p.letra)+'</div>':'<div class="vazio">A equipe não enviou a letra por escrito.</div>');
 }
 function opcoesNota(v){ var o='<option value="">–</option>'; for(var n=10;n>=0;n--) o+='<option value="'+n+'"'+(v===n?" selected":"")+'>'+n+'</option>'; return o; }
 function abrirJurado(id){
@@ -589,7 +589,7 @@ function abrirJurado(id){
 function imprimir(lista){
   if(!lista.length){ toast("Nenhuma paródia aprovada para imprimir."); return; }
   $("#impressao").innerHTML=lista.map(function(p){ return '<section class="folha"><p style="font-size:10pt;color:#555">'+esc((DADOS.cfg.titulo||""))+'</p><h2>'+esc(p.equipe)+'</h2>'+
-    '<p><b>Música original:</b> “'+esc(p.musica)+'” – '+esc(p.artista)+'<br><b>Responsável:</b> '+esc(p.responsavel)+(p.integrantes?'<br><b>Integrantes:</b> '+esc(p.integrantes).replace(/\n/g,", "):'')+'</p><pre>'+esc(p.letra)+'</pre></section>'; }).join("");
+    '<p><b>Música original:</b> “'+esc(p.musica)+'” – '+esc(p.artista)+'<br><b>Responsável:</b> '+esc(p.responsavel)+(p.integrantes?'<br><b>Integrantes:</b> '+esc(p.integrantes).replace(/\n/g,", "):'')+'</p><pre>'+esc(p.letra||"(letra não enviada por escrito)")+'</pre></section>'; }).join("");
   setTimeout(function(){ window.print(); },50);
 }
 
@@ -610,7 +610,7 @@ function telaAdmin(){
           '<div class="meta">👤 '+esc(p.matricula)+' – '+esc(p.responsavel)+(p.setor?' · '+esc(p.setor):'')+(p.celular?' · '+esc(p.celular):'')+'</div></div>'+
           '<div style="text-align:right">'+pill(p.status)+(p.notas.length?'<div class="small muted" style="margin-top:4px">média <b>'+fmt(p.media)+'</b> ('+p.notas.length+')</div>':'')+'</div></div>'+
         (p.motivo&&p.status==="recusada"?'<div class="note bad" style="margin-top:10px">'+esc(p.motivo)+'</div>':'')+
-        '<details'+(p.status==="pendente"?' open':'')+'><summary>Ler a letra</summary><div class="letra-txt">'+esc(p.letra)+'</div>'+
+        '<details'+(p.status==="pendente"?' open':'')+'><summary>Ler a letra</summary>'+(p.letra?'<div class="letra-txt">'+esc(p.letra)+'</div>':'<div class="vazio" style="margin-top:10px">A equipe não enviou a letra por escrito.</div>')+
           (p.integrantes?'<div class="small" style="margin-top:8px"><b>Integrantes:</b> '+esc(p.integrantes).replace(/\n/g,", ")+'</div>':'')+'</details>'+
         (p.status==="pendente"
           ?'<div class="decide"><button class="btn ok" data-ap="'+p.id+'" data-a="aprovar">✔ Aprovar</button><button class="btn danger" data-ap="'+p.id+'" data-a="recusar">✕ Não aprovar</button></div>'
