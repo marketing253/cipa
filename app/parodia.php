@@ -16,6 +16,7 @@ const PAR_STATUS = ['pendente' => 'Aguardando aprovação', 'aprovada' => 'Aprov
 const PAR_CRITERIOS = ['Letra e mensagem de segurança', 'Criatividade', 'Encaixe na melodia'];
 const PAR_LETRA_MAX = 8000;
 const SESSAO_JURADO = 10 * 3600;
+const PAR_URL_PUBLICA = 'https://parodia.redentorhub.com.br/';   // endereço dos links e QR Codes (muda na Configuração)
 
 function par_tabelas(): PDO {
     static $feito = false;
@@ -38,10 +39,13 @@ function par_tabelas(): PDO {
 
 function par_cfg(): array {
     $c = kv_get('parodia', []) + ['titulo' => 'Concurso de Paródias da CIPA', 'tema' => 'Segurança no trabalho e no trânsito',
-        'inscricoes' => 'sim', 'inicio' => '', 'fim' => '', 'criterios' => PAR_CRITERIOS];
+        'inscricoes' => 'sim', 'inicio' => '', 'fim' => '', 'criterios' => PAR_CRITERIOS, 'urlPublica' => PAR_URL_PUBLICA];
     if (!is_array($c['criterios']) || !$c['criterios']) $c['criterios'] = PAR_CRITERIOS;
     return $c;
 }
+
+/* endereço que vai nos links e QR Codes da comissão (o do próprio servidor se a comissão apagar) */
+function url_publica(): string { return par_cfg()['urlPublica'] ?: url_base(); }
 
 /* aberta | antes | depois | desabilitada */
 function par_situacao(array $c): string {
@@ -236,7 +240,7 @@ function par_admin_dados(): array {
     return ['cfg' => par_cfg(), 'situacao' => par_situacao(par_cfg()), 'criterios' => $crit,
             'jurados' => array_map(fn($j) => ['matricula' => $j['matricula'], 'nome' => $j['nome'],
                 'avaliou' => $avaliou[$j['mnorm']], 'deve' => $deve[$j['mnorm']]], $jur),
-            'parodias' => $lista, 'agora' => agora_local(), 'urlApp' => url_base()];
+            'parodias' => $lista, 'agora' => agora_local(), 'urlApp' => url_publica()];
 }
 
 /* aprovar | recusar (não aprovar, motivo opcional, a equipe vê) | reabrir (volta para aguardando) */
@@ -258,6 +262,11 @@ function api_parAdmin($t): array { exige_admin($t); return par_admin_dados(); }
 function api_parSaveCfg($t, $c): array {
     exige_admin($t); $c = (array)$c; $cfg = par_cfg();
     foreach (['titulo' => 120, 'tema' => 200] as $k => $max) if (isset($c[$k])) $cfg[$k] = txt($c[$k], $max) ?: $cfg[$k];
+    if (isset($c['urlPublica'])) {
+        $u = trim((string)$c['urlPublica']);
+        if ($u !== '' && !preg_match('#^https?://[a-z0-9.-]+(:\d+)?(/.*)?$#i', $u)) falha('Endereço inválido. Ex.: https://parodia.redentorhub.com.br/');
+        $cfg['urlPublica'] = $u === '' ? '' : rtrim($u, '/') . '/';
+    }
     if (in_array($c['inscricoes'] ?? null, ['sim', 'nao'], true)) $cfg['inscricoes'] = $c['inscricoes'];
     $ini = data_ok($c['inicio'] ?? $cfg['inicio']); $fim = data_ok($c['fim'] ?? $cfg['fim']);
     if ($ini !== '' && $fim !== '' && $fim <= $ini) falha('O fim das inscrições precisa ser depois do início.');

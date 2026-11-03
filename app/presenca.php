@@ -111,7 +111,7 @@ function pre_dados(?int $ev = null): array {
         $st = $p->prepare('SELECT id,matricula,nome,setor,brinde,em FROM sorteios WHERE evento=? ORDER BY id'); $st->execute([$ev]);
         $sort = array_map(fn($s) => ['id' => (int)$s['id']] + $s, $st->fetchAll());
     }
-    return ['eventos' => $eventos, 'evento' => $ev, 'presentes' => $pres, 'sorteios' => $sort, 'urlApp' => url_base()];
+    return ['eventos' => $eventos, 'evento' => $ev, 'presentes' => $pres, 'sorteios' => $sort, 'urlApp' => function_exists('url_publica') ? url_publica() : url_base()];
 }
 
 function api_preDados($t, $evento = null): array { exige_admin($t); return pre_dados($evento ? (int)$evento : null); }

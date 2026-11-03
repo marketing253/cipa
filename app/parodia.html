@@ -598,7 +598,7 @@ function telaAdmin(){
   var d=DADOS;
   quem('<span>Comissão</span><button class="btn sm" id="sair">Sair</button>');
   $("#sair").onclick=sair;
-  var link=d.urlApp+"parodia";
+  var link=/\/\/parodia\./.test(d.urlApp)?d.urlApp:d.urlApp+"parodia";   // no domínio da paródia a raiz já é a inscrição
   var abas=[["parodias","Paródias"],["ranking","Apuração"],["jurados","Jurados ("+d.jurados.length+")"],["config","Configuração"]];
   var corpo="";
   if(ABA==="parodias"){
@@ -645,6 +645,7 @@ function telaAdmin(){
       '<div class="grid2"><label class="field"><span>Inscrições</span><select id="ci"><option value="sim"'+(c.inscricoes==="sim"?" selected":"")+'>Habilitadas</option><option value="nao"'+(c.inscricoes!=="sim"?" selected":"")+'>Desabilitadas</option></select></label>'+
       '<label class="field"><span>Abrem em <span class="muted">(opcional)</span></span><input id="cini" type="datetime-local" value="'+esc(c.inicio)+'"></label>'+
       '<label class="field"><span>Encerram em <span class="muted">(opcional)</span></span><input id="cfim" type="datetime-local" value="'+esc(c.fim)+'"></label></div>'+
+      '<label class="field"><span>Endereço dos links e QR Codes</span><input id="curl" maxlength="200" value="'+esc(c.urlPublica||"")+'" placeholder="https://parodia.redentorhub.com.br/"><small>Usado nos links, nos cartazes e no QR do check-in. Vazio = o endereço deste servidor.</small></label>'+
       '<label class="field"><span>Critérios de nota (um por linha, até 6)</span><textarea id="ccr">'+esc(c.criterios.join("\n"))+'</textarea><small>Não mudam mais depois que algum jurado der nota.</small></label>'+
       '<div id="errc"></div><div class="row end"><button class="btn primary" id="cs">Salvar</button></div></form>';
   }
@@ -701,7 +702,7 @@ function telaAdmin(){
   }
   agendarAoVivo();
   var fc=$("#fc"); if(fc) fc.onsubmit=function(ev){ ev.preventDefault(); var b=$("#cs"); busy(b,true,"Salvando…");
-    api("parSaveCfg",AT,{titulo:$("#ct").value,tema:$("#ctema").value,inscricoes:$("#ci").value,inicio:$("#cini").value,fim:$("#cfim").value,criterios:$("#ccr").value.split("\n")})
+    api("parSaveCfg",AT,{titulo:$("#ct").value,tema:$("#ctema").value,inscricoes:$("#ci").value,inicio:$("#cini").value,fim:$("#cfim").value,urlPublica:$("#curl").value,criterios:$("#ccr").value.split("\n")})
       .then(function(x){ DADOS=x; telaAdmin(); toast("Configuração salva."); }).catch(function(e){ busy(b,false); erroEm($("#errc"),e.message); }); };
 }
 /* apuração ao vivo: recarrega a cada 15 s (sem atrapalhar quem está com uma janela aberta ou digitando) */
