@@ -13,7 +13,7 @@
 <meta property="og:title" content="Concurso de Paródias da CIPA">
 <meta property="og:description" content="Inscreva a paródia da sua equipe pelo celular: nome da equipe, música e letra.">
 <meta property="og:image" content="https://cipa.redentorhub.com.br/og-cipa.jpg?v=1">
-<meta name="theme-color" content="#2a0b30">
+<meta name="theme-color" content="#16203a">
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -21,18 +21,18 @@
 <style>
 /* Mesma estrutura da urna, mas em roxo/magenta para não confundir com a eleição (azul); aqui a letra é a estrela: fonte grande e legível nos cartões dos jurados. */
 :root{
-  --bg:#fbf2fa; --surface:#ffffff; --surface-2:#fbf5fb; --ink:#2a1030; --muted:#6e5a72; --line:#efdfee; --line-2:#e2cbe0;
-  --accent:#86198f; --accent-strong:#6b1374; --accent-ink:#ffffff; --accent-soft:#f6e3f6;
+  --bg:#eef2fb; --surface:#ffffff; --surface-2:#f5f7fd; --ink:#16203a; --muted:#5a6380; --line:#e0e5f2; --line-2:#cdd4e6;
+  --accent:#3e4095; --accent-strong:#2f3180; --accent-ink:#ffffff; --accent-soft:#e6e8f7;
   --amber:#d29500; --amber-soft:#fbf0d4; --amber-ink:#5c4100;
   --warn:#8a5a00; --warn-soft:#fff3d6; --bad:#b42318; --bad-soft:#fde8e5; --ok:#0a7a40; --ok-soft:#e0f3e8;
   --f-display:"Outfit","Segoe UI",system-ui,sans-serif;
   --f-body:"Plus Jakarta Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
   --r:16px; --r-sm:12px;
-  --shadow:0 1px 2px rgba(42,16,48,.05),0 8px 24px -8px rgba(42,16,48,.16);
+  --shadow:0 1px 2px rgba(22,32,58,.05),0 8px 24px -8px rgba(22,32,58,.16);
 }
 :root[data-theme="dark"]{
-  --bg:#1a0d1d; --surface:#24132a; --surface-2:#2c1832; --ink:#f6e9f6; --muted:#b9a3bd; --line:#3a2340; --line-2:#4b2f52;
-  --accent:#e07ae9; --accent-strong:#eb9bf1; --accent-ink:#1a0d1d; --accent-soft:#3f1a48;
+  --bg:#0d1324; --surface:#151d33; --surface-2:#1a2340; --ink:#e8ecf8; --muted:#9aa3bd; --line:#26304d; --line-2:#333e60;
+  --accent:#8f93ea; --accent-strong:#a9acf0; --accent-ink:#0d1324; --accent-soft:#232a55;
   --amber:#e7b240; --amber-soft:#3a2e10; --amber-ink:#ffe2a0;
   --warn:#ffc760; --warn-soft:#3a2c10; --bad:#ff8b7c; --bad-soft:#3b1a17; --ok:#62d69a; --ok-soft:#143424;
   --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 24px -8px rgba(0,0,0,.45); color-scheme:dark}
@@ -51,7 +51,7 @@ button{cursor:pointer}
 
 .band{margin:0 -16px 22px;color:#fff;padding:18px 16px;border-bottom:4px solid #d29500;
   background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='44'%3E%3Cpath d='M19 14h6v5h5v6h-5v5h-6v-5h-5v-6h5z' fill='%23d29500' fill-opacity='.08'/%3E%3C/svg%3E"),
-  linear-gradient(120deg,#2a0b30 0%,#5b1366 55%,#a21caf 100%)}
+  linear-gradient(120deg,#16203a 0%,#1e2b4f 55%,#3e4095 100%)}
 .bandin{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px 24px}
 .brand{display:flex;align-items:center;gap:14px;min-width:0}
 .mark{flex:none;height:56px;padding:5px 10px;border-radius:14px;background:#fff;display:grid;place-items:center}
@@ -134,16 +134,16 @@ button{cursor:pointer}
 .leitura b{font-size:1.25rem;display:block}
 .leitura.ok{background:var(--ok-soft);color:var(--ok)} .leitura.ja{background:var(--amber-soft);color:var(--amber-ink)} .leitura.bad{background:var(--bad-soft);color:var(--bad)}
 .contador{font-family:var(--f-display);font-size:2.6rem;font-weight:800;line-height:1;color:var(--accent)}
-.ganhador{text-align:center;padding:26px 16px;border-radius:var(--r);background:linear-gradient(120deg,#2a0b30,#a21caf);color:#fff}
-.telao{position:fixed;inset:0;z-index:80;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3vh;padding:4vh 4vw;text-align:center;color:#fff;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='44'%3E%3Cpath d='M19 14h6v5h5v6h-5v5h-6v-5h-5v-6h5z' fill='%23d29500' fill-opacity='.10'/%3E%3C/svg%3E"),linear-gradient(135deg,#2a0b30 0%,#5b1366 55%,#a21caf 100%)}
+.ganhador{text-align:center;padding:26px 16px;border-radius:var(--r);background:linear-gradient(120deg,#16203a,#3e4095);color:#fff}
+.telao{position:fixed;inset:0;z-index:80;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3vh;padding:4vh 4vw;text-align:center;color:#fff;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='44'%3E%3Cpath d='M19 14h6v5h5v6h-5v5h-6v-5h-5v-6h5z' fill='%23d29500' fill-opacity='.10'/%3E%3C/svg%3E"),linear-gradient(135deg,#16203a 0%,#1e2b4f 50%,#3e4095 100%);border-bottom:1.2vh solid #d29500}
 .telao .t-top{font-family:var(--f-display);font-size:clamp(1.2rem,3vw,2.2rem);font-weight:700;opacity:.9;letter-spacing:.04em;text-transform:uppercase}
 .telao .t-brinde{font-size:clamp(1.4rem,4vw,3rem);font-weight:700;color:#ffd76a}
 .telao .t-nome{font-family:var(--f-display);font-size:clamp(2.6rem,9vw,8rem);font-weight:800;line-height:1.02;text-wrap:balance;max-width:95vw}
 .telao .t-escala{font-family:var(--f-display);font-size:clamp(1.8rem,5.5vw,4.6rem);font-weight:700;color:#ffd76a;line-height:1.05}
 .telao .t-info{font-size:clamp(1rem,2.4vw,1.8rem);opacity:.85}
 .telao .t-rodando{font-family:var(--f-display);font-size:clamp(2.2rem,7vw,6rem);font-weight:800;opacity:.75;min-height:1.2em}
-.telao input{font:inherit;font-size:clamp(1.1rem,2.4vw,1.6rem);text-align:center;border:0;border-radius:14px;padding:12px 18px;width:min(560px,90vw);color:#2a0b30}
-.telao .t-btn{font:inherit;font-family:var(--f-display);font-weight:800;font-size:clamp(1.4rem,3.5vw,2.6rem);padding:.45em 1.6em;border-radius:999px;border:0;background:#ffd76a;color:#2a0b30;cursor:pointer}
+.telao input{font:inherit;font-size:clamp(1.1rem,2.4vw,1.6rem);text-align:center;border:0;border-radius:14px;padding:12px 18px;width:min(560px,90vw);color:#16203a}
+.telao .t-btn{font:inherit;font-family:var(--f-display);font-weight:800;font-size:clamp(1.4rem,3.5vw,2.6rem);padding:.45em 1.6em;border-radius:999px;border:0;background:#ffd76a;color:#16203a;cursor:pointer}
 .telao .t-btn:disabled{opacity:.6}
 .telao .t-acoes{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
 .telao .t-sec{font:inherit;font-weight:700;padding:10px 20px;border-radius:999px;border:1px solid rgba(255,255,255,.5);background:rgba(255,255,255,.1);color:#fff;cursor:pointer}
@@ -231,6 +231,28 @@ html.redentor .card{border-top:4px solid var(--gold)}
 .gan .g div{min-width:0;flex:1}
 .vazio{padding:18px;text-align:center;color:var(--muted);border:1.5px dashed var(--line-2);border-radius:12px}
 html.redentor .telao:not(.qr){background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='44'%3E%3Cpath d='M19 14h6v5h5v6h-5v5h-6v-5h-5v-6h5z' fill='%23d29500' fill-opacity='.12'/%3E%3C/svg%3E"),linear-gradient(135deg,#16203a 0%,#1e2b4f 50%,#3e4095 100%);border-bottom:1.2vh solid #d29500}
+.links{display:grid;gap:12px}
+@media (min-width:720px){.links{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.lk{display:flex;flex-direction:column;gap:10px;padding:16px;border:1px solid var(--line);border-radius:var(--r);background:var(--surface);box-shadow:var(--shadow)}
+.lk .top{display:flex;gap:12px;align-items:center}
+.lk .mini{flex:none;width:84px;height:84px;background:#fff;border:1px solid var(--line);border-radius:10px;padding:5px}
+.lk .mini img,.lk .mini canvas{width:100%!important;height:auto!important;display:block}
+.lk .ic{flex:none;width:84px;height:84px;border-radius:10px;display:grid;place-items:center;font-size:2.2rem;background:var(--accent-soft)}
+.lk b{font-family:var(--f-display);font-size:1.05rem}
+.lk .url{font-size:.78rem;color:var(--muted);word-break:break-all}
+.lk .row{gap:6px}
+.evhero .kpis.k4{grid-template-columns:repeat(2,minmax(0,1fr))}
+@media (min-width:640px){.evhero .kpis.k4{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.apv{display:grid;gap:12px}
+.ap{border:1px solid var(--line);border-left:5px solid var(--amber);border-radius:var(--r);background:var(--surface);box-shadow:var(--shadow);padding:16px}
+.ap.aprovada{border-left-color:var(--ok)} .ap.recusada{border-left-color:var(--bad);opacity:.85}
+.ap .cab h3{font-size:1.15rem}
+.ap .meta{font-size:.86rem;color:var(--muted);margin-top:2px}
+.ap details{margin-top:10px} .ap summary{cursor:pointer;font-weight:600;color:var(--accent);font-size:.9rem}
+.ap .letra-txt{margin-top:10px;max-height:46vh}
+.ap .decide{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.ap .decide .btn{flex:1 1 140px;min-height:48px;font-size:1rem}
+.ap .mais{display:flex;gap:6px;justify-content:flex-end;margin-top:8px}
 @keyframes surge{from{transform:scale(.6);opacity:0}to{transform:none;opacity:1}}
 @media (prefers-reduced-motion:reduce){.telao.ganhou .t-nome{animation:none}}
 .evs{display:grid;gap:8px}
@@ -250,7 +272,7 @@ th,td{text-align:left;padding:9px 8px;border-bottom:1px solid var(--line);vertic
 th{font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
 .tbl{overflow-x:auto}
 .pos{font-family:var(--f-display);font-weight:800;font-size:1.2rem;width:40px}
-.dlg{position:fixed;inset:0;background:rgba(30,8,34,.55);display:flex;align-items:flex-start;justify-content:center;padding:24px 12px;overflow:auto;z-index:50}
+.dlg{position:fixed;inset:0;background:rgba(10,15,30,.6);display:flex;align-items:flex-start;justify-content:center;padding:24px 12px;overflow:auto;z-index:50}
 .dlg>.card{width:100%;max-width:760px}
 
 @media print{
@@ -510,12 +532,21 @@ function telaAdmin(){
   var abas=[["parodias","Paródias"],["ranking","Apuração"],["jurados","Jurados ("+d.jurados.length+")"],["config","Configuração"]];
   var corpo="";
   if(ABA==="parodias"){
+    if(!telaAdmin.ja){ telaAdmin.ja=1; if(contagem(d.parodias).pendente) FILTRO="pendente"; }   // abre direto no que falta aprovar
     var lista=d.parodias.filter(function(p){ return FILTRO==="todas"||p.status===FILTRO; });
-    corpo=filtros(d.parodias)+(lista.length?'<div class="card tbl"><table><thead><tr><th>Equipe</th><th>Música</th><th>Responsável</th><th>Situação</th><th>Notas</th><th></th></tr></thead><tbody>'+
-      lista.map(function(p){ return '<tr><td><b>'+esc(p.equipe)+'</b><div class="small muted">'+esc(dataBr(p.criada))+'</div></td><td>'+esc(p.musica)+'<div class="small muted">'+esc(p.artista)+'</div></td>'+
-        '<td>'+esc(p.matricula)+' – '+esc(p.responsavel)+(p.celular?'<div class="small muted">'+esc(p.celular)+'</div>':'')+'</td><td>'+pill(p.status)+'</td>'+
-        '<td>'+(p.notas.length?fmt(p.media)+' <span class="small muted">('+p.notas.length+')</span>':'—')+'</td>'+
-        '<td><button class="btn sm" data-ver="'+p.id+'">Ver</button></td></tr>'; }).join("")+'</tbody></table></div>':'<div class="card pad muted">Nenhuma paródia aqui ainda.</div>');
+    corpo=filtros(d.parodias)+(lista.length?'<div class="apv">'+lista.map(function(p){
+      return '<article class="ap '+esc(p.status)+'"><div class="cab"><div style="min-width:0"><h3>'+esc(p.equipe)+'</h3>'+
+          '<div class="meta">🎵 “'+esc(p.musica)+'” · '+esc(p.artista)+'</div>'+
+          '<div class="meta">👤 '+esc(p.matricula)+' – '+esc(p.responsavel)+(p.setor?' · '+esc(p.setor):'')+(p.celular?' · '+esc(p.celular):'')+'</div></div>'+
+          '<div style="text-align:right">'+pill(p.status)+(p.notas.length?'<div class="small muted" style="margin-top:4px">média <b>'+fmt(p.media)+'</b> ('+p.notas.length+')</div>':'')+'</div></div>'+
+        (p.motivo&&p.status==="recusada"?'<div class="note bad" style="margin-top:10px">'+esc(p.motivo)+'</div>':'')+
+        '<details'+(p.status==="pendente"?' open':'')+'><summary>Ler a letra</summary><div class="letra-txt">'+esc(p.letra)+'</div>'+
+          (p.integrantes?'<div class="small" style="margin-top:8px"><b>Integrantes:</b> '+esc(p.integrantes).replace(/\n/g,", ")+'</div>':'')+'</details>'+
+        (p.status==="pendente"
+          ?'<div class="decide"><button class="btn ok" data-ap="'+p.id+'" data-a="aprovar">✔ Aprovar</button><button class="btn danger" data-ap="'+p.id+'" data-a="recusar">✕ Não aprovar</button></div>'
+          :'<div class="mais"><button class="btn sm ghost" data-ap="'+p.id+'" data-a="reabrir">Desfazer decisão</button><button class="btn sm ghost" data-ver="'+p.id+'">Notas e detalhes</button></div>')+
+      '</article>'; }).join("")+'</div>'
+      :'<div class="vazio">'+(FILTRO==="pendente"?'Tudo aprovado por enquanto. 🎉':'Nenhuma paródia aqui ainda.')+'</div>');
   } else if(ABA==="ranking"){
     var ap=d.parodias.filter(function(p){ return p.status==="aprovada"; }).sort(function(a,b){ return (b.media==null?-1:b.media)-(a.media==null?-1:a.media); });
     var feitas=0, devidas=0; ap.forEach(function(p){ feitas+=p.notas.length; devidas+=p.notas.length+p.faltam.length; });
@@ -547,16 +578,43 @@ function telaAdmin(){
       '<label class="field"><span>Critérios de nota (um por linha, até 6)</span><textarea id="ccr">'+esc(c.criterios.join("\n"))+'</textarea><small>Não mudam mais depois que algum jurado der nota.</small></label>'+
       '<div id="errc"></div><div class="row end"><button class="btn primary" id="cs">Salvar</button></div></form>';
   }
+  var cnt=contagem(d.parodias), nf=0, nd=0;
+  d.parodias.forEach(function(p){ if(p.status==="aprovada"){ nf+=p.notas.length; nd+=p.notas.length+p.faltam.length; } });
+  var linkJ=d.urlApp+"jurados";
   app.innerHTML='<div class="stack">'+
-    '<div class="row" style="justify-content:space-between"><div><div class="lbl">Comissão</div><h2 style="margin-top:4px">'+esc(d.cfg.titulo)+'</h2></div>'+
-      '<span class="pill '+(d.situacao==="aberta"?"aprovada":"recusada")+'">Inscrições '+(d.situacao==="aberta"?"abertas":(d.situacao==="antes"?"ainda não abertas":"encerradas"))+'</span></div>'+
-    '<div class="card pad row" style="justify-content:space-between"><div style="min-width:0"><div class="lbl">Link da inscrição</div><div style="word-break:break-all"><b>'+esc(link)+'</b></div></div><div class="row"><button class="btn" id="cp">Copiar link</button><a class="btn" href="presenca">Presença e sorteio</a></div></div>'+
+    '<section class="evhero"><div class="cab"><div><div class="lbl">Comissão da CIPA</div><h2 style="margin-top:4px">'+esc(d.cfg.titulo)+'</h2></div>'+
+      '<span class="st'+(d.situacao==="aberta"?' on':'')+'">Inscrições '+(d.situacao==="aberta"?"abertas":(d.situacao==="antes"?"ainda não abertas":"encerradas"))+'</span></div>'+
+      '<div class="kpis k4"><div class="kpi"><b>'+cnt.todas+'</b><span>inscrições</span></div><div class="kpi"><b>'+cnt.pendente+'</b><span>aguardando aprovação</span></div>'+
+        '<div class="kpi"><b>'+cnt.aprovada+'</b><span>aprovadas</span></div><div class="kpi"><b>'+nf+'<small style="font-size:.5em;opacity:.8"> / '+nd+'</small></b><span>notas dos jurados</span></div></div></section>'+
+    '<div class="links">'+
+      '<div class="lk"><div class="top"><div class="mini" id="qi"></div><div style="min-width:0"><b>Inscrição das equipes</b><div class="url">'+esc(link)+'</div></div></div>'+
+        '<div class="row"><button class="btn sm" data-cp="'+esc(link)+'">Copiar link</button><button class="btn sm primary" id="pi">🖨️ Imprimir QR</button></div></div>'+
+      '<div class="lk"><div class="top"><div class="mini" id="qj"></div><div style="min-width:0"><b>Área dos jurados</b><div class="url">'+esc(linkJ)+'</div></div></div>'+
+        '<div class="row"><button class="btn sm" data-cp="'+esc(linkJ)+'">Copiar link</button><button class="btn sm primary" id="pj">🖨️ Imprimir QR</button></div></div>'+
+      '<div class="lk"><div class="top"><div class="ic">📋</div><div><b>Presença e sorteio</b><div class="url">Check-in das palestras e brindes</div></div></div>'+
+        '<div class="row"><a class="btn sm primary" href="presenca">Abrir</a></div></div>'+
+    '</div>'+
     '<div class="tabs" id="abas">'+abas.map(function(a){ return '<button data-a="'+a[0]+'" aria-pressed="'+(ABA===a[0])+'">'+esc(a[1])+'</button>'; }).join("")+'</div>'+
     corpo+'</div>';
-  $("#cp").onclick=function(){ (navigator.clipboard?navigator.clipboard.writeText(link):Promise.reject()).then(function(){ toast("Link copiado."); },function(){ prompt("Copie o link:",link); }); };
+  app.querySelectorAll("[data-cp]").forEach(function(b){ b.onclick=function(){ var l=b.dataset.cp; (navigator.clipboard?navigator.clipboard.writeText(l):Promise.reject()).then(function(){ toast("Link copiado."); },function(){ prompt("Copie o link:",l); }); }; });
+  carregar("https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js").then(function(){
+    [["#qi",link],["#qj",linkJ]].forEach(function(q){ var el=$(q[0]); if(el&&!el.firstChild) new QRCode(el,{text:q[1],width:256,height:256,correctLevel:QRCode.CorrectLevel.M}); });
+  }).catch(function(){});
+  $("#pi").onclick=function(){ imprimirCartaz("Concurso de Paródias da CIPA",d.cfg.tema||"Inscreva a sua equipe",link,
+    ["Aponte a câmera do celular para o QR Code","Digite a <b>matrícula</b> do responsável pela equipe","Digite os <b>3 primeiros números do CPF</b>","Preencha a equipe, a música e a letra da paródia"]); };
+  $("#pj").onclick=function(){ imprimirCartaz("Área dos Jurados","Concurso de Paródias da CIPA",linkJ,
+    ["Aponte a câmera do celular para o QR Code","Toque em <b>Sou jurado</b>","Digite a sua <b>matrícula</b> e os <b>3 primeiros números do CPF</b>","Leia cada paródia aprovada e escolha as notas de 0 a 10"]); };
   app.querySelectorAll("#abas button").forEach(function(b){ b.onclick=function(){ ABA=b.dataset.a; telaAdmin(); }; });
   ligarFiltros(telaAdmin);
   app.querySelectorAll("[data-ver]").forEach(function(b){ b.onclick=function(){ abrirAdmin(+b.dataset.ver); }; });
+  app.querySelectorAll("[data-ap]").forEach(function(b){ b.onclick=function(){
+    var id=+b.dataset.ap, a=b.dataset.a, p=d.parodias.find(function(x){ return x.id===id; }), mot="";
+    if(a==="recusar"){ mot=prompt("Não aprovar a paródia da equipe “"+p.equipe+"”.\nMotivo (opcional, a equipe vê):",""); if(mot===null) return; }
+    if(a==="reabrir"&&!confirm(p.notas.length?"Desfazer a decisão? As "+p.notas.length+" nota(s) dos jurados serão apagadas.":"Voltar esta paródia para “aguardando”?")) return;
+    busy(b,true);
+    api("parValidar",AT,id,a,mot).then(function(x){ DADOS=x; telaAdmin(); toast(a==="aprovar"?"✔ "+p.equipe+" aprovada: já aparece para os jurados.":(a==="recusar"?"Paródia não aprovada.":"Voltou para aguardando.")); })
+      .catch(function(e){ busy(b,false); toast(e.message); });
+  }; });
   var imp=$("#imp"); if(imp) imp.onclick=function(){ imprimir(d.parodias.filter(function(p){ return p.status==="aprovada"; })); };
   var fj=$("#fj"); if(fj){
     fj.onsubmit=function(ev){ ev.preventDefault(); var b=$("#ja"); busy(b,true);
@@ -573,7 +631,7 @@ function telaAdmin(){
 var VIVO;
 function agendarAoVivo(){
   clearTimeout(VIVO);
-  if(ABA!=="ranking"&&ABA!=="parodias") return;
+  if(ABA!=="ranking") return;   // na lista de paródias não recarrega, para não atrapalhar a leitura
   VIVO=setTimeout(function(){
     if(!AT||$("#dlg").innerHTML||document.hidden){ agendarAoVivo(); return; }
     api("parAdmin",AT).then(function(x){ DADOS=x; telaAdmin(); }).catch(function(){ agendarAoVivo(); });
@@ -803,6 +861,15 @@ function telaoQr(ev){
     timer=setInterval(function(){ api("preDados",AT,ev.id).then(function(x){ var e=x.eventos.find(function(y){ return y.id===ev.id; }); if(e) el.querySelector("#tcont").textContent=e.presentes; }).catch(function(){}); },5000);
   }).catch(function(e){ toast(e.message); });
 }
+/* cartaz A4 com logo, título, QR e passo a passo */
+function imprimirCartaz(titulo, sub, link, passos){
+  return carregar("https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js").then(function(){
+    $("#impressao").innerHTML='<section class="cartaz"><img src="logo-redentor.png" alt="" style="height:22mm"><h1>'+esc(titulo)+'</h1>'+(sub?'<h2>'+esc(sub)+'</h2>':'')+'<div class="q" id="qrp"></div>'+
+      '<ol>'+passos.map(function(x){ return '<li>'+x+'</li>'; }).join("")+'</ol><p style="font-family:var(--f-body);font-size:10pt;color:#5a6380;margin-top:6mm">'+esc(link)+'</p></section>';
+    new QRCode($("#qrp"),{text:link,width:600,height:600,correctLevel:QRCode.CorrectLevel.M});
+    setTimeout(function(){ window.print(); },300);
+  }).catch(function(e){ toast(e.message); });
+}
 /* QR para colar na mesa: mostra na tela e imprime um cartaz A4 */
 function qrMesa(ev){
   var link=PRE.urlApp+"checkin/"+ev.token;
@@ -945,6 +1012,7 @@ function baixarCsv(ev){
 document.addEventListener("visibilitychange",function(){ if(document.hidden) pararCamera(); });
 
 /* ---------- início ---------- */
+document.documentElement.classList.add("redentor");
 api("parInfo").then(function(i){
   INFO=i; $("#sub").textContent="CIPA · "+(i.empresa||"Auto Viação Redentor");
   var tit=PAGE==="qr"||PAGE==="presenca"||PAGE==="checkin"?"Presença nos eventos da CIPA":i.titulo;
