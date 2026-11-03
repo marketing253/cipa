@@ -656,13 +656,18 @@ function telaAdmin(){
       '<span class="st'+(d.situacao==="aberta"?' on':'')+'">Inscrições '+(d.situacao==="aberta"?"abertas":(d.situacao==="antes"?"ainda não abertas":"encerradas"))+'</span></div>'+
       '<div class="kpis k4"><div class="kpi"><b>'+cnt.todas+'</b><span>inscrições</span></div><div class="kpi"><b>'+cnt.pendente+'</b><span>aguardando aprovação</span></div>'+
         '<div class="kpi"><b>'+cnt.aprovada+'</b><span>aprovadas</span></div><div class="kpi"><b>'+nf+'<small style="font-size:.5em;opacity:.8"> / '+nd+'</small></b><span>notas dos jurados</span></div></div></section>'+
+    '<div class="cab"><h3>🔗 Todos os links da CIPA</h3><span class="small muted">copie, imprima o QR ou abra</span></div>'+
     '<div class="links">'+
       '<div class="lk"><div class="top"><div class="mini" id="qi"></div><div style="min-width:0"><b>Inscrição das equipes</b><div class="url">'+esc(link)+'</div></div></div>'+
         '<div class="row"><button class="btn sm" data-cp="'+esc(link)+'">Copiar link</button><button class="btn sm primary" id="pi">🖨️ Imprimir QR</button></div></div>'+
       '<div class="lk"><div class="top"><div class="mini" id="qj"></div><div style="min-width:0"><b>Área dos jurados</b><div class="url">'+esc(linkJ)+'</div></div></div>'+
         '<div class="row"><button class="btn sm" data-cp="'+esc(linkJ)+'">Copiar link</button><button class="btn sm primary" id="pj">🖨️ Imprimir QR</button></div></div>'+
-      '<div class="lk"><div class="top"><div class="ic">📋</div><div><b>Presença e sorteio</b><div class="url">Check-in das palestras e brindes</div></div></div>'+
+      '<div class="lk"><div class="top"><div class="ic">📋</div><div style="min-width:0"><b>Presença e sorteio</b><div class="url">'+esc(d.urlApp)+'presenca</div><div class="small muted">Check-in das palestras, telão do QR e brindes</div></div></div>'+
         '<div class="row"><a class="btn sm primary" href="presenca">Abrir</a></div></div>'+
+      '<div class="lk"><div class="top"><div class="ic">🪪</div><div style="min-width:0"><b>QR do colaborador</b><div class="url">'+esc(d.urlApp)+'qr</div><div class="small muted">Para quem vai mostrar o QR na entrada</div></div></div>'+
+        '<div class="row"><button class="btn sm" data-cp="'+esc(d.urlApp)+'qr">Copiar link</button></div></div>'+
+      '<div class="lk"><div class="top"><div class="ic">🗳️</div><div style="min-width:0"><b>Eleição da CIPA</b><div class="url">'+esc(d.urlApp)+'admin</div><div class="small muted">Urna, candidatos e resultado</div></div></div>'+
+        '<div class="row"><a class="btn sm" href="admin">Abrir</a></div></div>'+
     '</div>'+
     '<div class="tabs" id="abas">'+abas.map(function(a){ return '<button data-a="'+a[0]+'" aria-pressed="'+(ABA===a[0])+'">'+esc(a[1])+'</button>'; }).join("")+'</div>'+
     corpo+'</div>';
@@ -946,7 +951,7 @@ function telaPresenca(){
         '</div>'+
       '</div>'+
     '</div>'+
-    '<div class="row end"><button class="btn sm ghost" style="color:var(--bad)" id="delev">Excluir este evento</button></div>'+
+    '<div class="row" style="justify-content:space-between"><a class="btn sm" href="jurados">← Painel da comissão (todos os links)</a><button class="btn sm ghost" style="color:var(--bad)" id="delev">Excluir este evento</button></div>'+
   '</div>';
   ligarTopo();
   $("#cam").onclick=abrirCamera;
