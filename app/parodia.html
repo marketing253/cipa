@@ -253,6 +253,76 @@ html.redentor .telao:not(.qr){background:url("data:image/svg+xml,%3Csvg xmlns='h
 .ap .decide{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
 .ap .decide .btn{flex:1 1 140px;min-height:48px;font-size:1rem}
 .ap .mais{display:flex;gap:6px;justify-content:flex-end;margin-top:8px}
+/* telão da apuração (TV): revelação do último ao primeiro + pódio + classificação geral */
+.tv{position:fixed;inset:0;z-index:80;overflow:hidden;color:#fff;font-family:var(--f-body);cursor:pointer;user-select:none;
+  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='44'%3E%3Cpath d='M19 14h6v5h5v6h-5v5h-6v-5h-5v-6h5z' fill='%23d29500' fill-opacity='.10'/%3E%3C/svg%3E"),radial-gradient(120% 90% at 50% 0%,#2a3a78 0%,#16203a 55%,#0b1226 100%)}
+.tv::after{content:"";position:absolute;left:0;right:0;bottom:0;height:1.2vh;background:linear-gradient(90deg,#d29500,#ffd76a,#d29500)}
+.tv .tv-top{position:absolute;top:2.4vh;left:3vw;right:3vw;display:flex;align-items:center;justify-content:space-between;gap:2vw;z-index:3}
+.tv .tv-top .lg{background:#fff;border-radius:1.6vh;padding:1vh 1.8vh;display:inline-grid}
+.tv .tv-top .lg img{height:clamp(36px,6.5vh,80px);width:auto;display:block}
+.tv .tv-top .tt{font-family:var(--f-display);font-weight:800;font-size:clamp(1rem,2.6vw,2.2rem);letter-spacing:.04em;text-transform:uppercase;color:#ffd76a;text-align:right}
+.tv .tv-dica{position:absolute;bottom:3vh;left:0;right:0;text-align:center;font-size:clamp(.8rem,1.4vw,1.1rem);opacity:.55;z-index:3}
+.tv .tv-sair{position:absolute;bottom:2.6vh;right:2vw;z-index:5;opacity:0;transition:opacity .2s}
+.tv:hover .tv-sair,.tv .tv-sair:focus{opacity:1}
+.tv .palco{position:absolute;inset:14vh 4vw 9vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;z-index:2}
+/* abertura */
+.tv .abre h1{font-family:var(--f-display);font-size:clamp(2.4rem,8vw,7rem);font-weight:800;line-height:1;animation:zoomEntra 1s cubic-bezier(.2,.9,.2,1) both}
+.tv .abre p{font-size:clamp(1.1rem,2.6vw,2.2rem);color:#ffd76a;margin-top:3vh;animation:sobeEntra .8s .5s both}
+/* lista dos que já saíram (do último para o 4º) */
+.tv .fila{width:min(1100px,92vw);display:flex;flex-direction:column;gap:1.4vh}
+.tv .lin{display:flex;align-items:center;gap:2vw;padding:1.6vh 2.4vw;border-radius:1.6vh;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);text-align:left}
+.tv .lin.nova{animation:entraLado .8s cubic-bezier(.2,.9,.2,1) both;background:rgba(255,215,106,.16);border-color:#ffd76a}
+.tv .lin .ps{flex:none;width:clamp(48px,7vw,96px);font-family:var(--f-display);font-weight:800;font-size:clamp(1.6rem,3.8vw,3.4rem);color:#ffd76a}
+.tv .lin .nm{flex:1;min-width:0}
+.tv .lin .nm b{display:block;font-family:var(--f-display);font-size:clamp(1.3rem,3vw,2.6rem);line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tv .lin .nm span{font-size:clamp(.85rem,1.6vw,1.3rem);opacity:.75}
+.tv .lin .pt{flex:none;font-family:var(--f-display);font-weight:800;font-size:clamp(1.4rem,3.2vw,2.8rem)}
+/* pódio: revelação de cada um dos 3 primeiros */
+.tv .raios{position:absolute;inset:-50%;z-index:1;opacity:0;transition:opacity 1s;
+  background:repeating-conic-gradient(from 0deg,rgba(255,215,106,.10) 0deg 8deg,transparent 8deg 20deg);animation:gira 40s linear infinite}
+.tv.ouro .raios{opacity:1}
+.tv .lugar{font-family:var(--f-display);font-weight:800;line-height:.9;font-size:clamp(5rem,22vh,16rem);
+  background:linear-gradient(180deg,#fff3c4,#ffd76a 45%,#d29500);-webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(0 1vh 3vh rgba(0,0,0,.45));animation:baque 1.1s cubic-bezier(.2,.9,.2,1) both}
+.tv .lugar.prata{background-image:linear-gradient(180deg,#ffffff,#d9dee8 45%,#9aa3bd)}
+.tv .lugar.bronze{background-image:linear-gradient(180deg,#ffe0c2,#e0a06a 45%,#a8642c)}
+.tv .lugar small{display:block;font-size:.28em;letter-spacing:.2em;margin-top:.6vh}
+.tv .equipe{font-family:var(--f-display);font-weight:800;font-size:clamp(2.2rem,7.5vw,6.8rem);line-height:1.02;margin-top:2vh;max-width:92vw;text-wrap:balance}
+.tv .equipe .l{display:inline-block;opacity:0;transform:translateY(.6em) rotate(6deg);animation:letra .5s cubic-bezier(.2,.9,.2,1) forwards}
+.tv .musica{font-size:clamp(1.1rem,2.6vw,2.2rem);color:#ffd76a;margin-top:1.6vh;opacity:0;animation:sobeEntra .7s forwards}
+.tv .integ{display:flex;flex-wrap:wrap;gap:1vh 1vw;justify-content:center;margin-top:2.6vh;max-width:86vw}
+.tv .integ span{padding:.8vh 1.6vw;border-radius:999px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);font-size:clamp(.9rem,1.8vw,1.5rem);opacity:0;animation:pipoca .45s cubic-bezier(.2,1.4,.4,1) forwards}
+.tv .nota{margin-top:3vh;font-family:var(--f-display);font-weight:800;font-size:clamp(2rem,6vw,5rem);color:#fff;opacity:0;animation:sobeEntra .6s forwards}
+.tv .nota small{font-size:.38em;opacity:.7;font-weight:600;margin-left:.4em}
+.tv .suspense{font-family:var(--f-display);font-weight:800;font-size:clamp(1.6rem,4.5vw,4rem);color:#ffd76a;animation:pisca 1s ease-in-out infinite}
+/* pódio final */
+.tv .podio{display:flex;align-items:flex-end;justify-content:center;gap:2vw;width:min(1200px,94vw)}
+.tv .deg{flex:1;display:flex;flex-direction:column;align-items:center;gap:1.4vh;opacity:0;animation:sobeEntra .9s cubic-bezier(.2,.9,.2,1) forwards}
+.tv .deg .eq{font-family:var(--f-display);font-weight:800;font-size:clamp(1.1rem,2.6vw,2.4rem);line-height:1.1;text-wrap:balance}
+.tv .deg .pt{opacity:.8;font-size:clamp(.9rem,1.8vw,1.5rem)}
+.tv .deg .bloco{width:100%;border-radius:1.6vh 1.6vh 0 0;display:grid;place-items:center;font-family:var(--f-display);font-weight:800;font-size:clamp(2.4rem,7vw,6rem);color:#16203a;transform-origin:bottom;animation:cresce 1s cubic-bezier(.2,.9,.2,1) both}
+.tv .deg.p1 .bloco{height:38vh;background:linear-gradient(180deg,#ffd76a,#d29500)}
+.tv .deg.p2 .bloco{height:27vh;background:linear-gradient(180deg,#ffffff,#9aa3bd)}
+.tv .deg.p3 .bloco{height:19vh;background:linear-gradient(180deg,#ffe0c2,#a8642c)}
+/* classificação geral */
+.tv .geral{width:min(1200px,94vw);display:grid;gap:1.1vh;max-height:74vh;overflow:hidden}
+.tv .gl{display:grid;grid-template-columns:clamp(44px,6vw,90px) minmax(0,1.2fr) minmax(0,1fr) clamp(70px,9vw,130px);align-items:center;gap:1.6vw;padding:1.2vh 1.8vw;border-radius:1.4vh;background:rgba(255,255,255,.07);opacity:0;animation:entraLado .7s cubic-bezier(.2,.9,.2,1) forwards;text-align:left}
+.tv .gl .ps{font-family:var(--f-display);font-weight:800;font-size:clamp(1.3rem,3vw,2.6rem);color:#ffd76a}
+.tv .gl b{font-family:var(--f-display);font-size:clamp(1.1rem,2.4vw,2.1rem);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tv .gl .bar{height:clamp(12px,2.2vh,24px);border-radius:999px;background:rgba(255,255,255,.12);overflow:hidden}
+.tv .gl .bar i{display:block;height:100%;width:0;border-radius:999px;background:linear-gradient(90deg,#3e4095,#8f93ea);transition:width 1.4s cubic-bezier(.2,.9,.2,1)}
+.tv .gl.t1 .bar i{background:linear-gradient(90deg,#d29500,#ffd76a)} .tv .gl.t1{background:rgba(255,215,106,.14);border:1px solid rgba(255,215,106,.5)}
+.tv .gl .pt{font-family:var(--f-display);font-weight:800;font-size:clamp(1.2rem,2.8vw,2.4rem);text-align:right}
+@keyframes zoomEntra{from{opacity:0;transform:scale(.6)}to{opacity:1;transform:none}}
+@keyframes sobeEntra{from{opacity:0;transform:translateY(3vh)}to{opacity:1;transform:none}}
+@keyframes entraLado{from{opacity:0;transform:translateX(-6vw)}to{opacity:1;transform:none}}
+@keyframes baque{0%{opacity:0;transform:scale(3) rotate(-8deg)}55%{opacity:1;transform:scale(.92)}75%{transform:scale(1.05)}100%{transform:none}}
+@keyframes letra{to{opacity:1;transform:none}}
+@keyframes pipoca{from{opacity:0;transform:scale(.4)}to{opacity:1;transform:none}}
+@keyframes pisca{50%{opacity:.35}}
+@keyframes gira{to{transform:rotate(360deg)}}
+@keyframes cresce{from{transform:scaleY(0)}to{transform:none}}
+@media (prefers-reduced-motion:reduce){.tv *{animation-duration:.01s!important;animation-delay:0s!important}}
 @keyframes surge{from{transform:scale(.6);opacity:0}to{transform:none;opacity:1}}
 @media (prefers-reduced-motion:reduce){.telao.ganhou .t-nome{animation:none}}
 .evs{display:grid;gap:8px}
@@ -562,7 +632,7 @@ function telaAdmin(){
       d.jurados.map(function(j){ return '<tr><td>'+esc(j.nome)+'</td><td>'+j.avaliou+' de '+j.deve+'</td><td>'+(j.deve-j.avaliou?'<b>'+(j.deve-j.avaliou)+'</b>':'<span style="color:var(--ok);font-weight:700">ok</span>')+'</td></tr>'; }).join("")+
       '</tbody></table></div>'+
       '<p class="small muted" style="margin:0">Média = média da soma das notas de cada jurado ('+d.criterios.length+' critérios de 0 a 10, máximo '+d.criterios.length*10+'). Clique em “Paródias” → Ver para as notas de cada jurado.</p>'+
-      '<div class="row"><button class="btn" id="imp">Imprimir letras aprovadas</button></div>':'<div class="card pad muted">Aprove as paródias na aba “Paródias” para os jurados começarem a votar.</div>');
+      '<div class="row"><button class="btn primary" id="tvrev">📺 Revelar resultado na TV</button><button class="btn" id="tvger">📺 Classificação geral na TV</button><button class="btn" id="imp">Imprimir letras aprovadas</button></div>':'<div class="card pad muted">Aprove as paródias na aba “Paródias” para os jurados começarem a votar.</div>');
   } else if(ABA==="jurados"){
     corpo='<div class="card pad stack"><p class="muted" style="margin:0">Os jurados entram em <b>'+esc(d.urlApp)+'jurados</b> com a matrícula e a mesma confirmação da urna.</p>'+
       '<form id="fj" class="row" novalidate><label class="field" style="flex:1 1 200px"><span>Matrícula do jurado</span><input id="jm" inputmode="numeric"></label><button class="btn primary" id="ja">Incluir jurado</button></form><div id="errj"></div>'+
@@ -615,6 +685,8 @@ function telaAdmin(){
     api("parValidar",AT,id,a,mot).then(function(x){ DADOS=x; telaAdmin(); toast(a==="aprovar"?"✔ "+p.equipe+" aprovada: já aparece para os jurados.":(a==="recusar"?"Paródia não aprovada.":"Voltou para aguardando.")); })
       .catch(function(e){ busy(b,false); toast(e.message); });
   }; });
+  var tvr=$("#tvrev"); if(tvr) tvr.onclick=function(){ telaoApuracao("revelar"); };
+  var tvg=$("#tvger"); if(tvg) tvg.onclick=function(){ telaoApuracao("geral"); };
   var imp=$("#imp"); if(imp) imp.onclick=function(){ imprimir(d.parodias.filter(function(p){ return p.status==="aprovada"; })); };
   var fj=$("#fj"); if(fj){
     fj.onsubmit=function(ev){ ev.preventDefault(); var b=$("#ja"); busy(b,true);
@@ -636,6 +708,103 @@ function agendarAoVivo(){
     if(!AT||$("#dlg").innerHTML||document.hidden){ agendarAoVivo(); return; }
     api("parAdmin",AT).then(function(x){ DADOS=x; telaAdmin(); }).catch(function(){ agendarAoVivo(); });
   },15000);
+}
+/* ---------- telão da apuração ---------- */
+function rankingFinal(){
+  return DADOS.parodias.filter(function(p){ return p.status==="aprovada"&&p.media!=null; })
+    .sort(function(a,b){ return b.media-a.media||a.equipe.localeCompare(b.equipe); })
+    .map(function(p,i,l){ var pos=i+1; while(pos>1&&l[pos-2].media===p.media) pos--; return {p:p,pos:pos}; });   // empate = mesma posição
+}
+function integrantesDe(p){
+  var l=[p.responsavel].concat(String(p.integrantes||"").split(/\n|,|;/)).map(function(x){ return x.replace(/\s*[-–]?\s*\d{3,}\s*$/,"").trim(); }).filter(Boolean);
+  var vistos={}; return l.filter(function(x){ var k=x.toLowerCase(); if(vistos[k]) return false; vistos[k]=1; return true; }).slice(0,14);
+}
+function telaoApuracao(modo){
+  var rk=rankingFinal();
+  if(!rk.length){ toast("Ainda não há paródias com nota dos jurados."); return; }
+  var max=DADOS.criterios.length*10, tit=DADOS.cfg.titulo;
+  var el=document.createElement("div"); el.className="tv";
+  el.innerHTML='<div class="raios"></div><div class="tv-top"><span class="lg"><img src="logo-redentor.png" alt="Auto Viação Redentor"></span><span class="tt">'+esc(tit)+'</span></div>'+
+    '<button class="t-sec tv-sair">✕ Sair</button><div class="palco" id="palco"></div><div class="tv-dica" id="dica"></div>';
+  // reaproveita o estilo do botão de sair do sorteio
+  el.querySelector(".tv-sair").style.cssText="font:inherit;font-weight:700;padding:10px 20px;border-radius:999px;border:1px solid rgba(255,255,255,.5);background:rgba(0,0,0,.35);color:#fff;cursor:pointer";
+  document.body.appendChild(el);
+  if(document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(function(){});
+  var palco=el.querySelector("#palco"), dica=el.querySelector("#dica");
+  function fechar(){ document.removeEventListener("keydown",tecla); el.remove(); if(window.speechSynthesis) speechSynthesis.cancel();
+    if(document.fullscreenElement&&document.exitFullscreen) document.exitFullscreen().catch(function(){}); }
+  el.querySelector(".tv-sair").onclick=function(ev){ ev.stopPropagation(); fechar(); };
+
+  if(modo==="geral"){ geral(); el.onclick=null; document.addEventListener("keydown",tecla); return; }
+
+  // revelação: abertura → do último até o 4º (um por vez) → 3º, 2º, 1º com suspense → pódio
+  var resto=rk.filter(function(x){ return x.pos>3; }).reverse(), top=rk.filter(function(x){ return x.pos<=3; }).reverse();
+  var passos=[abertura];
+  resto.forEach(function(x,i){ passos.push(function(){ fila(i); }); });
+  top.forEach(function(x){ passos.push(function(){ suspense(x); }); passos.push(function(){ revela(x); }); });
+  passos.push(podio);
+  var n=-1;
+  function vai(d){ var k=Math.max(0,Math.min(passos.length-1,n+d)); if(k===n) return; n=k; el.classList.remove("ouro"); passos[n](); }
+  function tecla(ev){
+    if(ev.key==="Escape"){ fechar(); return; }
+    if(modo==="geral") return;
+    if(ev.key===" "||ev.key==="ArrowRight"||ev.key==="Enter"||ev.key==="PageDown"){ ev.preventDefault(); vai(1); }
+    if(ev.key==="ArrowLeft"||ev.key==="PageUp"){ ev.preventDefault(); vai(-1); }
+  }
+  document.addEventListener("keydown",tecla);
+  el.onclick=function(){ vai(1); };
+  vai(1);
+
+  function abertura(){
+    palco.innerHTML='<div class="abre"><h1>Resultado</h1><p>'+esc(tit)+' · '+rk.length+' equipes</p></div>';
+    dica.textContent="Toque na tela ou aperte ESPAÇO para revelar · ← volta · ESC sai";
+  }
+  function fila(i){
+    var feitos=resto.slice(0,i+1).slice(-6);   // mostra as últimas 6 reveladas
+    palco.innerHTML='<div class="fila">'+feitos.slice().reverse().map(function(x,k){
+      return '<div class="lin'+(k===0?' nova':'')+'"><div class="ps">'+x.pos+'º</div><div class="nm"><b>'+esc(x.p.equipe)+'</b><span>“'+esc(x.p.musica)+'”</span></div><div class="pt">'+fmt(x.p.media)+'</div></div>'; }).join("")+'</div>';
+    dica.textContent=(resto.length-i-1)?"Próximo: "+resto[i+1].pos+"º lugar":"A seguir: os 3 primeiros colocados!";
+  }
+  function nomeLugar(pos){ return pos===1?"PRIMEIRO LUGAR":(pos===2?"SEGUNDO LUGAR":"TERCEIRO LUGAR"); }
+  function suspense(x){
+    palco.innerHTML='<div class="lugar '+(x.pos===1?'':x.pos===2?'prata':'bronze')+'">'+x.pos+'º<small>'+nomeLugar(x.pos)+'</small></div><div class="suspense" style="margin-top:4vh">E a equipe é…</div>';
+    dica.textContent="Toque para revelar";
+    falar((x.pos===1?"E o primeiro lugar":"Em "+(x.pos===2?"segundo":"terceiro")+" lugar")+"…");
+  }
+  function revela(x){
+    var p=x.p, letras=Array.from(p.equipe).map(function(c,i){ return c===" "?" ":'<span class="l" style="animation-delay:'+(.35+i*.045).toFixed(2)+'s">'+esc(c)+'</span>'; }).join("");
+    var t0=.35+p.equipe.length*.045, ints=integrantesDe(p);
+    palco.innerHTML='<div class="lugar '+(x.pos===1?'':x.pos===2?'prata':'bronze')+'" style="font-size:clamp(3rem,12vh,9rem)">'+x.pos+'º<small>'+nomeLugar(x.pos)+'</small></div>'+
+      '<div class="equipe">'+letras+'</div>'+
+      '<div class="musica" style="animation-delay:'+(t0+.2).toFixed(2)+'s">🎵 Paródia de “'+esc(p.musica)+'” · '+esc(p.artista)+'</div>'+
+      '<div class="integ">'+ints.map(function(n,i){ return '<span style="animation-delay:'+(t0+.6+i*.12).toFixed(2)+'s">'+esc(n)+'</span>'; }).join("")+'</div>'+
+      '<div class="nota" style="animation-delay:'+(t0+.9+ints.length*.12).toFixed(2)+'s"><span class="cnt">0</span><small>pontos</small></div>';
+    var cnt=palco.querySelector(".cnt"), alvo=p.media, ini=performance.now()+(t0+.9+ints.length*.12)*1000;
+    (function conta(t){ if(!document.body.contains(cnt)) return; var k=Math.max(0,Math.min(1,(t-ini)/1200)); cnt.textContent=fmt(alvo*(1-Math.pow(1-k,3))); if(k<1) requestAnimationFrame(conta); })(performance.now());
+    if(x.pos===1){ el.classList.add("ouro"); setTimeout(confete,600); setTimeout(confete,1800); }
+    else setTimeout(confete,700);
+    apito(true);
+    setTimeout(function(){ falar("Equipe "+p.equipe+"!"); },400);
+    dica.textContent=x.pos===1?"Toque para ver o pódio":"Toque para o próximo";
+  }
+  function podio(){
+    var por={}; top.forEach(function(x){ if(!por[x.pos]) por[x.pos]=x; });
+    function deg(pos,atraso){ var x=por[pos]; if(!x) return '<div class="deg p'+pos+'"></div>';
+      return '<div class="deg p'+pos+'" style="animation-delay:'+atraso+'s"><div class="eq">'+esc(x.p.equipe)+'</div><div class="pt">'+fmt(x.p.media)+' pontos</div>'+
+        '<div class="bloco" style="animation-delay:'+(atraso+.1)+'s">'+pos+'º</div></div>'; }
+    palco.innerHTML='<div class="abre" style="margin-bottom:4vh"><h1 style="font-size:clamp(2rem,5vw,4.4rem)">🏆 Campeões</h1></div><div class="podio">'+deg(2,.5)+deg(1,1)+deg(3,0)+'</div>';
+    el.classList.add("ouro"); setTimeout(confete,1300);
+    dica.textContent="Parabéns a todas as equipes! · ESC para sair";
+  }
+  function geral(){
+    var lista=rk.slice(0,12);
+    palco.innerHTML='<div class="abre" style="margin-bottom:3vh"><h1 style="font-size:clamp(1.8rem,4.4vw,3.8rem)">Classificação geral</h1></div><div class="geral">'+lista.map(function(x,i){
+      return '<div class="gl'+(x.pos===1?' t1':'')+'" style="animation-delay:'+(.25+i*.14).toFixed(2)+'s"><div class="ps">'+x.pos+'º</div><b>'+esc(x.p.equipe)+'</b>'+
+        '<div class="bar"><i data-w="'+Math.round(100*x.p.media/max)+'"></i></div><div class="pt">'+fmt(x.p.media)+'</div></div>'; }).join("")+'</div>';
+    dica.textContent=(rk.length>12?"Mostrando as 12 primeiras de "+rk.length+" · ":"")+"Máximo "+max+" pontos · ESC para sair";
+    lista.forEach(function(x,i){ setTimeout(function(){ var b=palco.querySelectorAll(".bar i")[i]; if(b) b.style.width=b.dataset.w+"%"; },450+i*140); });
+    setTimeout(confete,450+lista.length*140+600);
+  }
 }
 function abrirAdmin(id){
   var p=DADOS.parodias.find(function(x){ return x.id===id; }); if(!p) return;
