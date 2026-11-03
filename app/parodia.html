@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Paródias da CIPA</title>
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="description" content="Inscreva a paródia da sua equipe no concurso da CIPA da Auto Viação Redentor.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="CIPA 2026 · Auto Viação Redentor">
+<meta property="og:title" content="Concurso de Paródias da CIPA">
+<meta property="og:description" content="Inscreva a paródia da sua equipe pelo celular: nome da equipe, música e letra.">
+<meta property="og:image" content="https://cipa.redentorhub.com.br/og-cipa.jpg?v=1">
+<meta name="theme-color" content="#16203a">
+<meta name="color-scheme" content="light">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap">
+<style>
+/* Mesmo visual da urna (faixa azul com a cruz de segurança, cartões brancos); aqui a letra é a estrela: fonte grande e legível nos cartões dos jurados. */
+:root{
+  --bg:#f1f4ff; --surface:#ffffff; --surface-2:#f5f7fd; --ink:#16203a; --muted:#5a6380; --line:#e0e5f2; --line-2:#cdd4e6;
+  --accent:#3e4095; --accent-strong:#2f3180; --accent-ink:#ffffff; --accent-soft:#e6e8f7;
+  --amber:#d29500; --amber-soft:#fbf0d4; --amber-ink:#5c4100;
+  --warn:#8a5a00; --warn-soft:#fff3d6; --bad:#b42318; --bad-soft:#fde8e5; --ok:#0a7a40; --ok-soft:#e0f3e8;
+  --f-display:"Outfit","Segoe UI",system-ui,sans-serif;
+  --f-body:"Plus Jakarta Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --r:16px; --r-sm:12px;
+  --shadow:0 1px 2px rgba(22,32,58,.05),0 8px 24px -8px rgba(22,32,58,.14);
+}
+:root[data-theme="dark"]{
+  --bg:#0d1324; --surface:#151d33; --surface-2:#1a2340; --ink:#e8ecf8; --muted:#9aa3bd; --line:#26304d; --line-2:#333e60;
+  --accent:#8f93ea; --accent-strong:#a9acf0; --accent-ink:#0d1324; --accent-soft:#232a55;
+  --amber:#e7b240; --amber-soft:#3a2e10; --amber-ink:#ffe2a0;
+  --warn:#ffc760; --warn-soft:#3a2c10; --bad:#ff8b7c; --bad-soft:#3b1a17; --ok:#62d69a; --ok-soft:#143424;
+  --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 24px -8px rgba(0,0,0,.45); color-scheme:dark}
+*{box-sizing:border-box}
+html,body{background:var(--bg);color:var(--ink);margin:0}
+body{font-family:var(--f-body);font-size:15.5px;line-height:1.5;padding:0 16px 48px;-webkit-font-smoothing:antialiased}
+h1,h2,h3{font-family:var(--f-display);line-height:1.15;margin:0;letter-spacing:-.01em;text-wrap:balance}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+[hidden]{display:none!important}
+:focus-visible{outline:3px solid color-mix(in srgb,var(--accent) 55%,transparent);outline-offset:2px}
+.wrap{max-width:980px;margin:0 auto}
+.narrow{max-width:640px;margin:0 auto}
+.muted{color:var(--muted)} .small{font-size:.86rem}
+.lbl{font-size:.72rem;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);font-weight:700}
+
+.band{margin:0 -16px 22px;color:#fff;padding:18px 16px;border-bottom:4px solid #d29500;
+  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='44'%3E%3Cpath d='M19 14h6v5h5v6h-5v5h-6v-5h-5v-6h5z' fill='%23d29500' fill-opacity='.08'/%3E%3C/svg%3E"),
+  linear-gradient(120deg,#16203a 0%,#1e2b4f 55%,#3e4095 100%)}
+.bandin{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px 24px}
+.brand{display:flex;align-items:center;gap:14px;min-width:0}
+.mark{flex:none;height:56px;padding:5px 10px;border-radius:14px;background:#fff;display:grid;place-items:center}
+.mark img{height:46px;width:auto;display:block}
+.band h1{font-size:clamp(1.3rem,3vw,1.8rem);font-weight:700;color:#fff}
+.band .sub{font-size:.9rem;color:rgba(255,255,255,.82)}
+.quem{display:inline-flex;align-items:center;gap:10px;font-size:.88rem}
+.quem .btn{min-height:36px;padding:6px 12px;color:#fff;background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.25)}
+
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow)}
+.pad{padding:22px}
+.stack>*+*{margin-top:14px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1px solid var(--line-2);background:var(--surface);border-radius:var(--r-sm);padding:10px 18px;font-weight:600;min-height:44px}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.primary:hover{background:var(--accent-strong)}
+.btn.ok{background:var(--ok);border-color:var(--ok);color:#fff}
+.btn.warn{background:var(--warn-soft);border-color:color-mix(in srgb,var(--warn) 40%,transparent);color:var(--warn)}
+.btn.danger{color:var(--bad);border-color:color-mix(in srgb,var(--bad) 45%,transparent);background:var(--bad-soft)}
+.btn.ghost{border-color:transparent;background:transparent}
+.btn.lg{min-height:54px;font-size:1.05rem;width:100%}
+.btn.sm{min-height:34px;padding:5px 12px;font-size:.86rem}
+.btn:disabled{opacity:.55;cursor:not-allowed}
+.field{display:flex;flex-direction:column;gap:6px;min-width:0}
+.field>span{font-weight:600;font-size:.92rem}
+.field small{color:var(--muted);font-size:.8rem}
+.field input,.field select,.field textarea{border:1.5px solid var(--line-2);background:var(--surface);border-radius:var(--r-sm);padding:10px 14px;min-height:46px;width:100%}
+.field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 4px color-mix(in srgb,var(--accent) 18%,transparent)}
+.field textarea{min-height:100px;resize:vertical;line-height:1.55}
+.field textarea.letra{min-height:340px;font-size:1rem}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.row.end{justify-content:flex-end}
+.note{border-radius:var(--r-sm);padding:12px 14px;font-size:.93rem}
+.note.warn{background:var(--warn-soft);color:var(--warn)}
+.note.bad{background:var(--bad-soft);color:var(--bad)}
+.note.ok{background:var(--ok-soft);color:var(--ok)}
+.note.info{background:var(--accent-soft);color:var(--ink)}
+.check{display:flex;gap:10px;align-items:flex-start;font-size:.92rem}
+.check input{width:20px;height:20px;margin-top:2px;flex:none}
+.pill{display:inline-flex;align-items:center;gap:7px;padding:4px 11px;border-radius:999px;font-size:.78rem;font-weight:700;white-space:nowrap}
+.pill::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.pill.pendente{background:var(--amber-soft);color:var(--amber-ink)}
+.pill.aprovada{background:var(--ok-soft);color:var(--ok)}
+.pill.ajuste{background:var(--warn-soft);color:var(--warn)}
+.pill.recusada{background:var(--bad-soft);color:var(--bad)}
+.hero{text-align:center;padding:8px 0 4px}
+.hero .ico{font-size:2.6rem;line-height:1}
+.hero h2{font-size:1.5rem;margin-top:6px}
+.toast{position:fixed;left:50%;bottom:calc(22px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:12px 20px;border-radius:12px;font-weight:600;z-index:60;max-width:calc(100% - 32px)}
+.loading{padding:70px 0;text-align:center;color:var(--muted)}
+.cont{font-size:.8rem;color:var(--muted);text-align:right}
+
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+.tabs button{border:1px solid var(--line-2);background:var(--surface);border-radius:999px;padding:7px 14px;font-weight:600;font-size:.88rem}
+.tabs button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.tabs .n{opacity:.7;margin-left:4px}
+
+.lista{display:grid;gap:10px}
+.item{display:flex;gap:14px;align-items:center;justify-content:space-between;padding:14px 16px;text-align:left;width:100%;border:1px solid var(--line);background:var(--surface);border-radius:var(--r);box-shadow:var(--shadow)}
+.item:hover{border-color:var(--accent)}
+.item h3{font-size:1.08rem}
+.item .meta{font-size:.85rem;color:var(--muted)}
+.item .lado{display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex:none}
+.letra-txt{white-space:pre-wrap;font-size:1.05rem;line-height:1.7;background:var(--surface-2);border:1px solid var(--line);border-radius:var(--r-sm);padding:18px;max-height:60vh;overflow:auto}
+.notas{display:grid;gap:10px}
+.nota{display:grid;grid-template-columns:1fr 92px;gap:10px;align-items:center}
+.nota input{text-align:center;font-weight:700}
+.total{font-family:var(--f-display);font-size:1.4rem;font-weight:700}
+table{width:100%;border-collapse:collapse;font-size:.9rem}
+th,td{text-align:left;padding:9px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.tbl{overflow-x:auto}
+.pos{font-family:var(--f-display);font-weight:800;font-size:1.2rem;width:40px}
+.dlg{position:fixed;inset:0;background:rgba(10,15,30,.55);display:flex;align-items:flex-start;justify-content:center;padding:24px 12px;overflow:auto;z-index:50}
+.dlg>.card{width:100%;max-width:760px}
+
+@media print{
+  body{background:#fff;padding:0} .band,.noprint,.toast{display:none!important}
+  .print-only{display:block!important}
+  .folha{page-break-after:always;padding:0 8mm}
+  .folha h2{font-size:20pt} .folha pre{white-space:pre-wrap;font-family:inherit;font-size:12.5pt;line-height:1.6}
+}
+.print-only{display:none}
+</style>
+</head>
+<body>
+<header class="band noprint">
+  <div class="wrap bandin">
+    <div class="brand">
+      <span class="mark"><img src="logo-redentor.png" alt="Auto Viação Redentor"></span>
+      <div><h1 id="titulo">Concurso de Paródias da CIPA</h1><div class="sub" id="sub">Auto Viação Redentor</div></div>
+    </div>
+    <div class="quem" id="quem" hidden></div>
+  </div>
+</header>
+<main class="wrap noprint" id="app"><div class="loading">Carregando…</div></main>
+<div id="impressao" class="print-only"></div>
+<div id="dlg"></div>
+
+<script>
+(function(){
+"use strict";
+var PAGE = window.__PAGE__ || "parodia";
+var $ = function(s,el){ return (el||document).querySelector(s); };
+var app = $("#app");
+function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; }); }
+function api(fn){
+  var args=Array.prototype.slice.call(arguments,1);
+  return fetch("api.php",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({fn:fn,args:args}),cache:"no-store"})
+    .then(function(r){ return r.json().catch(function(){ throw new Error("Resposta inválida do servidor (HTTP "+r.status+")."); }); },
+          function(){ throw new Error("Falha de comunicação. Verifique a internet e tente novamente."); })
+    .then(function(x){ if(x && x.erro) throw new Error(x.erro); return x; });
+}
+var tt;
+function toast(m){ var t=$(".toast"); if(!t){ t=document.createElement("div"); t.className="toast"; document.body.appendChild(t); }
+  t.textContent=m; t.hidden=false; clearTimeout(tt); tt=setTimeout(function(){ t.hidden=true; },3200); }
+function store(k,v){ try{ if(v===undefined) return sessionStorage.getItem(k); if(v===null) sessionStorage.removeItem(k); else sessionStorage.setItem(k,v); }catch(e){ return null; } }
+function dataBr(iso){ if(!iso) return ""; var d=new Date(iso); if(isNaN(d)) return iso; return d.toLocaleDateString("pt-BR")+" "+d.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"}); }
+function localBr(v){ if(!v) return ""; var p=v.split("T"); var d=p[0].split("-"); return d[2]+"/"+d[1]+"/"+d[0]+" às "+p[1]; }
+var STATUS={pendente:"Aguardando validação",aprovada:"Aprovada",ajuste:"Ajuste pedido",recusada:"Recusada"};
+function pill(s){ return '<span class="pill '+esc(s)+'">'+esc(STATUS[s]||s)+'</span>'; }
+function busy(btn,on,txt){ if(!btn) return; if(on){ btn.dataset.t=btn.textContent; btn.textContent=txt||"Aguarde…"; btn.disabled=true; } else { btn.textContent=btn.dataset.t||btn.textContent; btn.disabled=false; } }
+function erroEm(el,msg){ el.innerHTML=msg?'<div class="note bad">'+esc(msg)+'</div>':""; if(msg) el.scrollIntoView({block:"nearest",behavior:"smooth"}); }
+function quem(html){ var q=$("#quem"); q.innerHTML=html||""; q.hidden=!html; }
+
+var INFO=null;
+function campoConf(){
+  if(!INFO || INFO.verificacao==="nenhuma") return "";
+  var num=/cpf/.test(INFO.verificacao);
+  return '<label class="field"><span>'+esc(INFO.verificacaoLbl)+'</span>'+
+    '<input id="conf" '+(num?'inputmode="numeric" maxlength="'+(INFO.verificacao==="cpf3"?3:4)+'" autocomplete="off"':'autocomplete="off"')+' required>'+
+    (INFO.verificacao==="cpf3"?'<small>Só os 3 primeiros números do seu CPF, para confirmar que é você.</small>':'')+'</label>';
+}
+function situacaoTxt(){
+  var s=INFO.situacao;
+  if(s==="antes") return '<div class="note warn">As inscrições abrem em '+esc(localBr(INFO.inicio))+'.</div>';
+  if(s==="depois"||s==="desabilitada") return '<div class="note warn">As inscrições estão encerradas. Se a sua equipe já se inscreveu, entre para acompanhar.</div>';
+  return INFO.fim?'<div class="note info">Inscrições abertas até <b>'+esc(localBr(INFO.fim))+'</b>.</div>':"";
+}
+
+/* =================== inscrição =================== */
+var EU={m:"",c:""};
+function telaEntrada(){
+  quem("");
+  app.innerHTML='<div class="narrow"><div class="card pad stack">'+
+    '<div><div class="lbl">Inscrição da equipe</div><h2 style="margin-top:4px">Mostre a paródia da sua equipe</h2>'+
+    '<p class="muted" style="margin:8px 0 0">Tema: <b>'+esc(INFO.tema)+'</b>. O responsável pela equipe entra com a matrícula e envia o nome da equipe, a música original e a letra.</p></div>'+
+    situacaoTxt()+
+    '<form id="f" class="stack" novalidate>'+
+      '<label class="field"><span>Sua matrícula</span><input id="mat" inputmode="numeric" autocomplete="off" required></label>'+
+      campoConf()+
+      '<div id="err"></div>'+
+      '<button class="btn primary lg" id="go">Continuar</button>'+
+    '</form></div></div>';
+  $("#mat").focus();
+  $("#f").onsubmit=function(ev){ ev.preventDefault();
+    var b=$("#go"), m=$("#mat").value.trim(), c=$("#conf")?$("#conf").value.trim():"";
+    busy(b,true,"Conferindo…");
+    api("parConsultar",m,c).then(function(r){ EU={m:m,c:c}; telaEquipe(r); })
+      .catch(function(e){ busy(b,false); erroEm($("#err"),e.message); });
+  };
+}
+function telaEquipe(r){
+  quem('<span>'+esc(r.nome.split(" ")[0])+'</span><button class="btn sm" id="sair">Sair</button>');
+  $("#sair").onclick=function(){ EU={m:"",c:""}; telaEntrada(); };
+  var p=r.parodia||{}, st="";
+  if(r.parodia){
+    st='<div class="card pad stack"><div class="row" style="justify-content:space-between"><div><div class="lbl">Sua inscrição</div><h2 style="margin-top:4px">'+esc(p.equipe)+'</h2></div>'+pill(p.status)+'</div>'+
+      '<div class="muted">“'+esc(p.musica)+'” · '+esc(p.artista)+' · enviada em '+esc(dataBr(p.criada))+'</div>'+
+      (p.status==="ajuste"?'<div class="note warn"><b>Os jurados pediram um ajuste:</b> '+esc(p.motivo)+'<br>Corrija abaixo e envie de novo.</div>':'')+
+      (p.status==="recusada"?'<div class="note bad"><b>Paródia recusada pelos jurados:</b> '+esc(p.motivo)+'</div>':'')+
+      (p.status==="aprovada"?'<div class="note ok">A paródia da sua equipe foi aprovada. Agora é ensaiar para a apresentação!</div>':'')+
+      (p.status==="pendente"?'<div class="note info">Os jurados ainda vão ler a letra. '+(r.podeEditar?'Até lá você pode alterar o que quiser.':'')+'</div>':'')+
+      (!r.podeEditar?'<details><summary class="small" style="cursor:pointer">Ver a letra enviada</summary><div class="letra-txt" style="margin-top:10px">'+esc(p.letra)+'</div></details>':'')+
+    '</div>';
+  }
+  var form = !r.podeEditar ? "" :
+    '<form id="f" class="card pad stack" novalidate>'+
+      (r.parodia?'<h3>Alterar inscrição</h3>':'<div><div class="lbl">Olá, '+esc(r.nome)+'</div><h2 style="margin-top:4px">Dados da paródia</h2></div>')+
+      '<label class="field"><span>Nome da equipe</span><input id="equipe" maxlength="80" value="'+esc(p.equipe)+'" required></label>'+
+      '<div class="grid2">'+
+        '<label class="field"><span>Música original</span><input id="musica" maxlength="120" value="'+esc(p.musica)+'" placeholder="Ex.: Evidências" required></label>'+
+        '<label class="field"><span>Cantor ou banda</span><input id="artista" maxlength="120" value="'+esc(p.artista)+'" placeholder="Ex.: Chitãozinho & Xororó" required></label>'+
+      '</div>'+
+      '<label class="field"><span>Integrantes da equipe</span><textarea id="integ" maxlength="1500" placeholder="Um por linha: nome e matrícula">'+esc(p.integrantes)+'</textarea><small>Você ('+esc(r.nome)+') já entra como responsável.</small></label>'+
+      '<label class="field"><span>Celular para contato <span class="muted">(opcional)</span></span><input id="cel" inputmode="tel" maxlength="20" value="'+esc(p.celular)+'"></label>'+
+      '<label class="field"><span>Letra da paródia</span><textarea id="letra" class="letra" maxlength="8000" placeholder="Escreva a letra completa, com os refrões.">'+esc(p.letra)+'</textarea><div class="cont" id="cont"></div></label>'+
+      '<label class="check"><input type="checkbox" id="aceite"><span>Declaro que a letra foi criada pela nossa equipe, respeita colegas e a empresa, e autorizo a CIPA a divulgá-la e a apresentá-la nos eventos de segurança.</span></label>'+
+      '<div id="err"></div>'+
+      '<button class="btn primary lg" id="go">'+(r.parodia?'Salvar alterações':'Enviar inscrição')+'</button>'+
+    '</form>';
+  app.innerHTML='<div class="narrow stack">'+st+form+'</div>';
+  if(!r.podeEditar) return;
+  var le=$("#letra"); function cont(){ $("#cont").textContent=le.value.length+" / 8000"; } le.oninput=cont; cont();
+  $("#f").onsubmit=function(ev){ ev.preventDefault();
+    var b=$("#go");
+    var d={equipe:$("#equipe").value,musica:$("#musica").value,artista:$("#artista").value,integrantes:$("#integ").value,celular:$("#cel").value,letra:le.value};
+    busy(b,true,"Enviando…");
+    api("parSalvar",EU.m,EU.c,d,$("#aceite").checked).then(function(x){ telaEnviada(x); })
+      .catch(function(e){ busy(b,false); erroEm($("#err"),e.message); });
+  };
+}
+function telaEnviada(x){
+  app.innerHTML='<div class="narrow"><div class="card pad stack hero">'+
+    '<div class="ico">🎤</div><h2>'+(x.alterou?'Inscrição atualizada!':'Inscrição recebida!')+'</h2>'+
+    '<p class="muted" style="margin:0">Equipe <b>'+esc(x.equipe)+'</b>. Os jurados vão ler a letra e validar a paródia. '+
+    'Para acompanhar, volte a este endereço e entre com a sua matrícula.</p>'+
+    '<button class="btn" id="volta">Ver minha inscrição</button></div></div>';
+  window.scrollTo(0,0);
+  $("#volta").onclick=function(){ api("parConsultar",EU.m,EU.c).then(telaEquipe).catch(function(e){ toast(e.message); telaEntrada(); }); };
+}
+
+/* =================== jurados e comissão =================== */
+var JT=store("par_jur"), AT=store("par_adm"), DADOS=null, FILTRO="todas", ABA="parodias";
+
+function telaLoginJuri(modo){
+  quem("");
+  modo=modo||"jurado";
+  app.innerHTML='<div class="narrow"><div class="card pad stack">'+
+    '<div class="tabs" role="group"><button data-m="jurado" aria-pressed="'+(modo==="jurado")+'">Sou jurado</button><button data-m="comissao" aria-pressed="'+(modo==="comissao")+'">Comissão da CIPA</button></div>'+
+    (modo==="jurado"
+      ? '<div><h2>Área dos jurados</h2><p class="muted" style="margin:6px 0 0">Entre com a sua matrícula, como na urna.</p></div>'+
+        '<form id="f" class="stack" novalidate><label class="field"><span>Matrícula</span><input id="mat" inputmode="numeric" autocomplete="off"></label>'+campoConf()+'<div id="err"></div><button class="btn primary lg" id="go">Entrar</button></form>'
+      : '<div><h2>Comissão</h2><p class="muted" style="margin:6px 0 0">Mesmo usuário e senha da administração da urna.</p></div>'+
+        '<form id="f" class="stack" novalidate><label class="field"><span>Usuário</span><input id="usu" autocomplete="username" value="admin"></label>'+
+        '<label class="field"><span>Senha</span><input id="sen" type="password" autocomplete="current-password"></label><div id="err"></div><button class="btn primary lg" id="go">Entrar</button></form>')+
+  '</div></div>';
+  app.querySelectorAll(".tabs button").forEach(function(b){ b.onclick=function(){ telaLoginJuri(b.dataset.m); }; });
+  var first=$("#mat")||$("#sen"); first.focus();
+  $("#f").onsubmit=function(ev){ ev.preventDefault(); var b=$("#go"); busy(b,true,"Entrando…");
+    var pr = modo==="jurado" ? api("parJuradoLogin",$("#mat").value.trim(),$("#conf")?$("#conf").value.trim():"").then(function(r){ JT=r.token; store("par_jur",JT); return carregarJurado(); })
+                             : api("adminLogin",$("#usu").value,$("#sen").value).then(function(r){ AT=r.token; store("par_adm",AT); return carregarAdmin(); });
+    pr.catch(function(e){ busy(b,false); erroEm($("#err"),e.message); });
+  };
+}
+function sair(){ store("par_jur",null); store("par_adm",null); JT=AT=null; DADOS=null; telaLoginJuri(); }
+
+function carregarJurado(){ return api("parJuradoDados",JT).then(function(d){ DADOS=d; telaJurado(); }).catch(function(e){ store("par_jur",null); JT=null; toast(e.message); telaLoginJuri(); }); }
+function carregarAdmin(){ return api("parAdmin",AT).then(function(d){ DADOS=d; telaAdmin(); }).catch(function(e){ store("par_adm",null); AT=null; toast(e.message); telaLoginJuri("comissao"); }); }
+
+function contagem(lista){ var c={todas:lista.length,pendente:0,aprovada:0,ajuste:0,recusada:0}; lista.forEach(function(p){ c[p.status]++; }); return c; }
+function filtros(lista,render){
+  var c=contagem(lista);
+  return '<div class="tabs noprint" id="filtros">'+[["todas","Todas"],["pendente","Aguardando"],["aprovada","Aprovadas"],["ajuste","Ajuste pedido"],["recusada","Recusadas"]].map(function(f){
+    return '<button data-f="'+f[0]+'" aria-pressed="'+(FILTRO===f[0])+'">'+f[1]+'<span class="n">'+c[f[0]]+'</span></button>'; }).join("")+'</div>';
+}
+function ligarFiltros(render){ app.querySelectorAll("#filtros button").forEach(function(b){ b.onclick=function(){ FILTRO=b.dataset.f; render(); }; }); }
+function somaNota(n){ return n?n.notas.reduce(function(a,b){ return a+Number(b); },0):null; }
+function fmt(n){ return n==null?"—":(Math.round(n*10)/10).toLocaleString("pt-BR"); }
+
+function telaJurado(){
+  var d=DADOS;
+  quem('<span>Jurado: '+esc(d.jurado.nome.split(" ")[0])+'</span><button class="btn sm" id="sair">Sair</button>');
+  $("#sair").onclick=sair;
+  var lista=d.parodias.filter(function(p){ return FILTRO==="todas"||p.status===FILTRO; });
+  var semNota=d.parodias.filter(function(p){ return p.status==="aprovada"&&!p.propria&&!p.minhaNota; }).length;
+  app.innerHTML='<div class="stack">'+
+    '<div class="row" style="justify-content:space-between"><div><div class="lbl">Área dos jurados</div><h2 style="margin-top:4px">'+esc(d.cfg.titulo)+'</h2></div>'+
+    '<button class="btn" id="imp">Imprimir letras aprovadas</button></div>'+
+    (semNota?'<div class="note info">Falta a sua nota em <b>'+semNota+'</b> paródia(s) aprovada(s).</div>':'')+
+    filtros(d.parodias)+
+    (lista.length?'<div class="lista">'+lista.map(function(p){
+      return '<button class="item" data-id="'+p.id+'"><div><h3>'+esc(p.equipe)+'</h3><div class="meta">“'+esc(p.musica)+'” · '+esc(p.artista)+'</div>'+
+        '<div class="meta">'+esc(p.responsavel)+(p.setor?' · '+esc(p.setor):'')+'</div></div>'+
+        '<div class="lado">'+pill(p.status)+(p.propria?'<span class="small muted">sua equipe</span>':(p.minhaNota?'<span class="small">sua nota: <b>'+fmt(somaNota(p.minhaNota))+'</b></span>':''))+'</div></button>';
+    }).join("")+'</div>':'<div class="card pad muted">Nenhuma paródia aqui ainda.</div>')+
+  '</div>';
+  ligarFiltros(telaJurado);
+  app.querySelectorAll(".item").forEach(function(b){ b.onclick=function(){ abrirJurado(+b.dataset.id); }; });
+  $("#imp").onclick=function(){ imprimir(d.parodias.filter(function(p){ return p.status==="aprovada"; })); };
+}
+
+function fecharDlg(){ $("#dlg").innerHTML=""; document.body.style.overflow=""; }
+function dlg(html){ $("#dlg").innerHTML='<div class="dlg noprint"><div class="card pad stack">'+html+'</div></div>'; document.body.style.overflow="hidden";
+  $("#dlg .dlg").onclick=function(ev){ if(ev.target===this) fecharDlg(); }; }
+function detalhe(p){
+  return '<div class="row" style="justify-content:space-between;align-items:flex-start"><div><div class="lbl">Equipe</div><h2 style="margin-top:2px">'+esc(p.equipe)+'</h2>'+
+    '<div class="muted">Paródia de “'+esc(p.musica)+'” · '+esc(p.artista)+'</div></div><div class="row">'+pill(p.status)+'<button class="btn sm ghost" id="fx" aria-label="Fechar">✕</button></div></div>'+
+    '<div class="small"><b>Responsável:</b> '+esc(p.matricula)+' – '+esc(p.responsavel)+(p.setor?' · '+esc(p.setor):'')+(p.celular?' · '+esc(p.celular):'')+'</div>'+
+    (p.integrantes?'<div class="small"><b>Integrantes:</b><br>'+esc(p.integrantes).replace(/\n/g,"<br>")+'</div>':'')+
+    (p.motivo?'<div class="note '+(p.status==="recusada"?"bad":"warn")+'"><b>Motivo:</b> '+esc(p.motivo)+'</div>':'')+
+    (p.validadoPor?'<div class="small muted">Última validação: '+esc(p.validadoPor)+' em '+esc(dataBr(p.validadoEm))+'</div>':'')+
+    '<div class="letra-txt">'+esc(p.letra)+'</div>';
+}
+function abrirJurado(id){
+  var p=DADOS.parodias.find(function(x){ return x.id===id; }); if(!p) return;
+  var crit=DADOS.cfg.criterios, mn=p.minhaNota;
+  var acoes = p.propria ? '<div class="note info">Esta é a paródia da sua equipe: a validação e as notas ficam com os outros jurados.</div>' :
+    '<div class="stack"><div class="lbl">Validação</div>'+
+      '<label class="field"><span>Motivo <span class="muted">(obrigatório para pedir ajuste ou recusar)</span></span><textarea id="mot" maxlength="400" style="min-height:70px">'+esc(p.status!=="aprovada"?p.motivo:"")+'</textarea></label>'+
+      '<div class="row">'+
+        (p.status!=="aprovada"?'<button class="btn ok" data-a="aprovar">Aprovar</button>':'')+
+        (p.status!=="ajuste"?'<button class="btn warn" data-a="ajuste">Pedir ajuste</button>':'')+
+        (p.status!=="recusada"?'<button class="btn danger" data-a="recusar">Recusar</button>':'')+
+        (p.status!=="pendente"?'<button class="btn ghost" data-a="reabrir">Voltar para “aguardando”</button>':'')+
+      '</div><div id="errv"></div></div>'+
+    (p.status==="aprovada"?
+      '<form id="fn" class="stack" novalidate style="border-top:1px solid var(--line);padding-top:16px"><div class="lbl">Sua nota (0 a 10 em cada critério)</div><div class="notas">'+
+      crit.map(function(c,i){ return '<label class="nota"><span>'+esc(c)+'</span><input class="field" type="number" min="0" max="10" step="0.5" inputmode="decimal" data-i="'+i+'" value="'+(mn?mn.notas[i]:"")+'" style="border:1.5px solid var(--line-2);border-radius:12px;min-height:46px"></label>'; }).join("")+
+      '</div><div class="row" style="justify-content:space-between"><span class="muted">Total</span><span class="total" id="tot">'+fmt(somaNota(mn))+'</span></div>'+
+      '<label class="field"><span>Comentário <span class="muted">(opcional)</span></span><textarea id="com" maxlength="400" style="min-height:60px">'+esc(mn?mn.comentario:"")+'</textarea></label>'+
+      '<div id="errn"></div><button class="btn primary" id="sn">'+(mn?'Atualizar nota':'Salvar nota')+'</button></form>':'');
+  dlg(detalhe(p)+acoes);
+  $("#fx").onclick=fecharDlg;
+  $("#dlg").querySelectorAll("[data-a]").forEach(function(b){ b.onclick=function(){
+    var a=b.dataset.a; busy(b,true);
+    api("parValidar",JT,id,a,$("#mot").value).then(function(d){ DADOS=d; telaJurado(); toast(a==="aprovar"?"Paródia aprovada.":(a==="ajuste"?"Pedido de ajuste enviado à equipe.":(a==="recusar"?"Paródia recusada.":"Voltou para aguardando.")));
+      if(a==="aprovar") abrirJurado(id); else fecharDlg(); })
+      .catch(function(e){ busy(b,false); erroEm($("#errv"),e.message); });
+  }; });
+  var fn=$("#fn"); if(!fn) return;
+  var ins=fn.querySelectorAll("input[type=number]");
+  function tot(){ var s=0,ok=true; ins.forEach(function(i){ if(i.value==="") ok=false; s+=Number(i.value||0); }); $("#tot").textContent=ok?fmt(s):"—"; }
+  ins.forEach(function(i){ i.oninput=tot; });
+  fn.onsubmit=function(ev){ ev.preventDefault(); var b=$("#sn"); busy(b,true,"Salvando…");
+    var notas=Array.prototype.map.call(ins,function(i){ return i.value===""?null:Number(i.value); });
+    if(notas.some(function(n){ return n===null; })){ busy(b,false); erroEm($("#errn"),"Dê uma nota para cada critério."); return; }
+    api("parNota",JT,id,notas,$("#com").value).then(function(d){ DADOS=d; telaJurado(); fecharDlg(); toast("Nota salva."); })
+      .catch(function(e){ busy(b,false); erroEm($("#errn"),e.message); });
+  };
+}
+
+function imprimir(lista){
+  if(!lista.length){ toast("Nenhuma paródia aprovada para imprimir."); return; }
+  $("#impressao").innerHTML=lista.map(function(p){ return '<section class="folha"><p style="font-size:10pt;color:#555">'+esc((DADOS.cfg.titulo||""))+'</p><h2>'+esc(p.equipe)+'</h2>'+
+    '<p><b>Música original:</b> “'+esc(p.musica)+'” – '+esc(p.artista)+'<br><b>Responsável:</b> '+esc(p.responsavel)+(p.integrantes?'<br><b>Integrantes:</b> '+esc(p.integrantes).replace(/\n/g,", "):'')+'</p><pre>'+esc(p.letra)+'</pre></section>'; }).join("");
+  setTimeout(function(){ window.print(); },50);
+}
+
+/* ---------- comissão ---------- */
+function telaAdmin(){
+  var d=DADOS;
+  quem('<span>Comissão</span><button class="btn sm" id="sair">Sair</button>');
+  $("#sair").onclick=sair;
+  var link=d.urlApp+"parodia";
+  var abas=[["parodias","Paródias"],["ranking","Classificação"],["jurados","Jurados ("+d.jurados.length+")"],["config","Configuração"]];
+  var corpo="";
+  if(ABA==="parodias"){
+    var lista=d.parodias.filter(function(p){ return FILTRO==="todas"||p.status===FILTRO; });
+    corpo=filtros(d.parodias)+(lista.length?'<div class="card tbl"><table><thead><tr><th>Equipe</th><th>Música</th><th>Responsável</th><th>Situação</th><th>Notas</th><th></th></tr></thead><tbody>'+
+      lista.map(function(p){ return '<tr><td><b>'+esc(p.equipe)+'</b><div class="small muted">'+esc(dataBr(p.criada))+'</div></td><td>'+esc(p.musica)+'<div class="small muted">'+esc(p.artista)+'</div></td>'+
+        '<td>'+esc(p.matricula)+' – '+esc(p.responsavel)+(p.celular?'<div class="small muted">'+esc(p.celular)+'</div>':'')+'</td><td>'+pill(p.status)+'</td>'+
+        '<td>'+(p.notas.length?fmt(p.media)+' <span class="small muted">('+p.notas.length+')</span>':'—')+'</td>'+
+        '<td><button class="btn sm" data-ver="'+p.id+'">Ver</button></td></tr>'; }).join("")+'</tbody></table></div>':'<div class="card pad muted">Nenhuma paródia aqui ainda.</div>');
+  } else if(ABA==="ranking"){
+    var ap=d.parodias.filter(function(p){ return p.status==="aprovada"; }).sort(function(a,b){ return (b.media==null?-1:b.media)-(a.media==null?-1:a.media); });
+    var nj=d.jurados.length;
+    corpo='<div class="note info">Média da soma das notas de cada jurado ('+d.criterios.length+' critérios de 0 a 10, máximo '+d.criterios.length*10+'). '+
+      'O jurado responsável por uma equipe não dá nota a ela.</div>'+
+      (ap.length?'<div class="card tbl"><table><thead><tr><th>#</th><th>Equipe</th><th>Média</th><th>Jurados que avaliaram</th></tr></thead><tbody>'+
+      ap.map(function(p,i){ return '<tr><td class="pos">'+(p.media==null?'—':(i+1)+'º')+'</td><td><b>'+esc(p.equipe)+'</b><div class="small muted">“'+esc(p.musica)+'”</div></td><td class="total">'+fmt(p.media)+'</td>'+
+        '<td>'+p.notas.length+' de '+nj+(p.notas.length?'<div class="small muted">'+p.notas.map(function(n){ return esc(n.jurado.split(" ")[0])+': '+fmt(somaNota(n)); }).join(" · ")+'</div>':'')+'</td></tr>'; }).join("")+
+      '</tbody></table></div><div class="row"><button class="btn" id="imp">Imprimir letras aprovadas</button></div>':'<div class="card pad muted">Ainda não há paródias aprovadas.</div>');
+  } else if(ABA==="jurados"){
+    corpo='<div class="card pad stack"><p class="muted" style="margin:0">Os jurados entram em <b>'+esc(d.urlApp)+'jurados</b> com a matrícula e a mesma confirmação da urna.</p>'+
+      '<form id="fj" class="row" novalidate><label class="field" style="flex:1 1 200px"><span>Matrícula do jurado</span><input id="jm" inputmode="numeric"></label><button class="btn primary" id="ja">Incluir jurado</button></form><div id="errj"></div>'+
+      (d.jurados.length?'<div class="tbl"><table><tbody>'+d.jurados.map(function(j){ return '<tr><td>'+esc(j.matricula)+'</td><td>'+esc(j.nome)+'</td><td style="text-align:right"><button class="btn sm danger" data-rm="'+esc(j.matricula)+'">Remover</button></td></tr>'; }).join("")+'</tbody></table></div>':'<p class="muted">Nenhum jurado ainda.</p>')+'</div>';
+  } else {
+    var c=d.cfg;
+    corpo='<form id="fc" class="card pad stack" novalidate>'+
+      '<label class="field"><span>Nome do concurso</span><input id="ct" maxlength="120" value="'+esc(c.titulo)+'"></label>'+
+      '<label class="field"><span>Tema</span><input id="ctema" maxlength="200" value="'+esc(c.tema)+'"></label>'+
+      '<div class="grid2"><label class="field"><span>Inscrições</span><select id="ci"><option value="sim"'+(c.inscricoes==="sim"?" selected":"")+'>Habilitadas</option><option value="nao"'+(c.inscricoes!=="sim"?" selected":"")+'>Desabilitadas</option></select></label>'+
+      '<label class="field"><span>Abrem em <span class="muted">(opcional)</span></span><input id="cini" type="datetime-local" value="'+esc(c.inicio)+'"></label>'+
+      '<label class="field"><span>Encerram em <span class="muted">(opcional)</span></span><input id="cfim" type="datetime-local" value="'+esc(c.fim)+'"></label></div>'+
+      '<label class="field"><span>Critérios de nota (um por linha, até 6)</span><textarea id="ccr">'+esc(c.criterios.join("\n"))+'</textarea><small>Não mudam mais depois que algum jurado der nota.</small></label>'+
+      '<div id="errc"></div><div class="row end"><button class="btn primary" id="cs">Salvar</button></div></form>';
+  }
+  app.innerHTML='<div class="stack">'+
+    '<div class="row" style="justify-content:space-between"><div><div class="lbl">Comissão</div><h2 style="margin-top:4px">'+esc(d.cfg.titulo)+'</h2></div>'+
+      '<span class="pill '+(d.situacao==="aberta"?"aprovada":"recusada")+'">Inscrições '+(d.situacao==="aberta"?"abertas":(d.situacao==="antes"?"ainda não abertas":"encerradas"))+'</span></div>'+
+    '<div class="card pad row" style="justify-content:space-between"><div style="min-width:0"><div class="lbl">Link da inscrição</div><div style="word-break:break-all"><b>'+esc(link)+'</b></div></div><button class="btn" id="cp">Copiar link</button></div>'+
+    '<div class="tabs" id="abas">'+abas.map(function(a){ return '<button data-a="'+a[0]+'" aria-pressed="'+(ABA===a[0])+'">'+esc(a[1])+'</button>'; }).join("")+'</div>'+
+    corpo+'</div>';
+  $("#cp").onclick=function(){ (navigator.clipboard?navigator.clipboard.writeText(link):Promise.reject()).then(function(){ toast("Link copiado."); },function(){ prompt("Copie o link:",link); }); };
+  app.querySelectorAll("#abas button").forEach(function(b){ b.onclick=function(){ ABA=b.dataset.a; telaAdmin(); }; });
+  ligarFiltros(telaAdmin);
+  app.querySelectorAll("[data-ver]").forEach(function(b){ b.onclick=function(){ abrirAdmin(+b.dataset.ver); }; });
+  var imp=$("#imp"); if(imp) imp.onclick=function(){ imprimir(d.parodias.filter(function(p){ return p.status==="aprovada"; })); };
+  var fj=$("#fj"); if(fj){
+    fj.onsubmit=function(ev){ ev.preventDefault(); var b=$("#ja"); busy(b,true);
+      api("parJurado",AT,$("#jm").value.trim(),false).then(function(x){ DADOS=x; telaAdmin(); toast("Jurado incluído."); }).catch(function(e){ busy(b,false); erroEm($("#errj"),e.message); }); };
+    app.querySelectorAll("[data-rm]").forEach(function(b){ b.onclick=function(){ if(!confirm("Remover este jurado? As notas que ele já deu continuam valendo.")) return;
+      api("parJurado",AT,b.dataset.rm,true).then(function(x){ DADOS=x; telaAdmin(); }).catch(function(e){ toast(e.message); }); }; });
+  }
+  var fc=$("#fc"); if(fc) fc.onsubmit=function(ev){ ev.preventDefault(); var b=$("#cs"); busy(b,true,"Salvando…");
+    api("parSaveCfg",AT,{titulo:$("#ct").value,tema:$("#ctema").value,inscricoes:$("#ci").value,inicio:$("#cini").value,fim:$("#cfim").value,criterios:$("#ccr").value.split("\n")})
+      .then(function(x){ DADOS=x; telaAdmin(); toast("Configuração salva."); }).catch(function(e){ busy(b,false); erroEm($("#errc"),e.message); }); };
+}
+function abrirAdmin(id){
+  var p=DADOS.parodias.find(function(x){ return x.id===id; }); if(!p) return;
+  var crit=DADOS.criterios;
+  dlg(detalhe(p)+
+    (p.notas.length?'<div class="tbl"><table><thead><tr><th>Jurado</th>'+crit.map(function(c){ return '<th>'+esc(c)+'</th>'; }).join("")+'<th>Total</th></tr></thead><tbody>'+
+      p.notas.map(function(n){ return '<tr><td>'+esc(n.jurado)+(n.comentario?'<div class="small muted">'+esc(n.comentario)+'</div>':'')+'</td>'+n.notas.map(function(v){ return '<td>'+fmt(v)+'</td>'; }).join("")+'<td><b>'+fmt(somaNota(n))+'</b></td></tr>'; }).join("")+
+      '</tbody></table></div>':'')+
+    '<div class="row end"><button class="btn danger" id="del">Excluir inscrição</button></div>');
+  $("#fx").onclick=fecharDlg;
+  $("#del").onclick=function(){ if(!confirm("Excluir a inscrição da equipe "+p.equipe+"? Isso não pode ser desfeito.")) return;
+    api("parExcluir",AT,id).then(function(x){ DADOS=x; fecharDlg(); telaAdmin(); toast("Inscrição excluída."); }).catch(function(e){ toast(e.message); }); };
+}
+document.addEventListener("keydown",function(e){ if(e.key==="Escape") fecharDlg(); });
+
+/* ---------- início ---------- */
+api("parInfo").then(function(i){
+  INFO=i; $("#titulo").textContent=i.titulo; $("#sub").textContent="CIPA · "+(i.empresa||"Auto Viação Redentor");
+  document.title=PAGE==="jurados"?"Jurados · "+i.titulo:i.titulo;
+  if(PAGE==="jurados"){ if(JT) carregarJurado(); else if(AT) carregarAdmin(); else telaLoginJuri(); }
+  else telaEntrada();
+}).catch(function(e){ app.innerHTML='<div class="narrow"><div class="note bad">'+esc(e.message)+'</div></div>'; });
+})();
+</script>
+</body>
+</html>

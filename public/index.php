@@ -6,6 +6,8 @@
  *   /inscricao    inscrição de candidatos pelo celular
  *   /totem        tablet fixo: tela cheia, tela ligada, volta ao início sem uso
  *   /foto/TOKEN   foto do candidato pelo celular (QR Code)
+ *   /parodia      inscrição no concurso de paródias (app/parodia.html)
+ *   /jurados      jurados e comissão do concurso de paródias
  * O Apache manda para cá tudo que não é arquivo (FallbackResource). Os endereços antigos
  * com ?p=... continuam valendo, para não quebrar link já enviado.
  */
@@ -32,6 +34,19 @@ if ($p === 'foto-cand') {
     exit;
 }
 if ($p === 'admin') $p = 'comissao';
+if ($p === 'parodias') $p = 'parodia';
+if ($p === 'jurado') $p = 'jurados';
+if ($p === 'parodia' || $p === 'jurados') {
+    $html = preg_replace('/<head>/', '<head><base href="/">', file_get_contents(dirname(__DIR__) . '/app/parodia.html'), 1);
+    $html = str_replace('</head>', '<script>window.__PAGE__=' . json_encode($p) . ';</script></head>', $html);
+    header('Content-Type: text/html; charset=utf-8');
+    header('Cache-Control: no-store');
+    header('X-Content-Type-Options: nosniff');
+    header('X-Frame-Options: DENY');
+    header('Referrer-Policy: no-referrer');
+    echo $html;
+    exit;
+}
 if (!in_array($p, ['', 'comissao', 'inscricao', 'foto', 'totem'], true)) {
     header('Location: /', true, 302);
     exit;

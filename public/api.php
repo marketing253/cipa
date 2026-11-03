@@ -2,6 +2,7 @@
 /* Recebe {fn, args} do front-end e chama api_<fn> em app/lib.php. Resposta sempre JSON. */
 declare(strict_types=1);
 require dirname(__DIR__) . '/app/lib.php';
+require dirname(__DIR__) . '/app/parodia.php';
 
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
@@ -9,7 +10,10 @@ header('X-Content-Type-Options: nosniff');
 
 const PERMITIDAS = ['ballot', 'consultar', 'login', 'votar', 'adminLogin', 'adminSair', 'trocarSenha', 'adminData',
     'saveConfig', 'saveCand', 'delCand', 'importar', 'status', 'resultado', 'gerarAta', 'fotoToken', 'fotoBuscar',
-    'fotoEnviar', 'inscConsultar', 'inscrever', 'auditoria', 'saveAgenda', 'recomecar', 'pedirFoto', 'inscNovaFoto'];
+    'fotoEnviar', 'inscConsultar', 'inscrever', 'auditoria', 'saveAgenda', 'recomecar', 'pedirFoto', 'inscNovaFoto',
+    // concurso de paródias
+    'parInfo', 'parConsultar', 'parSalvar', 'parJuradoLogin', 'parJuradoDados', 'parValidar', 'parNota',
+    'parAdmin', 'parSaveCfg', 'parJurado', 'parExcluir'];
 
 function responder($v, int $code = 200): never {
     http_response_code($code);

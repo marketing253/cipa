@@ -8,6 +8,8 @@ o servidor é PHP 8.2 + SQLite (`app/lib.php`, chamado por `public/api.php`).
 | `/` | colaborador vota (matrícula → confirma nome → cédula → CONFIRMA) |
 | `/admin` | comissão eleitoral (candidatos, lista de colaboradores, abrir/encerrar, apuração, ata) |
 | `/inscricao` | colaborador se inscreve como candidato pelo celular |
+| `/parodia` | concurso de paródias: o responsável entra com matrícula + CPF e envia equipe, música original e letra |
+| `/jurados` | jurados (matrícula + CPF, indicados pela comissão) validam e dão nota; a comissão entra com o login da administração |
 | `/totem` | tablet fixo: toque para iniciar em tela cheia, tela sempre ligada, volta à matrícula após 60 s sem uso (a tela FIM espera o CONCLUIR) |
 
 Os endereços antigos com `?p=comissao`, `?p=totem`, `?p=inscricao` continuam funcionando.
@@ -31,4 +33,5 @@ Os endereços antigos com `?p=comissao`, `?p=totem`, `?p=inscricao` continuam fu
 
 ```
 php testes/teste.php
+php testes/teste_parodia.php
 ```

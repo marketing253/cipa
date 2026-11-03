@@ -1,0 +1,295 @@
+<?php
+/*
+ * Concurso de paródias da CIPA (03/11/2026) — no mesmo sistema e banco da urna.
+ *
+ * Inscrição: o colaborador entra com a matrícula + a mesma confirmação da urna (cfg verificacao,
+ * hoje os 3 primeiros dígitos do CPF) e cadastra equipe, música original e letra. Uma inscrição
+ * por matrícula (o responsável pela equipe).
+ * Jurados: a comissão indica as matrículas; o jurado entra do mesmo jeito (matrícula + CPF)
+ * e valida cada paródia (aprovar, pedir ajuste ou recusar) e dá notas às aprovadas.
+ * Comissão: usa o login da administração da urna (adminLogin) para configurar e acompanhar.
+ */
+declare(strict_types=1);
+
+const PAR_STATUS = ['pendente' => 'Aguardando validação', 'aprovada' => 'Aprovada', 'ajuste' => 'Ajuste pedido', 'recusada' => 'Recusada'];
+const PAR_CRITERIOS = ['Letra e mensagem de segurança', 'Criatividade', 'Encaixe na melodia'];
+const PAR_LETRA_MAX = 8000;
+const SESSAO_JURADO = 10 * 3600;
+
+function par_tabelas(): PDO {
+    static $feito = false;
+    $p = db();
+    if ($feito) return $p;
+    $p->exec(<<<SQL
+        CREATE TABLE IF NOT EXISTS parodias (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, matricula TEXT NOT NULL, mnorm TEXT NOT NULL UNIQUE, responsavel TEXT NOT NULL,
+            setor TEXT, equipe TEXT NOT NULL, equipe_norm TEXT NOT NULL UNIQUE, musica TEXT NOT NULL, artista TEXT NOT NULL,
+            letra TEXT NOT NULL, integrantes TEXT, celular TEXT, status TEXT NOT NULL DEFAULT 'pendente', motivo TEXT,
+            validado_por TEXT, validado_em TEXT, criada TEXT NOT NULL, atualizada TEXT NOT NULL);
+        CREATE TABLE IF NOT EXISTS parodia_jurados (mnorm TEXT PRIMARY KEY, matricula TEXT NOT NULL, nome TEXT NOT NULL);
+        CREATE TABLE IF NOT EXISTS parodia_notas (
+            parodia INTEGER NOT NULL, jurado TEXT NOT NULL, notas TEXT NOT NULL, comentario TEXT, em TEXT NOT NULL,
+            PRIMARY KEY (parodia, jurado));
+    SQL);
+    $feito = true;
+    return $p;
+}
+
+function par_cfg(): array {
+    $c = kv_get('parodia', []) + ['titulo' => 'Concurso de Paródias da CIPA', 'tema' => 'Segurança no trabalho e no trânsito',
+        'inscricoes' => 'sim', 'inicio' => '', 'fim' => '', 'criterios' => PAR_CRITERIOS];
+    if (!is_array($c['criterios']) || !$c['criterios']) $c['criterios'] = PAR_CRITERIOS;
+    return $c;
+}
+
+/* aberta | antes | depois | desabilitada */
+function par_situacao(array $c): string {
+    if ($c['inscricoes'] !== 'sim') return 'desabilitada';
+    $n = agora_local();
+    if ($c['inicio'] !== '' && $n < $c['inicio']) return 'antes';
+    if ($c['fim'] !== '' && $n >= $c['fim']) return 'depois';
+    return 'aberta';
+}
+function par_exige_aberta(array $c): void {
+    switch (par_situacao($c)) {
+        case 'aberta': return;
+        case 'antes': falha('As inscrições de paródias abrem em ' . data_br($c['inicio']) . '.');
+        case 'depois': falha('As inscrições de paródias foram encerradas em ' . data_br($c['fim']) . '.');
+        default: falha('As inscrições de paródias estão encerradas.');
+    }
+}
+
+function equipe_norm(string $s): string { return mb_strtolower(preg_replace('/\s+/u', ' ', trim($s))); }
+
+function par_linha(array $r): array {
+    return ['id' => (int)$r['id'], 'matricula' => $r['matricula'], 'responsavel' => $r['responsavel'], 'setor' => (string)$r['setor'],
+        'equipe' => $r['equipe'], 'musica' => $r['musica'], 'artista' => $r['artista'], 'letra' => $r['letra'],
+        'integrantes' => (string)$r['integrantes'], 'celular' => (string)$r['celular'], 'status' => $r['status'],
+        'motivo' => (string)$r['motivo'], 'validadoPor' => (string)$r['validado_por'], 'validadoEm' => (string)$r['validado_em'],
+        'criada' => $r['criada'], 'atualizada' => $r['atualizada']];
+}
+function par_da_matricula($m): ?array {
+    $st = par_tabelas()->prepare('SELECT * FROM parodias WHERE mnorm=?'); $st->execute([mat_norm($m)]);
+    $r = $st->fetch();
+    return $r ? par_linha($r) : null;
+}
+/* pode mexer na própria inscrição: com as inscrições abertas (se ninguém validou ainda) ou quando o júri pediu ajuste */
+function par_pode_editar(?array $p, array $c): bool {
+    if (!$p) return par_situacao($c) === 'aberta';
+    return $p['status'] === 'ajuste' || ($p['status'] === 'pendente' && par_situacao($c) === 'aberta');
+}
+
+/* =================== colaborador =================== */
+
+function api_parInfo(): array {
+    $c = par_cfg(); $v = cfg()['verificacao'] ?: 'nenhuma';
+    return ['titulo' => $c['titulo'], 'tema' => $c['tema'], 'inicio' => $c['inicio'], 'fim' => $c['fim'],
+            'situacao' => par_situacao($c), 'verificacao' => $v, 'verificacaoLbl' => VERIF[$v] ?? '',
+            'empresa' => cfg()['empresa'], 'criterios' => $c['criterios']];
+}
+
+function api_parConsultar($m, $c = ''): array {
+    if (mat_norm($m) === '') falha('Digite sua matrícula.');
+    $e = eleitor_por_mat($m);
+    if (!$e) falha('Matrícula não encontrada no cadastro de colaboradores. Procure a comissão da CIPA.');
+    confere($e, $c);
+    $cfg = par_cfg(); $p = par_da_matricula($m);
+    if (!$p) par_exige_aberta($cfg);
+    return ['matricula' => $e['matricula'], 'nome' => $e['nome'], 'setor' => (string)$e['setor'],
+            'parodia' => $p, 'podeEditar' => par_pode_editar($p, $cfg)];
+}
+
+function api_parSalvar($m, $c, $d, $aceite = false): array {
+    if ($aceite !== true) falha('Marque a declaração de que a letra é da sua equipe para enviar a inscrição.');
+    $r = api_parConsultar($m, $c);   // confirmação fora da transação (o erro conta como tentativa)
+    if (!$r['podeEditar']) falha($r['parodia']['status'] === 'pendente'
+        ? 'As inscrições foram encerradas: a sua paródia já está com os jurados.'
+        : 'Esta paródia já foi ' . mb_strtolower(PAR_STATUS[$r['parodia']['status']]) . ' pelos jurados e não pode mais ser alterada.');
+    $d = (array)$d;
+    $equipe = txt($d['equipe'] ?? '', 80); $musica = txt($d['musica'] ?? '', 120); $artista = txt($d['artista'] ?? '', 120);
+    $letra = trim(str_replace("\r\n", "\n", (string)($d['letra'] ?? '')));
+    $integ = txt(str_replace("\r\n", "\n", (string)($d['integrantes'] ?? '')), 1500);
+    $cel = txt(preg_replace('/[^\d()+\- ]/', '', (string)($d['celular'] ?? '')), 20);
+    if (mb_strlen($equipe) < 2) falha('Informe o nome da equipe.');
+    if (mb_strlen($musica) < 2) falha('Informe o nome da música original.');
+    if (mb_strlen($artista) < 2) falha('Informe o cantor ou banda da música original.');
+    if (mb_strlen($letra) < 40) falha('A letra da paródia está muito curta. Escreva a letra completa.');
+    if (mb_strlen($letra) > PAR_LETRA_MAX) falha('A letra passou de ' . PAR_LETRA_MAX . ' caracteres. Resuma um pouco.');
+    $p = par_tabelas(); $en = equipe_norm($equipe); $agora = agora();
+    $p->exec('BEGIN IMMEDIATE');
+    try {
+        $st = $p->prepare('SELECT responsavel FROM parodias WHERE equipe_norm=? AND mnorm<>?'); $st->execute([$en, mat_norm($m)]);
+        if ($dono = $st->fetchColumn()) falha("Já existe uma equipe chamada “{$equipe}”. Escolha outro nome.");
+        $ja = $r['parodia'];
+        if ($ja) {
+            $p->prepare("UPDATE parodias SET equipe=?, equipe_norm=?, musica=?, artista=?, letra=?, integrantes=?, celular=?,
+                         status='pendente', atualizada=? WHERE id=?")
+              ->execute([$equipe, $en, $musica, $artista, $letra, $integ, $cel, $agora, $ja['id']]);
+            $id = $ja['id'];
+        } else {
+            $p->prepare("INSERT INTO parodias(matricula,mnorm,responsavel,setor,equipe,equipe_norm,musica,artista,letra,integrantes,celular,status,criada,atualizada)
+                         VALUES(?,?,?,?,?,?,?,?,?,?,?,'pendente',?,?)")
+              ->execute([$r['matricula'], mat_norm($r['matricula']), $r['nome'], $r['setor'], $equipe, $en, $musica, $artista, $letra, $integ, $cel, $agora, $agora]);
+            $id = (int)$p->lastInsertId();
+        }
+        registrar($ja ? ($ja['status'] === 'ajuste' ? 'Paródia corrigida após pedido de ajuste' : 'Paródia alterada') : 'Paródia inscrita',
+            "Equipe $equipe · “{$musica}” ({$artista}) · {$r['matricula']} – {$r['nome']}", 'Colaborador');
+        $p->exec('COMMIT');
+    } catch (Throwable $e) { $p->exec('ROLLBACK'); throw $e; }
+    return ['id' => $id, 'equipe' => $equipe, 'nome' => $r['nome'], 'alterou' => (bool)$ja];
+}
+
+/* =================== jurados =================== */
+
+function jurado_por_mat($m): ?array {
+    $st = par_tabelas()->prepare('SELECT * FROM parodia_jurados WHERE mnorm=?'); $st->execute([mat_norm($m)]);
+    return $st->fetch() ?: null;
+}
+function exige_jurado($t): array {
+    $mn = sessao('jurado', $t);
+    $j = $mn === null ? null : jurado_por_mat($mn);
+    if (!$j) falha('Sessão do jurado expirada. Entre novamente.');
+    db()->prepare('UPDATE sessoes SET expira=? WHERE token=?')->execute([time() + SESSAO_JURADO, $t]);
+    return $j;
+}
+
+function api_parJuradoLogin($m, $c): array {
+    if (mat_norm($m) === '') falha('Digite sua matrícula.');
+    $e = eleitor_por_mat($m);
+    if (!$e) falha('Matrícula não encontrada no cadastro de colaboradores.');
+    confere($e, $c);
+    $j = jurado_por_mat($m);
+    if (!$j) falha('Esta matrícula não está na lista de jurados do concurso. Procure a comissão da CIPA.');
+    registrar('Acesso de jurado', $j['matricula'] . ' – ' . $j['nome'] . ' · ' . ip(), 'Jurado');
+    return ['token' => sessao_nova('jurado', $j['mnorm'], SESSAO_JURADO), 'nome' => $j['nome']];
+}
+
+function par_lista(): array {
+    return array_map('par_linha', par_tabelas()->query('SELECT * FROM parodias ORDER BY id')->fetchAll());
+}
+
+function api_parJuradoDados($t): array {
+    $j = exige_jurado($t);
+    $minhas = [];
+    $st = par_tabelas()->prepare('SELECT parodia,notas,comentario FROM parodia_notas WHERE jurado=?'); $st->execute([$j['mnorm']]);
+    foreach ($st as $n) $minhas[(int)$n['parodia']] = ['notas' => json_decode($n['notas'], true), 'comentario' => (string)$n['comentario']];
+    $lista = array_map(function ($p) use ($minhas, $j) {
+        unset($p['celular']);
+        return $p + ['minhaNota' => $minhas[$p['id']] ?? null, 'propria' => mat_norm($p['matricula']) === $j['mnorm']];
+    }, par_lista());
+    return ['jurado' => ['matricula' => $j['matricula'], 'nome' => $j['nome']], 'cfg' => api_parInfo(), 'parodias' => $lista];
+}
+
+function par_busca(int $id): array {
+    $st = par_tabelas()->prepare('SELECT * FROM parodias WHERE id=?'); $st->execute([$id]);
+    $r = $st->fetch();
+    if (!$r) falha('Paródia não encontrada.');
+    return par_linha($r);
+}
+
+function api_parValidar($t, $id, $acao, $motivo = ''): array {
+    $j = exige_jurado($t);
+    $p = par_busca((int)$id);
+    if (mat_norm($p['matricula']) === $j['mnorm']) falha('Você é o responsável por esta equipe: a validação fica com os outros jurados.');
+    $map = ['aprovar' => 'aprovada', 'ajuste' => 'ajuste', 'recusar' => 'recusada', 'reabrir' => 'pendente'];
+    $novo = $map[(string)$acao] ?? falha('Ação inválida.');
+    $motivo = txt($motivo, 400);
+    if (in_array($novo, ['ajuste', 'recusada'], true) && mb_strlen($motivo) < 5) falha('Escreva o motivo, para a equipe saber o que fazer.');
+    if ($novo !== 'aprovada') par_tabelas()->prepare('DELETE FROM parodia_notas WHERE parodia=?')->execute([$p['id']]);   // nota só vale para aprovada
+    par_tabelas()->prepare('UPDATE parodias SET status=?, motivo=?, validado_por=?, validado_em=? WHERE id=?')
+        ->execute([$novo, $novo === 'aprovada' || $novo === 'pendente' ? '' : $motivo, $j['nome'], agora(), $p['id']]);
+    registrar('Paródia: ' . mb_strtolower(PAR_STATUS[$novo]), "Equipe {$p['equipe']}" . ($motivo !== '' && $novo !== 'aprovada' ? " · $motivo" : ''), 'Jurado ' . $j['nome']);
+    return api_parJuradoDados($t);
+}
+
+function api_parNota($t, $id, $notas, $comentario = ''): array {
+    $j = exige_jurado($t);
+    $p = par_busca((int)$id);
+    if (mat_norm($p['matricula']) === $j['mnorm']) falha('Você não pode dar nota à sua própria equipe.');
+    if ($p['status'] !== 'aprovada') falha('Só dá para dar nota a paródias aprovadas.');
+    $crit = par_cfg()['criterios']; $notas = array_values((array)$notas);
+    if (count($notas) !== count($crit)) falha('Dê uma nota para cada critério.');
+    $limpas = [];
+    foreach ($notas as $i => $n) {
+        if (!is_numeric($n) || $n < 0 || $n > 10) falha('Notas de 0 a 10 (' . $crit[$i] . ').');
+        $limpas[] = round((float)$n, 1);
+    }
+    par_tabelas()->prepare('INSERT INTO parodia_notas(parodia,jurado,notas,comentario,em) VALUES(?,?,?,?,?)
+        ON CONFLICT(parodia,jurado) DO UPDATE SET notas=excluded.notas, comentario=excluded.comentario, em=excluded.em')
+        ->execute([$p['id'], $j['mnorm'], json_encode($limpas), txt($comentario, 400), agora()]);
+    registrar('Nota de jurado', "Equipe {$p['equipe']} · total " . array_sum($limpas), 'Jurado ' . $j['nome']);
+    return api_parJuradoDados($t);
+}
+
+/* =================== comissão =================== */
+
+function par_admin_dados(): array {
+    $p = par_tabelas(); $crit = par_cfg()['criterios'];
+    $jur = $p->query('SELECT matricula,nome,mnorm FROM parodia_jurados ORDER BY nome')->fetchAll();
+    $nomes = array_column($jur, 'nome', 'mnorm');
+    $notas = [];
+    foreach ($p->query('SELECT parodia,jurado,notas,comentario,em FROM parodia_notas') as $n)
+        $notas[(int)$n['parodia']][] = ['jurado' => $nomes[$n['jurado']] ?? $n['jurado'], 'notas' => json_decode($n['notas'], true),
+            'comentario' => (string)$n['comentario'], 'em' => $n['em']];
+    $lista = array_map(function ($x) use ($notas) {
+        $ns = $notas[$x['id']] ?? [];
+        $tot = array_map(fn($n) => array_sum($n['notas']), $ns);
+        return $x + ['notas' => $ns, 'media' => $tot ? round(array_sum($tot) / count($tot), 2) : null];
+    }, par_lista());
+    return ['cfg' => par_cfg(), 'situacao' => par_situacao(par_cfg()), 'criterios' => $crit,
+            'jurados' => array_map(fn($j) => ['matricula' => $j['matricula'], 'nome' => $j['nome']], $jur),
+            'parodias' => $lista, 'agora' => agora_local(), 'urlApp' => url_base()];
+}
+
+function api_parAdmin($t): array { exige_admin($t); return par_admin_dados(); }
+
+function api_parSaveCfg($t, $c): array {
+    exige_admin($t); $c = (array)$c; $cfg = par_cfg();
+    foreach (['titulo' => 120, 'tema' => 200] as $k => $max) if (isset($c[$k])) $cfg[$k] = txt($c[$k], $max) ?: $cfg[$k];
+    if (in_array($c['inscricoes'] ?? null, ['sim', 'nao'], true)) $cfg['inscricoes'] = $c['inscricoes'];
+    $ini = data_ok($c['inicio'] ?? $cfg['inicio']); $fim = data_ok($c['fim'] ?? $cfg['fim']);
+    if ($ini !== '' && $fim !== '' && $fim <= $ini) falha('O fim das inscrições precisa ser depois do início.');
+    $cfg['inicio'] = $ini; $cfg['fim'] = $fim;
+    if (isset($c['criterios'])) {
+        $cr = array_values(array_filter(array_map(fn($x) => txt($x, 60), (array)$c['criterios'])));
+        if (!$cr || count($cr) > 6) falha('Use de 1 a 6 critérios de nota.');
+        if ($cr !== $cfg['criterios']) {
+            $n = (int)par_tabelas()->query('SELECT COUNT(*) FROM parodia_notas')->fetchColumn();
+            if ($n) falha("Os jurados já deram $n nota(s): os critérios não podem mais mudar.");
+        }
+        $cfg['criterios'] = $cr;
+    }
+    kv_set('parodia', $cfg);
+    registrar('Concurso de paródias configurado', ($cfg['inscricoes'] === 'sim' ? 'Inscrições habilitadas' : 'Inscrições desabilitadas') .
+        ($cfg['inicio'] || $cfg['fim'] ? ' de ' . (data_br($cfg['inicio']) ?: '—') . ' a ' . (data_br($cfg['fim']) ?: '—') : ''));
+    return par_admin_dados();
+}
+
+function api_parJurado($t, $m, $remover = false): array {
+    exige_admin($t);
+    $p = par_tabelas();
+    if ($remover) {
+        $j = jurado_por_mat($m);
+        if (!$j) falha('Jurado não encontrado.');
+        $p->prepare('DELETE FROM parodia_jurados WHERE mnorm=?')->execute([$j['mnorm']]);
+        $p->prepare("DELETE FROM sessoes WHERE tipo='jurado' AND ref=?")->execute([$j['mnorm']]);
+        registrar('Jurado removido do concurso de paródias', $j['matricula'] . ' – ' . $j['nome']);
+        return par_admin_dados();
+    }
+    $e = eleitor_por_mat($m);
+    if (!$e) falha('Matrícula não encontrada no cadastro de colaboradores.');
+    if (jurado_por_mat($m)) falha($e['nome'] . ' já é jurado.');
+    $p->prepare('INSERT INTO parodia_jurados(mnorm,matricula,nome) VALUES(?,?,?)')->execute([mat_norm($e['matricula']), $e['matricula'], $e['nome']]);
+    registrar('Jurado incluído no concurso de paródias', $e['matricula'] . ' – ' . $e['nome']);
+    return par_admin_dados();
+}
+
+function api_parExcluir($t, $id): array {
+    exige_admin($t);
+    $x = par_busca((int)$id);
+    $p = par_tabelas();
+    $p->prepare('DELETE FROM parodia_notas WHERE parodia=?')->execute([$x['id']]);
+    $p->prepare('DELETE FROM parodias WHERE id=?')->execute([$x['id']]);
+    registrar('Paródia excluída pela comissão', "Equipe {$x['equipe']} · {$x['matricula']} – {$x['responsavel']}");
+    return par_admin_dados();
+}
