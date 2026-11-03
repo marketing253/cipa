@@ -186,6 +186,51 @@ html.redentor .card{border-top:4px solid var(--gold)}
 .telao.qr .t-qr{box-shadow:0 0 0 1.2vh #d29500,0 3vh 8vh -2vh rgba(0,0,0,.5);animation:pulsaqr 2.6s ease-in-out infinite}
 @keyframes pulsaqr{50%{box-shadow:0 0 0 1.8vh #ffd76a,0 3vh 8vh -2vh rgba(0,0,0,.5)}}
 @media (prefers-reduced-motion:reduce){.telao.qr .t-qr{animation:none}}
+/* painel da presença (comissão) */
+.evbar{display:flex;gap:8px;overflow-x:auto;padding:2px 2px 6px;scrollbar-width:thin}
+.evbar button{flex:none;display:flex;flex-direction:column;align-items:flex-start;gap:2px;border:1px solid var(--line-2);background:var(--surface);border-radius:14px;padding:9px 14px;font-weight:700;text-align:left;max-width:240px}
+.evbar button small{font-weight:600;color:var(--muted);font-size:.76rem}
+.evbar button[aria-pressed="true"]{background:linear-gradient(135deg,#16203a,#3e4095);color:#fff;border-color:transparent;box-shadow:0 8px 20px -10px rgba(22,32,58,.7)}
+.evbar button[aria-pressed="true"] small{color:#ffd76a}
+.evbar .novo{border-style:dashed;color:var(--accent);justify-content:center}
+.evhero{position:relative;overflow:hidden;border-radius:var(--r);padding:22px;color:#fff;
+  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='44'%3E%3Cpath d='M19 14h6v5h5v6h-5v5h-6v-5h-5v-6h5z' fill='%23d29500' fill-opacity='.12'/%3E%3C/svg%3E"),linear-gradient(120deg,#16203a 0%,#1e2b4f 55%,#3e4095 100%);border-bottom:4px solid #d29500;box-shadow:var(--shadow)}
+.evhero h2{font-size:clamp(1.4rem,3.4vw,2rem);color:#fff}
+.evhero .lbl{color:#ffd76a}
+.st{display:inline-flex;align-items:center;gap:7px;padding:5px 12px;border-radius:999px;font-size:.8rem;font-weight:700;background:rgba(255,255,255,.14)}
+.st::before{content:"";width:8px;height:8px;border-radius:50%;background:#9aa3bd}
+.st.on{background:rgba(98,214,154,.18);color:#9ff0c4} .st.on::before{background:#62d69a;animation:pulsa 1.6s infinite}
+.kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:18px}
+.kpi{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.16);border-radius:14px;padding:12px 14px}
+.kpi b{display:block;font-family:var(--f-display);font-size:clamp(1.8rem,5vw,2.8rem);line-height:1;color:#ffd76a}
+.kpi span{font-size:.8rem;opacity:.85}
+.kpi.sobe b{animation:sobe .6s ease-out}
+@keyframes sobe{40%{transform:scale(1.18)}}
+.acts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+@media (min-width:760px){.acts{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.act{display:flex;flex-direction:column;align-items:flex-start;gap:4px;text-align:left;padding:16px;border-radius:var(--r);border:1px solid var(--line);background:var(--surface);box-shadow:var(--shadow);transition:transform .15s,border-color .15s}
+.act:hover{transform:translateY(-2px);border-color:var(--accent)}
+.act .i{font-size:1.6rem;line-height:1}
+.act b{font-family:var(--f-display);font-size:1.05rem}
+.act small{color:var(--muted);font-size:.8rem}
+.act.prim{background:linear-gradient(135deg,#3e4095,#2f3180);color:#fff;border-color:transparent} .act.prim small{color:#cdd2ff}
+.act.ouro{background:linear-gradient(135deg,#ffd76a,#d29500);color:#16203a;border-color:transparent} .act.ouro small{color:#5c4100}
+.act.fecha{border-color:color-mix(in srgb,var(--bad) 35%,transparent)} .act.fecha b{color:var(--bad)}
+.cols{display:grid;gap:14px}
+@media (min-width:860px){.cols{grid-template-columns:1.35fr 1fr;align-items:start}}
+.cab{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.cab h3{display:flex;align-items:center;gap:8px}
+.cab .n{background:var(--accent-soft);color:var(--accent);border-radius:999px;padding:2px 10px;font-size:.85rem}
+.busca{border:1.5px solid var(--line-2);border-radius:12px;min-height:44px;padding:0 14px;width:100%;background:var(--surface)}
+.pres{max-height:520px;overflow:auto;border-top:1px solid var(--line)}
+.pres tr.novo td{animation:realce 2.4s ease-out}
+@keyframes realce{from{background:#fff3c4}to{background:transparent}}
+.gan{display:grid;gap:8px}
+.gan .g{display:flex;gap:12px;align-items:center;padding:10px 12px;border-radius:12px;background:var(--surface-2);border:1px solid var(--line)}
+.gan .pos{flex:none;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:#ffd76a;color:#16203a;font-weight:800;font-size:.95rem}
+.gan .g div{min-width:0;flex:1}
+.vazio{padding:18px;text-align:center;color:var(--muted);border:1.5px dashed var(--line-2);border-radius:12px}
+html.redentor .telao:not(.qr){background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='44'%3E%3Cpath d='M19 14h6v5h5v6h-5v5h-6v-5h-5v-6h5z' fill='%23d29500' fill-opacity='.12'/%3E%3C/svg%3E"),linear-gradient(135deg,#16203a 0%,#1e2b4f 50%,#3e4095 100%);border-bottom:1.2vh solid #d29500}
 @keyframes surge{from{transform:scale(.6);opacity:0}to{transform:none;opacity:1}}
 @media (prefers-reduced-motion:reduce){.telao.ganhou .t-nome{animation:none}}
 .evs{display:grid;gap:8px}
@@ -624,47 +669,63 @@ function evAtual(){ return PRE.eventos.find(function(e){ return e.id===PRE.event
 
 function telaPresenca(){
   pararCamera();
+  document.documentElement.classList.add("redentor");
   var d=PRE, ev=evAtual();
   quem('<span>Comissão</span><button class="btn sm" id="sair">Sair</button>');
   $("#sair").onclick=sair;
-  var topo='<div class="card pad stack"><div class="row" style="justify-content:space-between"><h2>Eventos</h2>'+
-      '<button class="btn sm primary" id="novo">+ Novo evento</button></div>'+
-    (d.eventos.length?'<div class="evs">'+d.eventos.map(function(e){
-        return '<div class="ev'+(e.id===d.evento?' atual':'')+'"><div><div class="nm">'+esc(e.nome)+'</div><div class="small muted">'+e.presentes+' presente(s) · '+
-          (e.aberto?'<span style="color:var(--ok);font-weight:700">check-in aberto</span>':'check-in encerrado')+'</div></div>'+
-          '<div class="acoes">'+(e.id!==d.evento?'<button class="btn sm" data-ev="'+e.id+'">Abrir</button>':'')+
-          '<button class="btn sm primary" data-tel="'+e.id+'">📺 Telão</button><button class="btn sm" data-qrm="'+e.id+'">QR da mesa</button><button class="btn sm danger" data-delev="'+e.id+'">Excluir</button></div></div>'; }).join("")+'</div>'
-      :'<p class="muted" style="margin:0">Crie o evento (ex.: “SIPAT 2026 – dia 1”). Cada evento ganha um QR para colar na mesa: o colaborador lê com o celular e confirma a presença.</p>')+
-    '</div>';
-  if(!ev){ app.innerHTML='<div class="narrow stack">'+topo+'</div>'; ligarTopo(); return; }
-  app.innerHTML='<div class="narrow stack">'+topo+
-    '<div class="card pad stack"><div class="row" style="justify-content:space-between"><div><div class="lbl">'+esc(ev.nome)+' · presentes</div><div class="contador" id="cont">'+d.presentes.length+'</div></div>'+
-      '<div class="row"><button class="btn primary" id="telq">📺 Telão do QR</button><button class="btn" id="qrm">QR da mesa</button><button class="btn '+(ev.aberto?'danger':'ok')+'" id="abre">'+(ev.aberto?'Encerrar check-in':'Reabrir check-in')+'</button></div></div>'+
-      (ev.aberto?'':'<div class="note warn">Check-in encerrado: quem ler o QR da mesa não consegue mais marcar presença.</div>')+
-      '<details><summary class="small" style="cursor:pointer">Ler o QR do celular do colaborador ou digitar a matrícula</summary><div class="stack" style="margin-top:12px">'+
-      '<button class="btn primary" id="cam">📷 Ler QR Code</button>'+
-      '<div id="camarea" hidden><div class="camera"><video id="vid" playsinline muted></video><div class="mira"></div></div>'+
-        '<div class="row" style="justify-content:center;margin-top:10px"><button class="btn" id="camfecha">Fechar câmera</button></div></div>'+
-      '<div id="leitura"></div>'+
-      '<form id="fm" class="row" novalidate><label class="field" style="flex:1 1 160px"><span>Ou digite a matrícula</span><input id="mm" inputmode="numeric" autocomplete="off"></label><button class="btn" id="mb">Marcar</button></form>'+
-    '</div></details></div>'+
-    '<div class="card pad stack"><h3>Sorteio de brindes</h3>'+
-      '<form id="fs" class="row" novalidate><label class="field" style="flex:1 1 200px"><span>Brinde <span class="muted">(opcional)</span></span><input id="br" maxlength="100" placeholder="Ex.: Caixa de som"></label><button class="btn primary" id="sb">🎁 Sortear em tela cheia</button></form>'+
-      '<div id="ganhou"></div>'+
-      (d.sorteios.length?'<div class="tbl"><table><thead><tr><th>#</th><th>Ganhador</th><th>Brinde</th><th></th></tr></thead><tbody>'+d.sorteios.map(function(x,i){
-        return '<tr><td>'+(i+1)+'º</td><td><b>'+esc(x.nome)+'</b><div class="small muted">'+esc(x.matricula)+(x.setor?' · '+esc(x.setor):'')+'</div></td><td>'+esc(x.brinde||"—")+'</td>'+
-          '<td style="text-align:right"><button class="btn sm ghost" data-anula="'+x.id+'">Ausente</button></td></tr>'; }).join("")+'</tbody></table></div>'+
-        '<p class="small muted" style="margin:0">“Ausente” anula o sorteio e tira a presença da pessoa; depois é só sortear de novo.</p>':'')+
+  var barra='<div class="evbar" role="group" aria-label="Eventos">'+d.eventos.slice().reverse().map(function(e){
+      return '<button data-ev="'+e.id+'" aria-pressed="'+(e.id===d.evento)+'">'+esc(e.nome)+'<small>'+e.presentes+' presente(s)'+(e.aberto?' · aberto':'')+'</small></button>'; }).join("")+
+    '<button class="novo" id="novo">+ Novo evento</button></div>';
+  if(!ev){
+    app.innerHTML='<div class="stack">'+barra+'<div class="card pad stack" style="text-align:center"><div style="font-size:2.4rem">📋</div><h2>Crie o primeiro evento</h2>'+
+      '<p class="muted" style="margin:0">Um evento para cada palestra (ex.: “SIPAT – Palestra Trânsito Seguro”). Cada um ganha o próprio QR de check-in para o telão e para a mesa.</p>'+
+      '<div><button class="btn primary lg" id="novo2" style="max-width:320px">+ Criar evento</button></div></div></div>';
+    ligarTopo(); $("#novo2").onclick=novoEvento; return;
+  }
+  var conc=d.presentes.length-d.sorteios.length;
+  app.innerHTML='<div class="stack">'+barra+
+    '<section class="evhero"><div class="cab"><div><div class="lbl">Evento</div><h2 style="margin-top:4px">'+esc(ev.nome)+'</h2></div>'+
+      '<span class="st'+(ev.aberto?' on':'')+'">'+(ev.aberto?'Check-in aberto':'Check-in encerrado')+'</span></div>'+
+      '<div class="kpis"><div class="kpi" id="k1"><b id="cont">'+d.presentes.length+'</b><span>presentes</span></div>'+
+        '<div class="kpi"><b>'+d.sorteios.length+'</b><span>ganhadores</span></div>'+
+        '<div class="kpi"><b id="kconc">'+Math.max(0,conc)+'</b><span>concorrendo</span></div></div></section>'+
+    '<div class="acts">'+
+      '<button class="act prim" id="telq"><span class="i">📺</span><b>Telão do QR</b><small>Mostrar no início da palestra</small></button>'+
+      '<button class="act ouro" id="sb"><span class="i">🎁</span><b>Sortear brinde</b><small>Em tela cheia, com voz</small></button>'+
+      '<button class="act" id="qrm"><span class="i">🖨️</span><b>Cartaz da mesa</b><small>QR para imprimir e colar</small></button>'+
+      '<button class="act'+(ev.aberto?' fecha':'')+'" id="abre"><span class="i">'+(ev.aberto?'🔒':'🔓')+'</span><b>'+(ev.aberto?'Encerrar check-in':'Reabrir check-in')+'</b><small>'+(ev.aberto?'Quando a palestra acabar':'Liberar o QR de novo')+'</small></button>'+
     '</div>'+
-    '<div class="card pad stack"><div class="row" style="justify-content:space-between"><h3>Lista de presença</h3><button class="btn sm" id="csv">Baixar planilha</button></div>'+
-      (d.presentes.length?'<input id="busca" class="field" placeholder="Buscar nome ou matrícula" style="border:1.5px solid var(--line-2);border-radius:12px;min-height:44px;padding:0 14px;width:100%">'+
-        '<div class="tbl"><table><tbody id="lp">'+linhasPres(d.presentes)+'</tbody></table></div>':'<p class="muted" style="margin:0">Ninguém marcado ainda.</p>')+
-    '</div></div>';
+    '<div class="cols">'+
+      '<div class="card pad stack"><div class="cab"><h3>Lista de presença <span class="n" id="ncont">'+d.presentes.length+'</span></h3>'+
+        '<div class="row"><span class="ao-vivo">ao vivo</span><button class="btn sm" id="csv">Baixar planilha</button></div></div>'+
+        (d.presentes.length?'<input id="busca" class="busca" placeholder="Buscar nome ou matrícula">'+
+          '<div class="tbl pres"><table><tbody id="lp">'+linhasPres(d.presentes)+'</tbody></table></div>'
+          :'<div class="vazio" id="lpvazio">Ninguém fez check-in ainda. Abra o <b>Telão do QR</b> para o pessoal começar.</div>')+
+      '</div>'+
+      '<div class="stack">'+
+        '<div class="card pad stack"><div class="cab"><h3>🏆 Ganhadores</h3>'+(d.sorteios.length?'<span class="n">'+d.sorteios.length+'</span>':'')+'</div>'+
+          (d.sorteios.length?'<div class="gan">'+d.sorteios.map(function(x,i){
+            return '<div class="g"><span class="pos">'+(i+1)+'º</span><div><b>'+esc(x.nome)+'</b><div class="small muted">'+esc(x.brinde||"Brinde")+' · '+esc(x.matricula)+'</div></div>'+
+              '<button class="btn sm ghost" data-anula="'+x.id+'" title="Não estava presente: anula e libera para sortear de novo">Ausente</button></div>'; }).join("")+'</div>'
+            :'<div class="vazio">Nenhum sorteio ainda.</div>')+
+        '</div>'+
+        '<div class="card pad stack"><h3>Marcar na mão</h3>'+
+          '<p class="small muted" style="margin:0">Para quem está sem celular: digite a matrícula ou leia o QR do colaborador.</p>'+
+          '<form id="fm" class="row" novalidate><input id="mm" class="busca" style="flex:1 1 140px;width:auto" inputmode="numeric" autocomplete="off" placeholder="Matrícula"><button class="btn primary" id="mb">Marcar</button></form>'+
+          '<div id="leitura"></div>'+
+          '<button class="btn" id="cam">📷 Ler QR do colaborador</button>'+
+          '<div id="camarea" hidden><div class="camera"><video id="vid" playsinline muted></video><div class="mira"></div></div>'+
+            '<div class="row" style="justify-content:center;margin-top:10px"><button class="btn" id="camfecha">Fechar câmera</button></div></div>'+
+        '</div>'+
+      '</div>'+
+    '</div>'+
+    '<div class="row end"><button class="btn sm ghost" style="color:var(--bad)" id="delev">Excluir este evento</button></div>'+
+  '</div>';
   ligarTopo();
   $("#cam").onclick=abrirCamera;
   $("#camfecha").onclick=pararCamera;
-  $("#fm").onsubmit=function(ev2){ ev2.preventDefault(); var v=$("#mm").value.trim(); if(!v) return; marcar(v); $("#mm").value=""; };
-  $("#fs").onsubmit=function(ev2){ ev2.preventDefault(); abrirTelao($("#br").value); };
+  $("#fm").onsubmit=function(e2){ e2.preventDefault(); var v=$("#mm").value.trim(); if(!v) return; marcar(v); $("#mm").value=""; };
+  $("#sb").onclick=function(){ abrirTelao(""); };
   app.querySelectorAll("[data-anula]").forEach(function(b){ b.onclick=function(){
     if(!confirm("Anular este sorteio? A pessoa sai da lista de presença deste evento.")) return;
     api("preAnular",AT,+b.dataset.anula).then(function(x){ PRE=x; telaPresenca(); toast("Sorteio anulado. Pode sortear de novo."); }).catch(function(e){ toast(e.message); }); }; });
@@ -673,9 +734,39 @@ function telaPresenca(){
   $("#qrm").onclick=function(){ qrMesa(ev); };
   $("#telq").onclick=function(){ telaoQr(ev); };
   $("#abre").onclick=function(){ api("preAbrir",AT,ev.id,!ev.aberto).then(function(x){ PRE=x; telaPresenca(); toast(ev.aberto?"Check-in encerrado.":"Check-in reaberto."); }).catch(function(e){ toast(e.message); }); };
+  $("#delev").onclick=function(){ if(!confirm("Excluir o evento “"+ev.nome+"” com a lista de presença ("+d.presentes.length+") e os sorteios? Isso não pode ser desfeito.")) return;
+    api("preExcluirEvento",AT,ev.id).then(function(x){ PRE=x; telaPresenca(); toast("Evento excluído."); }).catch(function(e){ toast(e.message); }); };
+  vivoPresenca();
+}
+/* lista ao vivo: a cada 8 s, sem atrapalhar quem está digitando, com a câmera aberta ou numa janela */
+var VIVOP;
+function vivoPresenca(){
+  clearTimeout(VIVOP);
+  VIVOP=setTimeout(function(){
+    if(PAGE!=="presenca"||!AT||!PRE||!PRE.evento) return;
+    var ocupado=CAM||$("#dlg").innerHTML||$(".telao")||document.hidden||(document.activeElement&&/INPUT|TEXTAREA/.test(document.activeElement.tagName));
+    if(ocupado){ vivoPresenca(); return; }
+    var antes=PRE.presentes.length, ids={}; PRE.presentes.forEach(function(x){ ids[x.matricula]=1; });
+    api("preDados",AT,PRE.evento).then(function(x){
+      PRE=x;
+      if(x.presentes.length!==antes){ telaPresenca();
+        x.presentes.forEach(function(p){ if(!ids[p.matricula]){ var b=app.querySelector('[data-tira="'+p.matricula+'"]'); if(b) b.closest("tr").classList.add("novo"); } });
+        var k=$("#k1"); if(k&&x.presentes.length>antes) k.classList.add("sobe");
+      } else vivoPresenca();
+    }).catch(function(){ vivoPresenca(); });
+  },8000);
+}
+function novoEvento(){
+  dlg('<div class="row" style="justify-content:space-between"><h2>Novo evento</h2><button class="btn sm ghost" id="fx" aria-label="Fechar">✕</button></div>'+
+    '<form id="fnov" class="stack" novalidate><label class="field"><span>Nome do evento</span><input id="nnome" maxlength="100" placeholder="Ex.: SIPAT – Palestra Trânsito Seguro"></label>'+
+    '<div id="errnov"></div><div class="row end"><button class="btn primary">Criar evento</button></div></form>');
+  $("#fx").onclick=fecharDlg; $("#nnome").focus();
+  $("#fnov").onsubmit=function(e2){ e2.preventDefault();
+    api("preEvento",AT,$("#nnome").value).then(function(x){ fecharDlg(); PRE=x; telaPresenca(); toast("Evento criado."); }).catch(function(e){ erroEm($("#errnov"),e.message); }); };
 }
 function linhasPres(l){ return l.map(function(x){ return '<tr><td><b>'+esc(x.nome)+'</b><div class="small muted">'+esc(x.matricula)+(x.setor?' · '+esc(x.setor):'')+'</div></td>'+
-  '<td class="small muted">'+esc(dataBr(x.em).split(" ")[1]||"")+'</td><td style="text-align:right"><button class="btn sm ghost" data-tira="'+esc(x.matricula)+'" aria-label="Tirar presença">✕</button></td></tr>'; }).join(""); }
+  '<td class="small muted" style="white-space:nowrap">'+esc(dataBr(x.em).split(" ")[1]||"")+(x.como&&x.como!=="Celular"?'<div>'+esc(x.como)+'</div>':'')+'</td>'+
+  '<td style="text-align:right"><button class="btn sm ghost" data-tira="'+esc(x.matricula)+'" aria-label="Tirar presença" title="Tirar presença">✕</button></td></tr>'; }).join(""); }
 function ligarLista(){
   var b=$("#busca"); if(b) b.oninput=function(){ var q=b.value.toLowerCase().trim();
     $("#lp").innerHTML=linhasPres(PRE.presentes.filter(function(x){ return !q||x.nome.toLowerCase().indexOf(q)>=0||String(x.matricula).indexOf(q)>=0; })); ligarTira(); };
@@ -684,8 +775,7 @@ function ligarLista(){
 function ligarTira(){ app.querySelectorAll("[data-tira]").forEach(function(b){ b.onclick=function(){ if(!confirm("Tirar a presença desta pessoa?")) return;
   api("preDesmarcar",AT,PRE.evento,b.dataset.tira).then(function(x){ PRE=x; telaPresenca(); }).catch(function(e){ toast(e.message); }); }; }); }
 function ligarTopo(){
-  $("#novo").onclick=function(){ var n=prompt("Nome do evento (ex.: SIPAT 2026 – dia 1):"); if(!n) return;
-    api("preEvento",AT,n).then(function(x){ PRE=x; telaPresenca(); toast("Evento criado."); }).catch(function(e){ toast(e.message); }); };
+  $("#novo").onclick=novoEvento;
   app.querySelectorAll("[data-ev]").forEach(function(b){ b.onclick=function(){ carregarPresenca(+b.dataset.ev); }; });
   app.querySelectorAll("[data-tel]").forEach(function(b){ b.onclick=function(){ telaoQr(PRE.eventos.find(function(e){ return e.id===+b.dataset.tel; })); }; });
   app.querySelectorAll("[data-qrm]").forEach(function(b){ b.onclick=function(){ qrMesa(PRE.eventos.find(function(e){ return e.id===+b.dataset.qrm; })); }; });
@@ -745,7 +835,8 @@ function marcar(cod){
     el.innerHTML='<div class="leitura '+(r.novo?"ok":"ja")+'"><b>'+(r.novo?"✔ ":"")+esc(r.nome)+'</b>'+esc(r.matricula)+(r.setor?' · '+esc(r.setor):'')+' — '+(r.novo?'presença registrada':'já estava marcado')+'</div>';
     $("#cont").textContent=r.total;
     if(r.novo){ PRE.presentes.unshift({matricula:r.matricula,nome:r.nome,setor:r.setor,em:new Date().toISOString()});
-      var lp=$("#lp"); if(lp){ lp.innerHTML=linhasPres(PRE.presentes); ligarTira(); } }
+      var lp=$("#lp"); if(lp){ lp.innerHTML=linhasPres(PRE.presentes); ligarTira(); var tr=lp.querySelector("tr"); if(tr) tr.classList.add("novo"); } else carregarPresenca(PRE.evento);
+      var nc=$("#ncont"); if(nc) nc.textContent=r.total; var kc=$("#kconc"); if(kc) kc.textContent=r.total-PRE.sorteios.length; }
   }).catch(function(e){ apito(false); el.innerHTML='<div class="leitura bad"><b>Não marcou</b>'+esc(e.message)+'</div>'; });
 }
 
