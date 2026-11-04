@@ -57,6 +57,10 @@ if ($p === 'jurado') $p = 'jurados';
 if ($p === 'presença') $p = 'presenca';
 if ($p === 'parodia' || $p === 'jurados' || $p === 'qr' || $p === 'presenca' || $p === 'checkin') {
     $html = preg_replace('/<head>/', '<head><base href="/">', file_get_contents(dirname(__DIR__) . '/app/parodia.html'), 1);
+    if ($p === 'parodia') {   // prévia do link no WhatsApp: só a inscrição da paródia tem imagem própria
+        $host = preg_replace('/[^a-z0-9.:-]/i', '', (string)($_SERVER['HTTP_HOST'] ?? 'parodia.redentorhub.com.br'));
+        $html = preg_replace('#(<meta property="og:image" content=")[^"]*#', '${1}https://' . $host . '/og-parodia.jpg?v=1', $html, 1);
+    }
     $html = str_replace('</head>', '<script>window.__PAGE__=' . json_encode($p) . ';window.__TOK__=' . json_encode(preg_replace('/[^a-f0-9]/', '', $tok)) . ';</script></head>', $html);
     header('Content-Type: text/html; charset=utf-8');
     header('Cache-Control: no-store');
