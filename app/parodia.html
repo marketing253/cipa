@@ -654,7 +654,8 @@ function telaAdmin(){
   var corpo="";
   if(ABA==="parodias"){
     if(!telaAdmin.ja){ telaAdmin.ja=1; if(contagem(d.parodias).pendente) FILTRO="pendente"; }   // abre direto no que falta aprovar
-    var lista=d.parodias.filter(function(p){ return FILTRO==="todas"||p.status===FILTRO; });
+    var lista=d.parodias.filter(function(p){ return FILTRO==="todas"||p.status===FILTRO; })
+      .sort(function(a,b){ return a.equipe.localeCompare(b.equipe,"pt-BR",{sensitivity:"base"}); });   // ordem alfabética das equipes
     corpo=filtros(d.parodias)+(lista.length?'<div class="apv">'+lista.map(function(p){
       return '<article class="ap '+esc(p.status)+'"><div class="cab"><div style="min-width:0"><h3>'+esc(p.equipe)+'</h3>'+
           '<div class="meta">🎵 “'+esc(p.musica)+'” · '+esc(p.artista)+'</div>'+
