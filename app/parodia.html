@@ -690,6 +690,7 @@ function telaAdmin(){
       '</tbody></table></div>'+
       '<p class="small muted" style="margin:0">Média = média da soma das notas de cada jurado ('+d.criterios.length+' critérios de 0 a 10, máximo '+d.criterios.length*10+'). Clique em “Paródias” → Ver para as notas de cada jurado.</p>'+
       '<div class="row"><button class="btn primary" id="tvrev">📺 Revelar resultado na TV</button><button class="btn" id="tvger">📺 Os 3 primeiros na TV</button><button class="btn" id="imp">Imprimir letras aprovadas</button></div>':'<div class="card pad muted">Aprove as paródias na aba “Paródias” para os jurados começarem a votar.</div>');
+    corpo+='<div class="card pad row" style="justify-content:space-between"><div><b>Ensaio da TV</b><div class="small muted">Mostra a revelação com nomes de exemplo, para testar a TV e o som antes do evento.</div></div><button class="btn" id="tvens">🎬 Ensaio (sem nomes)</button></div>';
   } else if(ABA==="jurados"){
     corpo='<div class="card pad stack"><p class="muted" style="margin:0">Os jurados entram em <b>'+esc(d.urlApp)+'jurados</b> com a matrícula e a mesma confirmação da urna.</p>'+
       '<form id="fj" class="row" novalidate><label class="field" style="flex:1 1 200px"><span>Matrícula do jurado</span><input id="jm" inputmode="numeric"></label><button class="btn primary" id="ja">Incluir jurado</button></form><div id="errj"></div>'+
@@ -746,6 +747,7 @@ function telaAdmin(){
   }; });
   var tvr=$("#tvrev"); if(tvr) tvr.onclick=function(){ telaoApuracao("revelar"); };
   var tvg=$("#tvger"); if(tvg) tvg.onclick=function(){ telaoApuracao("geral"); };
+  var tve=$("#tvens"); if(tve) tve.onclick=function(){ telaoApuracao("revelar",true); };
   var imp=$("#imp"); if(imp) imp.onclick=function(){ imprimir(d.parodias.filter(function(p){ return p.status==="aprovada"; })); };
   var fj=$("#fj"); if(fj){
     fj.onsubmit=function(ev){ ev.preventDefault(); var b=$("#ja"); busy(b,true);
@@ -778,12 +780,18 @@ function integrantesDe(p){
   var l=[p.responsavel].concat(String(p.integrantes||"").split(/\n|,|;/)).map(function(x){ return x.replace(/\s*[-–]?\s*\d{3,}\s*$/,"").trim(); }).filter(Boolean);
   var vistos={}; return l.filter(function(x){ var k=x.toLowerCase(); if(vistos[k]) return false; vistos[k]=1; return true; }).slice(0,14);
 }
-function telaoApuracao(modo){
-  var rk=rankingFinal();
+/* ensaio: mesma animação com equipes de exemplo (não usa nenhuma nota real) */
+function rankingEnsaio(){
+  var mx=DADOS.criterios.length*10;
+  return [[1,"Nome da Equipe",.92],[2,"Nome da Equipe",.85],[3,"Nome da Equipe",.78]].map(function(x){
+    return {pos:x[0],p:{equipe:x[1],musica:"Música original",artista:"Artista",responsavel:"Integrante 1",integrantes:"Integrante 2, Integrante 3, Integrante 4",media:Math.round(mx*x[2]*2)/2}}; });
+}
+function telaoApuracao(modo,ensaio){
+  var rk=ensaio?rankingEnsaio():rankingFinal();
   if(!rk.length){ toast("Ainda não há paródias com nota dos jurados."); return; }
   var max=DADOS.criterios.length*10, tit=DADOS.cfg.titulo;
   var el=document.createElement("div"); el.className="tv";
-  el.innerHTML='<div class="raios"></div><div class="tv-top"><span class="lg"><img src="logo-redentor.png" alt="Auto Viação Redentor"></span><span class="tt">'+esc(tit)+'</span></div>'+
+  el.innerHTML='<div class="raios"></div><div class="tv-top"><span class="lg"><img src="logo-redentor.png" alt="Auto Viação Redentor"></span><span class="tt">'+(ensaio?'<span style="background:#d1293d;color:#fff;border-radius:999px;padding:.2em .7em;margin-right:.6em">ENSAIO</span>':'')+esc(tit)+'</span></div>'+
     '<button class="t-sec tv-sair">✕ Sair</button><div class="palco" id="palco"></div><div class="tv-dica" id="dica"></div>';
   // reaproveita o estilo do botão de sair do sorteio
   el.querySelector(".tv-sair").style.cssText="font:inherit;font-weight:700;padding:10px 20px;border-radius:999px;border:1px solid rgba(255,255,255,.5);background:rgba(0,0,0,.35);color:#fff;cursor:pointer";
