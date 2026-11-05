@@ -69,8 +69,14 @@ function par_exige_aberta(array $c): void {
 
 function equipe_norm(string $s): string { return mb_strtolower(preg_replace('/\s+/u', ' ', trim($s))); }
 
+/* nome de escala (apelido) de cada matrícula, da lista de colaboradores; vazio se não tiver */
+function par_escala(string $mat): string {
+    static $m = null;
+    if ($m === null) { $m = []; foreach (db()->query("SELECT mnorm,escala FROM eleitores WHERE escala<>'' ORDER BY ordem") as $e) $m[$e['mnorm']] ??= trim((string)$e['escala']); }
+    return $m[mat_norm($mat)] ?? '';
+}
 function par_linha(array $r): array {
-    return ['id' => (int)$r['id'], 'matricula' => $r['matricula'], 'responsavel' => $r['responsavel'], 'setor' => (string)$r['setor'],
+    return ['id' => (int)$r['id'], 'matricula' => $r['matricula'], 'responsavel' => $r['responsavel'], 'escala' => par_escala($r['matricula']), 'setor' => (string)$r['setor'],
         'equipe' => $r['equipe'], 'musica' => $r['musica'], 'artista' => $r['artista'], 'letra' => $r['letra'],
         'integrantes' => (string)$r['integrantes'], 'celular' => (string)$r['celular'], 'status' => $r['status'],
         'motivo' => (string)$r['motivo'], 'validadoPor' => (string)$r['validado_por'], 'validadoEm' => (string)$r['validado_em'],
@@ -250,7 +256,8 @@ function api_parNota($t, $id, $notas, $comentario = ''): array {
 function par_admin_dados(): array {
     $p = par_tabelas(); $crit = par_cfg()['criterios'];
     $jur = $p->query('SELECT matricula,nome,mnorm FROM parodia_jurados ORDER BY nome')->fetchAll();
-    $nomes = array_column($jur, 'nome', 'mnorm');
+    foreach ($jur as &$j) { $j['escala'] = par_escala($j['matricula']); $j['apelido'] = $j['escala'] !== '' ? $j['escala'] : $j['nome']; } unset($j);
+    $nomes = array_column($jur, 'apelido', 'mnorm');
     $notas = []; $deu = [];
     foreach ($p->query('SELECT parodia,jurado,notas,comentario,em FROM parodia_notas') as $n) {
         $notas[(int)$n['parodia']][] = ['jurado' => $nomes[$n['jurado']] ?? $n['jurado'], 'notas' => json_decode($n['notas'], true),
@@ -266,12 +273,12 @@ function par_admin_dados(): array {
         if ($x['status'] === 'aprovada') foreach ($jur as $j) {
             if ($j['mnorm'] === mat_norm($x['matricula'])) continue;
             $deve[$j['mnorm']]++;
-            if (isset($deu[$x['id']][$j['mnorm']])) $avaliou[$j['mnorm']]++; else $faltam[] = $j['nome'];
+            if (isset($deu[$x['id']][$j['mnorm']])) $avaliou[$j['mnorm']]++; else $faltam[] = $j['apelido'];
         }
         return $x + ['notas' => $ns, 'faltam' => $faltam, 'media' => $tot ? round(array_sum($tot) / count($tot), 2) : null];
     }, par_lista());
     return ['cfg' => par_cfg(), 'situacao' => par_situacao(par_cfg()), 'criterios' => $crit,
-            'jurados' => array_map(fn($j) => ['matricula' => $j['matricula'], 'nome' => $j['nome'],
+            'jurados' => array_map(fn($j) => ['matricula' => $j['matricula'], 'nome' => $j['nome'], 'escala' => $j['escala'],
                 'avaliou' => $avaliou[$j['mnorm']], 'deve' => $deve[$j['mnorm']]], $jur),
             'parodias' => $lista, 'agora' => agora_local(), 'urlApp' => url_publica()];
 }
