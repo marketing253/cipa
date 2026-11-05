@@ -689,7 +689,7 @@ function telaAdmin(){
       jurOrdem(d.jurados).map(function(j){ return '<tr><td>'+pessoaHtml(j.nome,j.escala)+'</td><td>'+j.avaliou+' de '+j.deve+'</td><td>'+(j.deve-j.avaliou?'<b>'+(j.deve-j.avaliou)+'</b>':'<span style="color:var(--ok);font-weight:700">ok</span>')+'</td></tr>'; }).join("")+
       '</tbody></table></div>'+
       '<p class="small muted" style="margin:0">Média = média da soma das notas de cada jurado ('+d.criterios.length+' critérios de 0 a 10, máximo '+d.criterios.length*10+'). Clique em “Paródias” → Ver para as notas de cada jurado.</p>'+
-      '<div class="row"><button class="btn primary" id="tvrev">📺 Revelar resultado na TV</button><button class="btn" id="tvger">📺 Classificação geral na TV</button><button class="btn" id="imp">Imprimir letras aprovadas</button></div>':'<div class="card pad muted">Aprove as paródias na aba “Paródias” para os jurados começarem a votar.</div>');
+      '<div class="row"><button class="btn primary" id="tvrev">📺 Revelar resultado na TV</button><button class="btn" id="tvger">📺 Os 3 primeiros na TV</button><button class="btn" id="imp">Imprimir letras aprovadas</button></div>':'<div class="card pad muted">Aprove as paródias na aba “Paródias” para os jurados começarem a votar.</div>');
   } else if(ABA==="jurados"){
     corpo='<div class="card pad stack"><p class="muted" style="margin:0">Os jurados entram em <b>'+esc(d.urlApp)+'jurados</b> com a matrícula e a mesma confirmação da urna.</p>'+
       '<form id="fj" class="row" novalidate><label class="field" style="flex:1 1 200px"><span>Matrícula do jurado</span><input id="jm" inputmode="numeric"></label><button class="btn primary" id="ja">Incluir jurado</button></form><div id="errj"></div>'+
@@ -796,10 +796,9 @@ function telaoApuracao(modo){
 
   if(modo==="geral"){ geral(); el.onclick=null; document.addEventListener("keydown",tecla); return; }
 
-  // revelação: abertura → do último até o 4º (um por vez) → 3º, 2º, 1º com suspense → pódio
-  var resto=rk.filter(function(x){ return x.pos>3; }).reverse(), top=rk.filter(function(x){ return x.pos<=3; }).reverse();
+  // revelação: só os premiados — abertura → 3º, 2º, 1º com suspense → pódio (do 4º para baixo não aparece na TV)
+  var top=rk.filter(function(x){ return x.pos<=3; }).reverse();
   var passos=[abertura];
-  resto.forEach(function(x,i){ passos.push(function(){ fila(i); }); });
   top.forEach(function(x){ passos.push(function(){ suspense(x); }); passos.push(function(){ revela(x); }); });
   passos.push(podio);
   var n=-1;
@@ -815,14 +814,8 @@ function telaoApuracao(modo){
   vai(1);
 
   function abertura(){
-    palco.innerHTML='<div class="abre"><h1>Resultado</h1><p>'+esc(tit)+' · '+rk.length+' equipes</p></div>';
+    palco.innerHTML='<div class="abre"><h1>Resultado</h1><p>'+esc(tit)+' · os 3 primeiros colocados</p></div>';
     dica.textContent="Toque na tela ou aperte ESPAÇO para revelar · ← volta · ESC sai";
-  }
-  function fila(i){
-    var feitos=resto.slice(0,i+1).slice(-6);   // mostra as últimas 6 reveladas
-    palco.innerHTML='<div class="fila">'+feitos.slice().reverse().map(function(x,k){
-      return '<div class="lin'+(k===0?' nova':'')+'"><div class="ps">'+x.pos+'º</div><div class="nm"><b>'+esc(x.p.equipe)+'</b><span>“'+esc(x.p.musica)+'”</span></div><div class="pt">'+fmt(x.p.media)+'</div></div>'; }).join("")+'</div>';
-    dica.textContent=(resto.length-i-1)?"Próximo: "+resto[i+1].pos+"º lugar":"A seguir: os 3 primeiros colocados!";
   }
   function nomeLugar(pos){ return pos===1?"PRIMEIRO LUGAR":(pos===2?"SEGUNDO LUGAR":"TERCEIRO LUGAR"); }
   function suspense(x){
@@ -856,11 +849,11 @@ function telaoApuracao(modo){
     dica.textContent="Parabéns a todas as equipes! · ESC para sair";
   }
   function geral(){
-    var lista=rk.slice(0,12);
-    palco.innerHTML='<div class="abre" style="margin-bottom:3vh"><h1 style="font-size:clamp(1.8rem,4.4vw,3.8rem)">Classificação geral</h1></div><div class="geral">'+lista.map(function(x,i){
+    var lista=rk.filter(function(x){ return x.pos<=3; });   // na TV só os premiados (3 primeiros)
+    palco.innerHTML='<div class="abre" style="margin-bottom:3vh"><h1 style="font-size:clamp(1.8rem,4.4vw,3.8rem)">Os 3 primeiros colocados</h1></div><div class="geral">'+lista.map(function(x,i){
       return '<div class="gl'+(x.pos===1?' t1':'')+'" style="animation-delay:'+(.25+i*.14).toFixed(2)+'s"><div class="ps">'+x.pos+'º</div><b>'+esc(x.p.equipe)+'</b>'+
         '<div class="bar"><i data-w="'+Math.round(100*x.p.media/max)+'"></i></div><div class="pt">'+fmt(x.p.media)+'</div></div>'; }).join("")+'</div>';
-    dica.textContent=(rk.length>12?"Mostrando as 12 primeiras de "+rk.length+" · ":"")+"Máximo "+max+" pontos · ESC para sair";
+    dica.textContent="Máximo "+max+" pontos · ESC para sair";
     lista.forEach(function(x,i){ setTimeout(function(){ var b=palco.querySelectorAll(".bar i")[i]; if(b) b.style.width=b.dataset.w+"%"; },450+i*140); });
     setTimeout(confete,450+lista.length*140+600);
   }
