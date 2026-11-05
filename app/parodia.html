@@ -350,6 +350,8 @@ th{font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--mu
 .pos{font-family:var(--f-display);font-weight:800;font-size:1.2rem;width:40px}
 .dlg{position:fixed;inset:0;background:rgba(10,15,30,.6);display:flex;align-items:flex-start;justify-content:center;padding:24px 12px;overflow:auto;z-index:50}
 .dlg>.card{width:100%;max-width:760px}
+.dlgtop{position:sticky;top:-24px;z-index:2;display:flex;justify-content:space-between;align-items:center;gap:10px;margin:-22px -22px 0;padding:12px 16px 12px 22px;background:var(--surface);border-bottom:1px solid var(--line);border-radius:var(--r) var(--r) 0 0}
+.dlg{overscroll-behavior:contain}
 
 @media print{
   body{background:#fff;padding:0} .band,.noprint,.toast{display:none!important}
@@ -599,8 +601,10 @@ function fecharDlg(){ $("#dlg").innerHTML=""; document.body.style.overflow=""; }
 function dlg(html){ $("#dlg").innerHTML='<div class="dlg noprint"><div class="card pad stack">'+html+'</div></div>'; document.body.style.overflow="hidden";
   $("#dlg .dlg").onclick=function(ev){ if(ev.target===this) fecharDlg(); }; }
 function detalhe(p){
-  return '<div class="row" style="justify-content:space-between;align-items:flex-start"><div><div class="lbl">Equipe</div><h2 style="margin-top:2px">'+esc(p.equipe)+'</h2>'+
-    '<div class="muted">Paródia de “'+esc(p.musica)+'” · '+esc(p.artista)+'</div></div><div class="row">'+pill(p.status)+'<button class="btn sm ghost" id="fx" aria-label="Fechar">✕</button></div></div>'+
+  // o ✕ fica numa barra fixa no topo da janela (no celular ele caía para baixo do selo e sumia ao rolar a letra)
+  return '<div class="dlgtop"><span>'+pill(p.status)+'</span><button class="btn sm" id="fx" aria-label="Fechar">✕ Fechar</button></div>'+
+    '<div><div class="lbl">Equipe</div><h2 style="margin-top:2px">'+esc(p.equipe)+'</h2>'+
+    '<div class="muted">Paródia de “'+esc(p.musica)+'” · '+esc(p.artista)+'</div></div>'+
     '<div class="small"><b>Responsável:</b> '+esc(p.matricula)+' – '+esc(p.responsavel)+(p.setor?' · '+esc(p.setor):'')+(p.celular?' · '+esc(p.celular):'')+'</div>'+
     (p.integrantes?'<div class="small"><b>Integrantes:</b><br>'+esc(p.integrantes).replace(/\n/g,"<br>")+'</div>':'')+
     (p.motivo?'<div class="note '+(p.status==="recusada"?"bad":"warn")+'"><b>Motivo:</b> '+esc(p.motivo)+'</div>':'')+
