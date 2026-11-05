@@ -577,7 +577,7 @@ function somaNota(n){ return n?n.notas.reduce(function(a,b){ return a+Number(b);
 function fmt(n){ return n==null?"—":(Math.round(n*10)/10).toLocaleString("pt-BR"); }
 
 function telaJurado(){
-  var d=DADOS, lista=d.parodias;
+  var d=DADOS, lista=d.parodias.slice().sort(function(a,b){ return a.equipe.localeCompare(b.equipe,"pt-BR",{sensitivity:"base"}); });   // ordem alfabética das equipes
   quem('<span>Jurado: '+esc(d.jurado.nome.split(" ")[0])+'</span><button class="btn sm" id="sair">Sair</button>');
   $("#sair").onclick=sair;
   var semNota=lista.filter(function(p){ return !p.propria&&!p.minhaNota; }).length;
