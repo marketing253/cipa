@@ -276,6 +276,8 @@ html.redentor .telao:not(.qr){background:url("data:image/svg+xml,%3Csvg xmlns='h
 .tv .abre h1{font-family:var(--f-display);font-size:clamp(2.4rem,8vw,7rem);font-weight:800;line-height:1;animation:zoomEntra 1s cubic-bezier(.2,.9,.2,1) both}
 .tv .abre p{font-size:clamp(1.1rem,2.6vw,2.2rem);color:#ffd76a;margin-top:3vh;animation:sobeEntra .8s .5s both}
 /* lista dos que já saíram (do último para o 4º) */
+.tv .mural{display:flex;flex-wrap:wrap;justify-content:center;gap:1.6vh 1.4vw;max-width:92vw}
+.tv .mural span{font-family:var(--f-display);font-weight:800;font-size:clamp(1.1rem,2.6vw,2.4rem);padding:1.2vh 2vw;border-radius:999px;background:rgba(255,255,255,.1);border:2px solid rgba(255,215,106,.6);color:#fff;animation:surge .6s ease-out both}
 .tv .fila{width:min(1100px,92vw);display:flex;flex-direction:column;gap:1.4vh}
 .tv .lin{display:flex;align-items:center;gap:2vw;padding:1.6vh 2.4vw;border-radius:1.6vh;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);text-align:left}
 .tv .lin.nova{animation:entraLado .8s cubic-bezier(.2,.9,.2,1) both;background:rgba(255,215,106,.16);border-color:#ffd76a}
@@ -345,6 +347,21 @@ html.redentor .telao:not(.qr){background:url("data:image/svg+xml,%3Csvg xmlns='h
 .cartaz{text-align:center;font-family:var(--f-display);color:#16203a;border-top:6mm solid #3e4095;border-bottom:4mm solid #d29500;padding:8mm 0}
 .cartaz h1{font-size:30pt;margin:4mm 0 0;color:#3e4095} .cartaz h2{font-size:20pt;margin:4mm 0 0;color:#d29500}
 .cartaz .q{width:115mm;height:115mm;margin:8mm auto 6mm;padding:4mm;border:2mm solid #d29500;border-radius:6mm} .cartaz .q img,.cartaz .q canvas{width:100%!important;height:auto!important}
+.cred{box-sizing:border-box;height:136mm;margin:0 0 6mm;border:.6mm solid #3e4095;border-radius:6mm;overflow:hidden;display:flex;flex-direction:column;break-inside:avoid;page-break-inside:avoid;-webkit-print-color-adjust:exact;print-color-adjust:exact;font-family:var(--f-body);color:#16203a;background:#fff}
+.cred:nth-child(2n){break-after:page;page-break-after:always}
+.cred .cb{background:linear-gradient(120deg,#16203a,#3e4095);color:#fff;padding:5mm 7mm;display:flex;align-items:center;gap:5mm;border-bottom:2.2mm solid #d29500}
+.cred .cb .lg{background:#fff;border-radius:3mm;padding:2mm 3mm;display:inline-grid} .cred .cb .lg img{height:12mm;display:block}
+.cred .cb .t{flex:1;line-height:1.15} .cred .cb .t small{display:block;font-size:10pt;opacity:.85;letter-spacing:.06em;text-transform:uppercase}
+.cred .cb .t b{font-family:var(--f-display);font-size:15pt}
+.cred .selo{font-family:var(--f-display);font-weight:800;font-size:22pt;letter-spacing:.14em;color:#16203a;background:#ffd76a;border-radius:3mm;padding:1.5mm 5mm}
+.cred .cc{flex:1;display:grid;grid-template-columns:1fr 62mm;gap:6mm;padding:6mm 7mm;align-items:center}
+.cred .jq small{font-size:10pt;color:#5a6380;text-transform:uppercase;letter-spacing:.08em}
+.cred .jq .n{font-family:var(--f-display);font-weight:800;font-size:24pt;line-height:1.05;color:#3e4095;margin-top:1mm}
+.cred .jq .c{font-size:12pt;margin-top:1mm} .cred .jq .linha{border-bottom:.4mm solid #16203a;height:12mm;margin-top:2mm}
+.cred ol{margin:4mm 0 0;padding-left:5mm;font-size:11pt;line-height:1.5}
+.cred .qr{text-align:center} .cred .qr img{width:62mm;height:62mm;padding:2mm;border:1.2mm solid #d29500;border-radius:4mm;box-sizing:border-box}
+.cred .qr div{font-size:8.5pt;color:#5a6380;margin-top:2mm;word-break:break-all}
+.cred .cr{background:#f4f1e6;padding:3mm 7mm;font-size:9.5pt;color:#5a6380;display:flex;justify-content:space-between;gap:4mm}
 .cartaz ol{text-align:left;display:inline-block;font-family:var(--f-body);font-size:15pt;line-height:1.6;margin:0}
 .ganhador .nm{font-family:var(--f-display);font-size:clamp(1.6rem,5vw,2.6rem);font-weight:800;line-height:1.1;margin-top:6px}
 .barra{height:8px;border-radius:99px;background:var(--line);overflow:hidden;min-width:80px}
@@ -697,6 +714,7 @@ function telaAdmin(){
       '</tbody></table></div>'+
       '<p class="small muted" style="margin:0">Média = média da soma das notas de cada jurado ('+d.criterios.length+' critérios de 0 a 10, máximo '+d.criterios.length*10+'). Clique em “Paródias” → Ver para as notas de cada jurado.</p>'+
       '<div class="row"><button class="btn primary" id="tvrev">📺 Revelar resultado na TV</button><button class="btn" id="tvger">📺 Os 3 primeiros na TV</button><button class="btn" id="imp">Imprimir letras aprovadas</button></div>':'<div class="card pad muted">Aprove as paródias na aba “Paródias” para os jurados começarem a votar.</div>');
+    corpo+='<div class="card pad row" style="justify-content:space-between"><div><b>Equipes participantes</b><div class="small muted">Apresenta na TV, em ordem alfabética, cada equipe aprovada com a música e os integrantes (sem notas).</div></div><button class="btn primary" id="tvpar">📺 Participantes na TV</button></div>';
     corpo+='<div class="card pad row" style="justify-content:space-between"><div><b>Ensaio da TV</b><div class="small muted">Mostra a revelação com nomes de exemplo, para testar a TV e o som antes do evento.</div></div><button class="btn" id="tvens">🎬 Ensaio (sem nomes)</button></div>';
   } else if(ABA==="jurados"){
     corpo='<div class="card pad stack"><p class="muted" style="margin:0">Os jurados entram em <b>'+esc(d.urlApp)+'jurados</b> com a matrícula e a mesma confirmação da urna.</p>'+
@@ -727,7 +745,7 @@ function telaAdmin(){
       '<div class="lk"><div class="top"><div class="mini" id="qi"></div><div style="min-width:0"><b>Inscrição das equipes</b><div class="url">'+esc(link)+'</div></div></div>'+
         '<div class="row"><button class="btn sm" data-cp="'+esc(link)+'">Copiar link</button><button class="btn sm primary" id="pi">🖨️ Imprimir QR</button></div></div>'+
       '<div class="lk"><div class="top"><div class="mini" id="qj"></div><div style="min-width:0"><b>Área dos jurados</b><div class="url">'+esc(linkJ)+'</div></div></div>'+
-        '<div class="row"><button class="btn sm" data-cp="'+esc(linkJ)+'">Copiar link</button><button class="btn sm primary" id="pj">🖨️ Imprimir QR</button></div></div>'+
+        '<div class="row"><button class="btn sm" data-cp="'+esc(linkJ)+'">Copiar link</button><button class="btn sm primary" id="pj">🖨️ Credenciais dos jurados</button></div></div>'+
       '<div class="lk"><div class="top"><div class="ic">📋</div><div style="min-width:0"><b>Presença e sorteio</b><div class="url">'+esc(d.urlApp)+'presenca</div><div class="small muted">Check-in das palestras, telão do QR e brindes</div></div></div>'+
         '<div class="row"><a class="btn sm primary" href="presenca">Abrir</a></div></div>'+
     '</div>'+
@@ -739,8 +757,7 @@ function telaAdmin(){
   }).catch(function(){});
   $("#pi").onclick=function(){ imprimirCartaz("Concurso de Paródias da CIPA",d.cfg.tema||"Inscreva a sua equipe",link,
     ["Aponte a câmera do celular para o QR Code","Digite a <b>matrícula</b> do responsável pela equipe","Digite os <b>3 primeiros números do CPF</b>","Preencha a equipe, a música e a letra da paródia"]); };
-  $("#pj").onclick=function(){ imprimirCartaz("Área dos Jurados","Concurso de Paródias da CIPA",linkJ,
-    ["Aponte a câmera do celular para o QR Code","Toque em <b>Sou jurado</b>","Digite a sua <b>matrícula</b> e os <b>3 primeiros números do CPF</b>","Leia cada paródia aprovada e escolha as notas de 0 a 10"]); };
+  $("#pj").onclick=function(){ imprimirCredenciais(d,linkJ); };
   app.querySelectorAll("#abas button").forEach(function(b){ b.onclick=function(){ ABA=b.dataset.a; telaAdmin(); }; });
   ligarFiltros(telaAdmin);
   app.querySelectorAll("[data-ver]").forEach(function(b){ b.onclick=function(){ abrirAdmin(+b.dataset.ver); }; });
@@ -762,6 +779,7 @@ function telaAdmin(){
   var tvr=$("#tvrev"); if(tvr) tvr.onclick=function(){ telaoApuracao("revelar"); };
   var tvg=$("#tvger"); if(tvg) tvg.onclick=function(){ telaoApuracao("geral"); };
   var tve=$("#tvens"); if(tve) tve.onclick=function(){ telaoApuracao("revelar",true); };
+  var tvp=$("#tvpar"); if(tvp) tvp.onclick=function(){ telaoApuracao("participantes"); };
   var imp=$("#imp"); if(imp) imp.onclick=function(){ imprimir(d.parodias.filter(function(p){ return p.status==="aprovada"; })); };
   var fj=$("#fj"); if(fj){
     fj.onsubmit=function(ev){ ev.preventDefault(); var b=$("#ja"); busy(b,true);
@@ -801,8 +819,9 @@ function rankingEnsaio(){
     return {pos:x[0],p:{equipe:x[1],musica:"Música original",artista:"Artista",responsavel:"Integrante 1",integrantes:"Integrante 2, Integrante 3, Integrante 4",media:Math.round(mx*x[2]*2)/2}}; });
 }
 function telaoApuracao(modo,ensaio){
-  var rk=ensaio?rankingEnsaio():rankingFinal();
-  if(!rk.length){ toast("Ainda não há paródias com nota dos jurados."); return; }
+  var rk=ensaio?rankingEnsaio():(modo==="participantes"?DADOS.parodias.filter(function(p){ return p.status==="aprovada"; })
+    .sort(function(a,b){ return a.equipe.localeCompare(b.equipe,"pt-BR",{sensitivity:"base"}); }).map(function(p){ return {p:p}; }):rankingFinal());
+  if(!rk.length){ toast(modo==="participantes"?"Ainda não há paródias aprovadas.":"Ainda não há paródias com nota dos jurados."); return; }
   var max=DADOS.criterios.length*10, tit=DADOS.cfg.titulo;
   var el=document.createElement("div"); el.className="tv";
   el.innerHTML='<div class="raios"></div><div class="tv-top"><span class="lg"><img src="logo-redentor.png" alt="Auto Viação Redentor"></span><span class="tt">'+(ensaio?'<span style="background:#d1293d;color:#fff;border-radius:999px;padding:.2em .7em;margin-right:.6em">ENSAIO</span>':'')+esc(tit)+'</span></div>'+
@@ -817,6 +836,41 @@ function telaoApuracao(modo,ensaio){
   el.querySelector(".tv-sair").onclick=function(ev){ ev.stopPropagation(); fechar(); };
 
   if(modo==="geral"){ geral(); el.onclick=null; document.addEventListener("keydown",tecla); return; }
+  if(modo==="participantes"){
+    var pass=[function(){ palco.innerHTML='<div class="abre"><h1>Equipes participantes</h1><p>'+esc(tit)+' · '+rk.length+' equipe'+(rk.length>1?'s':'')+'</p></div>';
+      dica.textContent="Avança sozinho · toque ou ESPAÇO para o próximo · ← volta · ESC sai"; falar("Conheça as equipes participantes!"); }];
+    rk.forEach(function(x,i){ pass.push(function(){ equipeTv(x.p,i); }); });
+    pass.push(mural);
+    var k=-1, auto=null;
+    function vaiP(dd){ var nk=Math.max(0,Math.min(pass.length-1,k+dd)); if(nk===k) return; k=nk; clearTimeout(auto); pass[k]();
+      if(k<pass.length-1) auto=setTimeout(function(){ vaiP(1); },k===0?5000:9000); }
+    var teclaP=function(ev){
+      if(ev.key==="Escape"){ clearTimeout(auto); document.removeEventListener("keydown",teclaP); fechar(); return; }
+      if(ev.key===" "||ev.key==="ArrowRight"||ev.key==="Enter"||ev.key==="PageDown"){ ev.preventDefault(); vaiP(1); }
+      if(ev.key==="ArrowLeft"||ev.key==="PageUp"){ ev.preventDefault(); vaiP(-1); }
+    };
+    document.addEventListener("keydown",teclaP);
+    el.querySelector(".tv-sair").onclick=function(ev){ ev.stopPropagation(); clearTimeout(auto); document.removeEventListener("keydown",teclaP); fechar(); };
+    el.onclick=function(){ vaiP(1); };
+    vaiP(1);
+    return;
+  }
+  function equipeTv(p,i){
+    var letras=Array.from(p.equipe).map(function(c,j){ return c===" "?" ":'<span class="l" style="animation-delay:'+(.25+j*.04).toFixed(2)+'s">'+esc(c)+'</span>'; }).join("");
+    var t0=.25+p.equipe.length*.04, ints=integrantesDe(p);
+    palco.innerHTML='<div class="abre" style="margin-bottom:2vh"><p style="font-size:clamp(1rem,2.2vw,1.8rem);opacity:.8">Equipe '+(i+1)+' de '+rk.length+'</p></div>'+
+      '<div class="equipe">'+letras+'</div>'+
+      '<div class="musica" style="animation-delay:'+(t0+.2).toFixed(2)+'s">🎵 Paródia de “'+esc(p.musica)+'” · '+esc(p.artista)+'</div>'+
+      '<div class="integ">'+ints.map(function(n,j){ return '<span style="animation-delay:'+(t0+.5+j*.12).toFixed(2)+'s">'+esc(n)+'</span>'; }).join("")+'</div>';
+    setTimeout(function(){ falar("Equipe "+p.equipe+"!"); },300);
+    dica.textContent=(i<rk.length-1?"Próxima: "+rk[i+1].p.equipe:"A seguir: todas as equipes")+" · ESC sai";
+  }
+  function mural(){
+    palco.innerHTML='<div class="abre" style="margin-bottom:3vh"><h1 style="font-size:clamp(1.8rem,4.4vw,3.8rem)">Boa sorte a todas as equipes!</h1></div>'+
+      '<div class="mural">'+rk.map(function(x,j){ return '<span style="animation-delay:'+(.2+j*.1).toFixed(2)+'s">'+esc(x.p.equipe)+'</span>'; }).join("")+'</div>';
+    setTimeout(confete,400+rk.length*100);
+    dica.textContent="ESC para sair";
+  }
 
   // revelação: só os premiados — abertura → 3º, 2º, 1º com suspense → pódio (do 4º para baixo não aparece na TV)
   var top=rk.filter(function(x){ return x.pos<=3; }).reverse();
@@ -1110,6 +1164,28 @@ function imprimirCartaz(titulo, sub, link, passos){
     $("#impressao").innerHTML='<section class="cartaz"><img src="logo-redentor.png" alt="" style="height:22mm"><h1>'+esc(titulo)+'</h1>'+(sub?'<h2>'+esc(sub)+'</h2>':'')+'<div class="q" id="qrp"></div>'+
       '<ol>'+passos.map(function(x){ return '<li>'+x+'</li>'; }).join("")+'</ol><p style="font-family:var(--f-body);font-size:10pt;color:#5a6380;margin-top:6mm">'+esc(link)+'</p></section>';
     new QRCode($("#qrp"),{text:link,width:600,height:600,correctLevel:QRCode.CorrectLevel.M});
+    setTimeout(function(){ window.print(); },300);
+  }).catch(function(e){ toast(e.message); });
+}
+/* credencial do jurado: um cartão com nome e QR para cada jurado (2 por folha A4); sem jurado, sai um em branco */
+function imprimirCredenciais(d, link){
+  return carregar("https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js").then(function(){
+    var tmp=document.createElement("div"); tmp.style.cssText="position:absolute;left:-9999px";
+    document.body.appendChild(tmp);
+    new QRCode(tmp,{text:link,width:600,height:600,correctLevel:QRCode.CorrectLevel.M});
+    var cv=tmp.querySelector("canvas"), qr=cv?cv.toDataURL("image/png"):(tmp.querySelector("img")||{}).src; tmp.remove();
+    var lista=jurOrdem(d.jurados); if(!lista.length) lista=[null];
+    $("#impressao").innerHTML=lista.map(function(j){
+      var esc2=j&&j.escala&&j.escala.toLowerCase()!==j.nome.toLowerCase()?j.escala:"";
+      return '<section class="cred">'+
+        '<div class="cb"><span class="lg"><img src="logo-redentor.png" alt=""></span><div class="t"><small>Credencial</small><b>'+esc(d.cfg.titulo||"Concurso de Paródias da CIPA")+'</b></div><span class="selo">JURADO</span></div>'+
+        '<div class="cc"><div class="jq">'+
+          (j?'<small>Jurado(a)</small><div class="n">'+esc(esc2||j.nome)+'</div><div class="c">'+(esc2?esc(j.nome)+' · ':'')+'Matrícula '+esc(j.matricula)+'</div>'
+            :'<small>Nome do jurado(a)</small><div class="linha"></div>')+
+          '<ol><li>Aponte a câmera do celular para o QR Code</li><li>Toque em <b>Sou jurado</b></li><li>Digite a sua <b>matrícula</b> e os <b>3 primeiros números do CPF</b></li><li>Leia cada paródia e escolha as notas de 0 a 10</li></ol></div>'+
+          '<div class="qr"><img src="'+qr+'" alt="QR Code da área dos jurados"><div>'+esc(link)+'</div></div></div>'+
+        '<div class="cr"><span>Uso pessoal: não compartilhe o seu acesso.</span><span>Dúvidas? Procure a comissão da CIPA.</span></div>'+
+      '</section>'; }).join("");
     setTimeout(function(){ window.print(); },300);
   }).catch(function(e){ toast(e.message); });
 }
