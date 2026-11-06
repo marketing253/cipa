@@ -108,6 +108,10 @@ function pre_dados(?int $ev = null): array {
     if ($ev) {
         $st = $p->prepare('SELECT matricula,nome,setor,como,em FROM presencas WHERE evento=? ORDER BY em DESC'); $st->execute([$ev]);
         $pres = $st->fetchAll();
+        // nome de escala (apelido) para o telão do QR; quem não tem fica vazio
+        $esc = [];
+        foreach (db()->query("SELECT mnorm,escala FROM eleitores WHERE escala<>'' ORDER BY ordem") as $e) $esc[$e['mnorm']] ??= trim((string)$e['escala']);
+        foreach ($pres as &$x) $x['escala'] = $esc[mat_norm($x['matricula'])] ?? ''; unset($x);
         $st = $p->prepare('SELECT id,matricula,nome,setor,brinde,em FROM sorteios WHERE evento=? ORDER BY id'); $st->execute([$ev]);
         $sort = array_map(fn($s) => ['id' => (int)$s['id']] + $s, $st->fetchAll());
     }

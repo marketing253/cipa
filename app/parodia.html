@@ -155,7 +155,22 @@ button{cursor:pointer}
 .telao .t-sec{font:inherit;font-weight:700;padding:10px 20px;border-radius:999px;border:1px solid rgba(255,255,255,.5);background:rgba(255,255,255,.1);color:#fff;cursor:pointer}
 .telao .t-fechar{position:absolute;top:14px;right:14px}
 .telao.ganhou .t-nome{animation:surge .6s ease-out}
-.telao.qr{flex-direction:row;flex-wrap:nowrap;gap:4vw;padding:4vh 3vw}
+.telao.qr{flex-direction:row;flex-wrap:nowrap;gap:4vw;padding:4vh 3vw;overflow:hidden}
+.telao.qr>.t-col,.telao.qr>.t-qr{position:relative;z-index:2}
+.telao.qr.nomes .t-col{max-width:36vw;gap:1.8vh} .telao.qr.nomes .t-qr{width:min(66vh,36vw)}
+.telao.qr.nomes .t-top{font-size:min(2.2vw,4vh)} .telao.qr.nomes .t-col .t-nome{font-size:min(3.8vw,7vh)!important}
+.telao.qr.nomes .t-brinde{font-size:min(2.6vw,4.6vh)} .telao.qr.nomes .t-passos{font-size:min(1.7vw,3.2vh)}
+.telao.qr.nomes .t-logo img{height:min(9vh,6vw)} .telao.qr.nomes .t-conta{font-size:min(5vw,9vh)}
+.telao.qr .t-fechar{z-index:5}
+.telao .sobe{flex:none;align-self:stretch;width:19vw;margin:-4vh 0;position:relative;pointer-events:none;overflow:hidden;
+  -webkit-mask-image:linear-gradient(transparent,#000 22%,#000 80%,transparent);mask-image:linear-gradient(transparent,#000 22%,#000 80%,transparent)}
+.telao .sobe-tit{position:absolute;top:9vh;right:3vw;width:19vw;text-align:center;z-index:3;font-weight:800;letter-spacing:.12em;text-transform:uppercase;font-size:clamp(.8rem,1.3vw,1.2rem);color:#ffd76a}
+@media (max-aspect-ratio:1/1){.telao .sobe,.telao .sobe-tit{display:none}}
+.telao .sobe span{position:absolute;bottom:-12vh;left:0;right:0;margin:0 auto;width:max-content;max-width:18vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--f-display);font-weight:800;font-size:clamp(.9rem,1.7vw,1.6rem);
+  padding:.6vh 1.4vw;border-radius:999px;color:#fff;background:rgba(255,255,255,.08);border:2px solid rgba(255,215,106,.35);opacity:0;animation:nomeSobe linear forwards}
+.telao .sobe span.novo{font-size:clamp(1.1rem,2.3vw,2.2rem);color:#16203a;background:#ffd76a;border-color:#fff;box-shadow:0 0 4vh rgba(255,215,106,.7)}
+@keyframes nomeSobe{0%{transform:translateY(0) scale(.9);opacity:0}10%{opacity:.85}85%{opacity:.85}100%{transform:translateY(-125vh) scale(1);opacity:0}}
+@media (prefers-reduced-motion:reduce){.telao .sobe{display:none}}
 .telao .t-col{display:flex;flex-direction:column;gap:2.4vh;align-items:center;max-width:44vw}
 .telao .t-qr{background:#fff;border-radius:3vh;padding:2.4vh;width:min(72vh,44vw);flex:none;aspect-ratio:1}
 .telao .t-qr img,.telao .t-qr canvas{width:100%!important;height:auto!important;display:block}
@@ -1008,7 +1023,10 @@ function telaCheckin(){
         cx.innerHTML=logo+'<div class="hero"><svg class="ok-anim" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="45"/><path d="M30 52 l14 14 l27 -30"/></svg>'+
           '<h2 style="margin-top:12px">'+(r.novo?'Presença confirmada!':'Você já estava na lista!')+'</h2>'+
           '<p class="ci-nome">'+esc(r.nome)+'</p><p class="muted" style="margin:4px 0 0">'+esc(r.evento)+'</p>'+
-          '<div class="ci-sorte">🎁 Você já está <b>concorrendo aos brindes</b>. Boa sorte!</div></div>';
+          '<div class="ci-sorte">🎁 Você já está <b>concorrendo aos brindes</b>. Boa sorte!</div></div>'+
+          '<button class="btn primary" id="ciNovo" style="width:100%;min-height:52px;margin-top:4px">➕ Fazer o check-in de outra pessoa</button>'+
+          '<p class="small muted" style="text-align:center;margin:0">Ajudando um colega? Toque acima e digite a matrícula dele.</p>';
+        $("#ciNovo").onclick=function(){ window.scrollTo(0,0); telaCheckin(); };   // volta para o passo 1, no mesmo evento
         if(navigator.vibrate) navigator.vibrate([60,40,120]);
         if(r.novo) setTimeout(confete,350);
       });
@@ -1154,8 +1172,28 @@ function telaoQr(ev){
         '<div><div class="t-conta" id="tcont">'+ev.presentes+'</div><div class="t-info">presentes · concorrendo aos brindes</div></div></div>'+
       '<div class="t-qr" id="tqr"></div>';
     new QRCode(el.querySelector("#tqr"),{text:link,width:720,height:720,correctLevel:QRCode.CorrectLevel.M});
-    el.querySelector(".t-fechar").onclick=function(){ clearInterval(timer); el.remove(); if(document.fullscreenElement&&document.exitFullscreen) document.exitFullscreen().catch(function(){}); carregarPresenca(ev.id); };
-    timer=setInterval(function(){ api("preDados",AT,ev.id).then(function(x){ var e=x.eventos.find(function(y){ return y.id===ev.id; }); if(e) el.querySelector("#tcont").textContent=e.presentes; }).catch(function(){}); },5000);
+    // nomes de escala subindo: quem acabou de fazer check-in sobe em destaque; os demais seguem passando de fundo
+    var sobe=document.createElement("div"); sobe.className="sobe"; el.appendChild(sobe); el.classList.add("nomes");
+    var tt=document.createElement("div"); tt.className="sobe-tit"; tt.textContent="✔ Já chegaram"; el.appendChild(tt);
+    var vistos=null, todos=[], amb;
+    function apelidoP(x){ var e=String(x.escala||"").trim(); if(e) return e; var n=String(x.nome||"").trim().split(/\s+/); return n.length>1?n[0]+" "+n[n.length-1]:n[0]||""; }
+    function bolha(txt,novo){
+      if(!txt||!document.body.contains(el)) return;
+      var b=document.createElement("span"); b.textContent=txt; if(novo) b.className="novo";
+      b.style.animationDuration=(novo?9:12+Math.random()*6)+"s";
+      sobe.appendChild(b); b.addEventListener("animationend",function(){ b.remove(); });
+    }
+    function atualiza(l){
+      var novos=[];
+      if(vistos) l.forEach(function(x){ if(!vistos[x.matricula]) novos.push(x); });
+      vistos={}; l.forEach(function(x){ vistos[x.matricula]=1; });
+      todos=l.map(apelidoP).filter(Boolean);
+      novos.forEach(function(x,i){ setTimeout(function(){ bolha(apelidoP(x),true); apito(true); },i*700); });
+    }
+    api("preDados",AT,ev.id).then(function(x){ atualiza(x.presentes||[]); }).catch(function(){});
+    amb=setInterval(function(){ if(todos.length&&sobe.childElementCount<14) bolha(todos[Math.floor(Math.random()*todos.length)],false); },1600);
+    el.querySelector(".t-fechar").onclick=function(){ clearInterval(timer); clearInterval(amb); el.remove(); if(document.fullscreenElement&&document.exitFullscreen) document.exitFullscreen().catch(function(){}); carregarPresenca(ev.id); };
+    timer=setInterval(function(){ api("preDados",AT,ev.id).then(function(x){ var e=x.eventos.find(function(y){ return y.id===ev.id; }); if(e) el.querySelector("#tcont").textContent=e.presentes; if(x.evento===ev.id) atualiza(x.presentes||[]); }).catch(function(){}); },5000);
   }).catch(function(e){ toast(e.message); });
 }
 /* cartaz A4 com logo, título, QR e passo a passo */
