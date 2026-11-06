@@ -45,6 +45,15 @@ $ganhou = [];
 for ($i = 0; $i < 3; $i++) { $g = api_preSortear($A, $ev, "Brinde $i")['ganhador']; $ganhou[] = $g['matricula']; }
 t('ganhador traz nome de escala e id', str_starts_with($g['escala'], 'Apelido ') && $g['id'] > 0);
 t('sorteio sem repetir', count(array_unique($ganhou)) === 3);
+$d = api_preDados($A, $ev); $sv = array_column($d['sorteios'], 'status');
+t('sortear o próximo marca o anterior como entregue', $sv === ['entregue', 'entregue', 'sorteado']);
+t('entregue tem data', $d['sorteios'][0]['entregue_em'] !== null && $d['sorteios'][2]['entregue_em'] === null);
+$d = api_preStatus($A, $d['sorteios'][1]['id'], 'pendente');
+t('ausente vai para pendentes', count($d['pendentes']) === 1 && $d['pendentes'][0]['evento'] === 'SIPAT 2026 – dia 1' && $d['sorteios'][1]['status'] === 'pendente');
+t('ausente continua na presença', count($d['presentes']) === 3);
+erro('situação inválida', fn() => api_preStatus($A, $d['sorteios'][1]['id'], 'xyz'), 'inválida');
+erro('status sem login', fn() => api_preStatus('x', $d['sorteios'][1]['id'], 'entregue'), 'expirada');
+$idPend = $d['sorteios'][1]['id'];
 erro('acabaram os presentes', fn() => api_preSortear($A, $ev), 'Não há mais');
 $d = api_preDados($A, $ev);
 $d = api_preAnular($A, $d['sorteios'][0]['id']);
@@ -55,6 +64,11 @@ $d2 = api_preEvento($A, 'SIPAT 2026 – dia 2'); $ev2 = $d2['evento'];
 api_preMarcar($A, $ev2, $q['codigo']);
 t('outro evento é separado', count(api_preDados($A, $ev2)['presentes']) === 1);
 t('quem ganhou no dia 1 concorre no dia 2', api_preSortear($A, $ev2)['ganhador']['matricula'] === '3001');
+$d = api_preDados($A, $ev2);
+t('pendente de outro evento aparece no dia 2', count($d['pendentes']) === 1 && $d['pendentes'][0]['id'] === $idPend);
+t('pendente não vira entregue ao sortear outro evento', $d['pendentes'][0]['id'] === $idPend);
+$d = api_preStatus($A, $idPend, 'entregue', $ev2);
+t('entregar depois tira dos pendentes e fica no evento da tela', count($d['pendentes']) === 0 && $d['evento'] === $ev2);
 // check-in pelo celular com o QR da mesa
 $tk = api_preDados($A, $ev2)['eventos'][0]['token'];
 t('evento tem token', (bool)preg_match('/^[0-9a-f]{24}$/', $tk));

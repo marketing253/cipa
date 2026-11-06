@@ -250,6 +250,11 @@ html.redentor .card{border-top:4px solid var(--gold)}
 .gan .g{display:flex;gap:12px;align-items:center;padding:10px 12px;border-radius:12px;background:var(--surface-2);border:1px solid var(--line)}
 .gan .pos{flex:none;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:#ffd76a;color:#16203a;font-weight:800;font-size:.95rem}
 .gan .g div{min-width:0;flex:1}
+.gan .g.pendente{border-color:color-mix(in srgb,var(--warn) 45%,transparent);background:var(--warn-soft)}
+.gan .g .bts{flex:none;min-width:0;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.sit{display:inline-block;padding:2px 9px;border-radius:999px;font-size:.72rem;font-weight:800;vertical-align:1px;margin-left:4px}
+.sit.entregue{background:var(--ok-soft);color:var(--ok)} .sit.pendente{background:var(--warn-soft);color:var(--warn);border:1px solid color-mix(in srgb,var(--warn) 35%,transparent)}
+.sit.sorteado{background:#ffd76a;color:#16203a}
 .vazio{padding:18px;text-align:center;color:var(--muted);border:1.5px dashed var(--line-2);border-radius:12px}
 html.redentor .telao:not(.qr){background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='44'%3E%3Cpath d='M19 14h6v5h5v6h-5v5h-6v-5h-5v-6h5z' fill='%23d29500' fill-opacity='.12'/%3E%3C/svg%3E"),linear-gradient(135deg,#16203a 0%,#1e2b4f 50%,#3e4095 100%);border-bottom:1.2vh solid #d29500}
 .links{display:grid;gap:12px}
@@ -1077,11 +1082,16 @@ function telaPresenca(){
       '</div>'+
       '<div class="stack">'+
         '<div class="card pad stack"><div class="cab"><h3>🏆 Ganhadores</h3>'+(d.sorteios.length?'<span class="n">'+d.sorteios.length+'</span>':'')+'</div>'+
-          (d.sorteios.length?'<div class="gan">'+d.sorteios.map(function(x,i){
-            return '<div class="g"><span class="pos">'+(i+1)+'º</span><div><b>'+esc(x.nome)+'</b><div class="small muted">'+esc(x.brinde||"Brinde")+' · '+esc(x.matricula)+'</div></div>'+
-              '<button class="btn sm ghost" data-anula="'+x.id+'" title="Não estava presente: anula e libera para sortear de novo">Ausente</button></div>'; }).join("")+'</div>'
+          (d.sorteios.length?'<p class="small muted" style="margin:0">Ao sortear o próximo, o anterior fica como <b>entregue</b>. Se a pessoa já foi embora, toque em <b>Ausente</b>: ela vai para a lista de entregar depois.</p>'+
+            '<div class="gan">'+d.sorteios.map(function(x,i){
+            var bts=x.status==="sorteado"?'<button class="btn sm ok" data-st="entregue" data-id="'+x.id+'">Entregue</button><button class="btn sm warn" data-st="pendente" data-id="'+x.id+'">Ausente</button>'
+              :x.status==="pendente"?'<button class="btn sm ok" data-st="entregue" data-id="'+x.id+'">Entregue</button>'
+              :'<button class="btn sm ghost" data-st="pendente" data-id="'+x.id+'" title="A pessoa não estava: entregar depois do evento">Ausente</button>';
+            return '<div class="g '+esc(x.status)+'"><span class="pos">'+(i+1)+'º</span><div><b>'+esc(x.nome)+'</b> '+sitHtml(x.status)+'<div class="small muted">'+esc(x.brinde||"Brinde")+' · '+esc(x.matricula)+'</div></div>'+
+              '<div class="bts">'+bts+'</div></div>'; }).join("")+'</div>'
             :'<div class="vazio">Nenhum sorteio ainda.</div>')+
         '</div>'+
+        cardPendentes(d.pendentes||[])+
         '<div class="card pad stack"><h3>Marcar na mão</h3>'+
           '<p class="small muted" style="margin:0">Para quem está sem celular: digite a matrícula ou leia o QR do colaborador.</p>'+
           '<form id="fm" class="row" novalidate><input id="mm" class="busca" style="flex:1 1 140px;width:auto" inputmode="numeric" autocomplete="off" placeholder="Matrícula"><button class="btn primary" id="mb">Marcar</button></form>'+
@@ -1099,9 +1109,7 @@ function telaPresenca(){
   $("#camfecha").onclick=pararCamera;
   $("#fm").onsubmit=function(e2){ e2.preventDefault(); var v=$("#mm").value.trim(); if(!v) return; marcar(v); $("#mm").value=""; };
   $("#sb").onclick=function(){ abrirTelao(""); };
-  app.querySelectorAll("[data-anula]").forEach(function(b){ b.onclick=function(){
-    if(!confirm("Anular este sorteio? A pessoa sai da lista de presença deste evento.")) return;
-    api("preAnular",AT,+b.dataset.anula).then(function(x){ PRE=x; telaPresenca(); toast("Sorteio anulado. Pode sortear de novo."); }).catch(function(e){ toast(e.message); }); }; });
+  ligarStatus();
   ligarLista();
   $("#csv").onclick=function(){ baixarCsv(ev); };
   $("#qrm").onclick=function(){ qrMesa(ev); };
@@ -1110,6 +1118,30 @@ function telaPresenca(){
   $("#delev").onclick=function(){ if(!confirm("Excluir o evento “"+ev.nome+"” com a lista de presença ("+d.presentes.length+") e os sorteios? Isso não pode ser desfeito.")) return;
     api("preExcluirEvento",AT,ev.id).then(function(x){ PRE=x; telaPresenca(); toast("Evento excluído."); }).catch(function(e){ toast(e.message); }); };
   vivoPresenca();
+}
+/* situação do brinde de cada ganhador */
+function sitHtml(s){ return s==="entregue"?'<span class="sit entregue">✓ Entregue</span>':s==="pendente"?'<span class="sit pendente">Ausente · entregar depois</span>':'<span class="sit sorteado">Acabou de sair</span>'; }
+function cardPendentes(l){
+  return '<div class="card pad stack" id="pend"><div class="cab"><h3>📦 Brindes a entregar</h3>'+(l.length?'<span class="n">'+l.length+'</span>':'')+'</div>'+
+    (l.length?'<p class="small muted" style="margin:0">Ganhadores que não estavam na hora (de todos os eventos). Quando a pessoa receber, toque em <b>Entregue</b>.</p>'+
+      '<div class="gan">'+l.map(function(x){
+        return '<div class="g pendente"><div><b>'+esc(x.nome)+'</b><div class="small muted">'+esc(x.brinde||"Brinde")+' · Matrícula '+esc(x.matricula)+(x.setor?' · '+esc(x.setor):'')+'</div>'+
+          '<div class="small muted">'+esc(x.evento)+' · '+dataBr(x.em)+'</div></div>'+
+          '<div class="bts"><button class="btn sm ok" data-st="entregue" data-id="'+x.id+'">Entregue</button></div></div>'; }).join("")+'</div>'+
+      '<div><button class="btn sm" id="csvp">Baixar planilha dos pendentes</button></div>'
+      :'<div class="vazio">Nenhum brinde pendente. 👍</div>')+'</div>';
+}
+function ligarStatus(){
+  app.querySelectorAll("[data-st]").forEach(function(b){ b.onclick=function(){
+    var st=b.dataset.st;
+    b.disabled=true;
+    api("preStatus",AT,+b.dataset.id,st,PRE.evento).then(function(x){ PRE=x;
+      telaPresenca(); toast(st==="entregue"?"Marcado como entregue.":"Registrado como ausente: fica na lista de brindes a entregar."); })
+    .catch(function(e){ b.disabled=false; toast(e.message); }); }; });
+  var c=$("#csvp"); if(c) c.onclick=function(){
+    var l=[["Matrícula","Nome","Setor","Brinde","Evento","Sorteado em"]].concat((PRE.pendentes||[]).map(function(x){ return [x.matricula,x.nome,x.setor||"",x.brinde||"",x.evento,dataBr(x.em)]; }));
+    var csv="\ufeff"+l.map(function(r){ return r.map(function(v){ return '"'+String(v).replace(/"/g,'""')+'"'; }).join(";"); }).join("\r\n");
+    var a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"})); a.download="brindes a entregar.csv"; a.click(); };
 }
 /* lista ao vivo: a cada 8 s, sem atrapalhar quem está digitando, com a câmera aberta ou numa janela */
 var VIVOP;
@@ -1353,7 +1385,7 @@ function abrirTelao(brinde){
       '<div class="t-nome">'+esc(w.nome)+'</div>'+
       (esc2?'<div class="t-escala">'+esc(esc2)+'</div>':'')+
       '<div class="t-info">Matrícula '+esc(w.matricula)+(w.setor?' · '+esc(w.setor):'')+' · entre '+n+' presentes</div>'+
-      '<div class="t-acoes"><button class="t-btn" id="tnovo">Sortear outro</button><button class="t-sec" id="tfala">🔊 Falar de novo</button><button class="t-sec" id="taus">Ausente (anular)</button></div>';
+      '<div class="t-acoes"><button class="t-btn" id="tnovo">Sortear outro</button><button class="t-sec" id="tfala">🔊 Falar de novo</button><button class="t-sec" id="taus">Ausente (entregar depois)</button></div>';
     var frase="O ganhador"+(w.brinde?" "+w.brinde.replace(/^\s+/,"")+",":"")+" é: "+nomeFalado(w.nome)+(esc2?". "+nomeFalado(esc2):"")+"!";
     if(w.brinde) frase="O ganhador do brinde "+w.brinde+" é: "+nomeFalado(w.nome)+(esc2?". "+nomeFalado(esc2):"")+"!";
     apito(true); setTimeout(function(){ falar(frase); },350);
@@ -1361,7 +1393,7 @@ function abrirTelao(brinde){
     el.querySelector("#tnovo").onclick=function(){ brinde=""; pronto(); };
     el.querySelector("#tfala").onclick=function(){ falar(frase); };
     el.querySelector("#taus").onclick=function(){
-      api("preAnular",AT,w.id).then(function(x){ PRE=x; brinde=w.brinde; pronto(); toast("Sorteio anulado. Sorteie de novo."); }).catch(function(e){ toast(e.message); }); };
+      api("preStatus",AT,w.id,"pendente").then(function(x){ PRE=x; brinde=w.brinde; pronto(); toast("Registrado como ausente: vai para a lista de brindes a entregar. Sorteie de novo."); }).catch(function(e){ toast(e.message); }); };
   }
   pronto();
 }

@@ -28,6 +28,10 @@ function pre_tabelas(): PDO {
     $cols = array_column($p->query('PRAGMA table_info(presenca_eventos)')->fetchAll(), 'name');
     if (!in_array('token', $cols, true)) $p->exec('ALTER TABLE presenca_eventos ADD COLUMN token TEXT');
     if (!in_array('aberto', $cols, true)) $p->exec('ALTER TABLE presenca_eventos ADD COLUMN aberto INTEGER NOT NULL DEFAULT 1');
+    // situação do brinde: sorteado (acabou de sair) → entregue, ou pendente (ausente, entregar depois do evento)
+    $cs = array_column($p->query('PRAGMA table_info(sorteios)')->fetchAll(), 'name');
+    if (!in_array('status', $cs, true)) $p->exec("ALTER TABLE sorteios ADD COLUMN status TEXT NOT NULL DEFAULT 'entregue'");
+    if (!in_array('entregue_em', $cs, true)) $p->exec('ALTER TABLE sorteios ADD COLUMN entregue_em TEXT');
     foreach ($p->query("SELECT id FROM presenca_eventos WHERE token IS NULL OR token=''")->fetchAll() as $r)
         $p->prepare('UPDATE presenca_eventos SET token=? WHERE id=?')->execute([bin2hex(random_bytes(12)), $r['id']]);
     $feito = true;
@@ -112,10 +116,13 @@ function pre_dados(?int $ev = null): array {
         $esc = [];
         foreach (db()->query("SELECT mnorm,escala FROM eleitores WHERE escala<>'' ORDER BY ordem") as $e) $esc[$e['mnorm']] ??= trim((string)$e['escala']);
         foreach ($pres as &$x) $x['escala'] = $esc[mat_norm($x['matricula'])] ?? ''; unset($x);
-        $st = $p->prepare('SELECT id,matricula,nome,setor,brinde,em FROM sorteios WHERE evento=? ORDER BY id'); $st->execute([$ev]);
+        $st = $p->prepare('SELECT id,matricula,nome,setor,brinde,em,status,entregue_em FROM sorteios WHERE evento=? ORDER BY id'); $st->execute([$ev]);
         $sort = array_map(fn($s) => ['id' => (int)$s['id']] + $s, $st->fetchAll());
     }
-    return ['eventos' => $eventos, 'evento' => $ev, 'presentes' => $pres, 'sorteios' => $sort, 'urlApp' => function_exists('url_publica') ? url_publica() : url_base()];
+    // ausentes de todos os eventos que ainda não receberam o brinde
+    $pend = array_map(fn($s) => ['id' => (int)$s['id']] + $s, $p->query("SELECT s.id,s.matricula,s.nome,s.setor,s.brinde,s.em,e.nome AS evento
+        FROM sorteios s JOIN presenca_eventos e ON e.id=s.evento WHERE s.status='pendente' ORDER BY s.id")->fetchAll());
+    return ['eventos' => $eventos, 'evento' => $ev, 'presentes' => $pres, 'sorteios' => $sort, 'pendentes' => $pend, 'urlApp' => function_exists('url_publica') ? url_publica() : url_base()];
 }
 
 function api_preDados($t, $evento = null): array { exige_admin($t); return pre_dados($evento ? (int)$evento : null); }
@@ -176,7 +183,9 @@ function api_preSortear($t, $evento, $brinde = ''): array {
     if (!$c) falha('Não há mais presentes para sortear neste evento.');
     $g = $c[random_int(0, count($c) - 1)];
     $brinde = txt($brinde, 100);
-    $p->prepare('INSERT INTO sorteios(evento,mnorm,matricula,nome,setor,brinde,em) VALUES(?,?,?,?,?,?,?)')
+    // quem saiu antes e não foi marcado como ausente recebeu o brinde
+    $p->prepare("UPDATE sorteios SET status='entregue', entregue_em=? WHERE evento=? AND status='sorteado'")->execute([agora(), $ev['id']]);
+    $p->prepare("INSERT INTO sorteios(evento,mnorm,matricula,nome,setor,brinde,em,status) VALUES(?,?,?,?,?,?,?,'sorteado')")
       ->execute([$ev['id'], $g['mnorm'], $g['matricula'], $g['nome'], $g['setor'], $brinde, agora()]);
     $idS = (int)$p->lastInsertId();
     registrar('Sorteio de brinde', "{$ev['nome']} · " . ($brinde ?: 'brinde') . " · {$g['matricula']} – {$g['nome']} (entre " . count($c) . ')');
@@ -186,7 +195,7 @@ function api_preSortear($t, $evento, $brinde = ''): array {
             'concorreram' => count($c)] + pre_dados($ev['id']);
 }
 
-/* ganhador não estava lá na hora: tira o sorteio (e a presença, para não sair de novo) */
+/* sorteio feito por engano: tira o sorteio (e a presença, para não sair de novo). A tela usa o preStatus 'pendente' para ausentes. */
 function api_preAnular($t, $id): array {
     exige_admin($t);
     $st = pre_tabelas()->prepare('SELECT * FROM sorteios WHERE id=?'); $st->execute([(int)$id]);
@@ -196,4 +205,18 @@ function api_preAnular($t, $id): array {
     $p->prepare('DELETE FROM presencas WHERE evento=? AND mnorm=?')->execute([$s['evento'], $s['mnorm']]);
     registrar('Sorteio anulado (ganhador ausente)', "{$s['matricula']} – {$s['nome']}" . ($s['brinde'] ? " · {$s['brinde']}" : ''));
     return pre_dados((int)$s['evento']);
+}
+
+/* entregue / ausente (pendente: entregar depois do evento) / sorteado (desfazer) */
+function api_preStatus($t, $id, $status, $evento = null): array {
+    exige_admin($t);
+    $rot = ['entregue' => 'Brinde entregue', 'pendente' => 'Ganhador ausente (entregar depois)', 'sorteado' => 'Entrega desfeita'];
+    if (!isset($rot[$status])) falha('Situação inválida.');
+    $p = pre_tabelas();
+    $st = $p->prepare('SELECT * FROM sorteios WHERE id=?'); $st->execute([(int)$id]);
+    $s = $st->fetch() ?: falha('Sorteio não encontrado.');
+    $p->prepare('UPDATE sorteios SET status=?, entregue_em=? WHERE id=?')
+      ->execute([$status, $status === 'entregue' ? agora() : null, $s['id']]);
+    registrar($rot[$status], "{$s['matricula']} – {$s['nome']}" . ($s['brinde'] ? " · {$s['brinde']}" : ''));
+    return pre_dados($evento ? (int)$evento : (int)$s['evento']);   // continua no evento que está aberto na tela
 }
