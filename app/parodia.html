@@ -252,7 +252,8 @@ html.redentor .telao:not(.qr){background:url("data:image/svg+xml,%3Csvg xmlns='h
 .ap .letra-txt{margin-top:10px;max-height:46vh}
 .ap .decide{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
 .ap .decide .btn{flex:1 1 140px;min-height:48px;font-size:1rem}
-.ap .mais{display:flex;gap:6px;justify-content:flex-end;margin-top:8px}
+.ap .mais{display:flex;gap:6px;justify-content:flex-end;margin-top:8px;flex-wrap:wrap}
+.ap .mais .exc{color:var(--bad,#c0262d)}
 /* telão da apuração (TV): revelação do último ao primeiro + pódio + classificação geral */
 .tv{position:fixed;inset:0;z-index:80;overflow:hidden;color:#fff;font-family:var(--f-body);cursor:pointer;user-select:none;
   background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='44'%3E%3Cpath d='M19 14h6v5h5v6h-5v5h-6v-5h-5v-6h5z' fill='%23d29500' fill-opacity='.10'/%3E%3C/svg%3E"),radial-gradient(120% 90% at 50% 0%,#2a3a78 0%,#16203a 55%,#0b1226 100%)}
@@ -670,8 +671,8 @@ function telaAdmin(){
         '<details'+(p.status==="pendente"?' open':'')+'><summary>Ler a letra'+(p.fotos&&p.fotos.length?' · 📷 '+p.fotos.length+' foto(s)':'')+'</summary>'+letraHtml(p)+
           (p.integrantes?'<div class="small" style="margin-top:8px"><b>Integrantes:</b> '+esc(p.integrantes).replace(/\n/g,", ")+'</div>':'')+'</details>'+
         (p.status==="pendente"
-          ?'<div class="decide"><button class="btn ok" data-ap="'+p.id+'" data-a="aprovar">✔ Aprovar</button><button class="btn danger" data-ap="'+p.id+'" data-a="recusar">✕ Não aprovar</button></div>'
-          :'<div class="mais"><button class="btn sm ghost" data-ap="'+p.id+'" data-a="reabrir">Desfazer decisão</button><button class="btn sm ghost" data-ver="'+p.id+'">Notas e detalhes</button></div>')+
+          ?'<div class="decide"><button class="btn ok" data-ap="'+p.id+'" data-a="aprovar">✔ Aprovar</button><button class="btn danger" data-ap="'+p.id+'" data-a="recusar">✕ Não aprovar</button></div><div class="mais"><button class="btn sm ghost exc" data-exc="'+p.id+'">🗑 Excluir</button></div>'
+          :'<div class="mais"><button class="btn sm ghost" data-ap="'+p.id+'" data-a="reabrir">Desfazer decisão</button><button class="btn sm ghost" data-ver="'+p.id+'">Notas e detalhes</button><button class="btn sm ghost exc" data-exc="'+p.id+'">🗑 Excluir</button></div>')+
       '</article>'; }).join("")+'</div>'
       :'<div class="vazio">'+(FILTRO==="pendente"?'Tudo aprovado por enquanto. 🎉':'Nenhuma paródia aqui ainda.')+'</div>');
   } else if(ABA==="ranking"){
@@ -737,6 +738,13 @@ function telaAdmin(){
   app.querySelectorAll("#abas button").forEach(function(b){ b.onclick=function(){ ABA=b.dataset.a; telaAdmin(); }; });
   ligarFiltros(telaAdmin);
   app.querySelectorAll("[data-ver]").forEach(function(b){ b.onclick=function(){ abrirAdmin(+b.dataset.ver); }; });
+  app.querySelectorAll("[data-exc]").forEach(function(b){ b.onclick=function(){
+    var id=+b.dataset.exc, p=d.parodias.find(function(x){ return x.id===id; }); if(!p) return;
+    if(!confirm("Excluir a paródia da equipe “"+p.equipe+"”?\n\nSai a inscrição, a letra, as fotos"+(p.notas.length?" e as "+p.notas.length+" nota(s) dos jurados":"")+". Isso não pode ser desfeito.")) return;
+    busy(b,true);
+    api("parExcluir",AT,id).then(function(x){ DADOS=x; telaAdmin(); toast("Paródia da equipe "+p.equipe+" excluída."); })
+      .catch(function(e){ busy(b,false); toast(e.message); });
+  }; });
   app.querySelectorAll("[data-ap]").forEach(function(b){ b.onclick=function(){
     var id=+b.dataset.ap, a=b.dataset.a, p=d.parodias.find(function(x){ return x.id===id; }), mot="";
     if(a==="recusar"){ mot=prompt("Não aprovar a paródia da equipe “"+p.equipe+"”.\nMotivo (opcional, a equipe vê):",""); if(mot===null) return; }
