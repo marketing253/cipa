@@ -141,6 +141,12 @@ button{cursor:pointer}
 .telao .t-nome{font-family:var(--f-display);font-size:clamp(2.6rem,9vw,8rem);font-weight:800;line-height:1.02;text-wrap:balance;max-width:95vw}
 .telao .t-escala{font-family:var(--f-display);font-size:clamp(1.8rem,5.5vw,4.6rem);font-weight:700;color:#ffd76a;line-height:1.05}
 .telao .t-info{font-size:clamp(1rem,2.4vw,1.8rem);opacity:.85}
+.telao .t-cont{font-family:var(--f-display);font-size:clamp(10rem,42vh,30rem);font-weight:800;line-height:1;color:#ffd76a;text-shadow:0 0 6vh rgba(255,215,106,.55);animation:tcont 1s ease-out both}
+.telao .t-anel{width:min(46vh,70vw);aspect-ratio:1;border-radius:50%;display:grid;place-items:center;border:1.4vh solid rgba(255,215,106,.25);position:relative}
+.telao .t-anel::after{content:"";position:absolute;inset:-1.4vh;border-radius:50%;border:1.4vh solid transparent;border-top-color:#d29500;animation:tgira 1s linear infinite}
+@keyframes tcont{0%{transform:scale(2.2);opacity:0}25%{transform:scale(1);opacity:1}80%{transform:scale(.92);opacity:1}100%{transform:scale(.6);opacity:0}}
+@keyframes tgira{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.telao .t-cont,.telao .t-anel::after{animation:none}}
 .telao .t-rodando{font-family:var(--f-display);font-size:clamp(2.2rem,7vw,6rem);font-weight:800;opacity:.75;min-height:1.2em}
 .telao input{font:inherit;font-size:clamp(1.1rem,2.4vw,1.6rem);text-align:center;border:0;border-radius:14px;padding:12px 18px;width:min(560px,90vw);color:#16203a}
 .telao .t-btn{font:inherit;font-family:var(--f-display);font-weight:800;font-size:clamp(1.4rem,3.5vw,2.6rem);padding:.45em 1.6em;border-radius:999px;border:0;background:#ffd76a;color:#16203a;cursor:pointer}
@@ -1207,18 +1213,24 @@ function abrirTelao(brinde){
   }
   function girar(){
     brinde=el.querySelector("#tbr").value.trim();
-    var nomes=PRE.presentes.map(function(x){ return x.nome; }), i=0;
-    el.innerHTML='<div class="t-top">Sorteando…</div>'+(brinde?'<div class="t-brinde">'+esc(brinde)+'</div>':'')+'<div class="t-rodando" id="trod"></div>';
-    var rod=el.querySelector("#trod");
-    var roda=setInterval(function(){ if(nomes.length) rod.textContent=nomes[Math.floor(Math.random()*nomes.length)]; },80);
-    var t0=Date.now();
-    api("preSortear",AT,PRE.evento,brinde).then(function(x){
-      setTimeout(function(){
-        clearInterval(roda);
-        var w=x.ganhador; delete x.ganhador; PRE=x;
-        mostrar(w,x.concorreram);
-      },Math.max(0,3000-(Date.now()-t0)));
-    }).catch(function(e){ clearInterval(roda); el.innerHTML='<div class="t-top">'+esc(e.message)+'</div><button class="t-sec" id="tok">Voltar</button>'; el.querySelector("#tok").onclick=fechar; });
+    // contagem 3 · 2 · 1 (o sorteio já roda no servidor enquanto conta; o nome só aparece no fim)
+    el.innerHTML='<div class="t-top">Sorteando…</div>'+(brinde?'<div class="t-brinde">'+esc(brinde)+'</div>':'')+'<div class="t-anel"><div class="t-cont" id="tcn"></div></div>';
+    var res=null, erro=null, fim=false, n=3;
+    api("preSortear",AT,PRE.evento,brinde).then(function(x){ res=x; termina(); }).catch(function(e){ erro=e; termina(); });
+    function passo(){
+      var c=el.querySelector("#tcn"); if(!c) return;
+      if(n===0){ fim=true; termina(); return; }
+      var novo=c.cloneNode(false); novo.textContent=n; c.parentNode.replaceChild(novo,c);   // reinicia a animação
+      falar(["","Um","Dois","Três"][n]); apito(n===1);
+      n--; setTimeout(passo,1000);
+    }
+    function termina(){
+      if(erro){ el.innerHTML='<div class="t-top">'+esc(erro.message)+'</div><button class="t-sec" id="tok">Voltar</button>'; el.querySelector("#tok").onclick=fechar; erro=null; fim=false; return; }
+      if(!fim||!res) return;
+      var x=res, w=x.ganhador; res=null; delete x.ganhador; PRE=x;
+      mostrar(w,x.concorreram);
+    }
+    passo();
   }
   function mostrar(w,n){
     el.className="telao ganhou";
