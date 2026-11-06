@@ -1172,10 +1172,10 @@ function telaoQr(ev){
         '<div><div class="t-conta" id="tcont">'+ev.presentes+'</div><div class="t-info">presentes · concorrendo aos brindes</div></div></div>'+
       '<div class="t-qr" id="tqr"></div>';
     new QRCode(el.querySelector("#tqr"),{text:link,width:720,height:720,correctLevel:QRCode.CorrectLevel.M});
-    // nomes de escala subindo: quem acabou de fazer check-in sobe em destaque; os demais seguem passando de fundo
+    // nomes de escala subindo: só quem acabou de fazer check-in (quem já estava não aparece)
     var sobe=document.createElement("div"); sobe.className="sobe"; el.appendChild(sobe); el.classList.add("nomes");
     var tt=document.createElement("div"); tt.className="sobe-tit"; tt.textContent="✔ Já chegaram"; el.appendChild(tt);
-    var vistos=null, todos=[], amb;
+    var vistos=null;
     function apelidoP(x){ var e=String(x.escala||"").trim(); if(e) return e; var n=String(x.nome||"").trim().split(/\s+/); return n.length>1?n[0]+" "+n[n.length-1]:n[0]||""; }
     function bolha(txt,novo){
       if(!txt||!document.body.contains(el)) return;
@@ -1187,12 +1187,10 @@ function telaoQr(ev){
       var novos=[];
       if(vistos) l.forEach(function(x){ if(!vistos[x.matricula]) novos.push(x); });
       vistos={}; l.forEach(function(x){ vistos[x.matricula]=1; });
-      todos=l.map(apelidoP).filter(Boolean);
       novos.forEach(function(x,i){ setTimeout(function(){ bolha(apelidoP(x),true); apito(true); },i*700); });
     }
     api("preDados",AT,ev.id).then(function(x){ atualiza(x.presentes||[]); }).catch(function(){});
-    amb=setInterval(function(){ if(todos.length&&sobe.childElementCount<14) bolha(todos[Math.floor(Math.random()*todos.length)],false); },1600);
-    el.querySelector(".t-fechar").onclick=function(){ clearInterval(timer); clearInterval(amb); el.remove(); if(document.fullscreenElement&&document.exitFullscreen) document.exitFullscreen().catch(function(){}); carregarPresenca(ev.id); };
+    el.querySelector(".t-fechar").onclick=function(){ clearInterval(timer); el.remove(); if(document.fullscreenElement&&document.exitFullscreen) document.exitFullscreen().catch(function(){}); carregarPresenca(ev.id); };
     timer=setInterval(function(){ api("preDados",AT,ev.id).then(function(x){ var e=x.eventos.find(function(y){ return y.id===ev.id; }); if(e) el.querySelector("#tcont").textContent=e.presentes; if(x.evento===ev.id) atualiza(x.presentes||[]); }).catch(function(){}); },5000);
   }).catch(function(e){ toast(e.message); });
 }
