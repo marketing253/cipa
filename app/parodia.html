@@ -215,6 +215,9 @@ html.redentor .card{border-top:4px solid var(--gold)}
 .evbar button[aria-pressed="true"] small{color:#ffd76a}
 .evbar .extra{border-style:dashed;color:var(--accent);background:var(--accent-soft)}
 .evbar .extra small{color:var(--accent)}
+.evbar .extra.alerta{border-style:solid;border-color:var(--warn);background:var(--warn-soft);color:var(--warn)} .evbar .extra.alerta small{color:var(--warn)}
+#pend.destaca{animation:destaca 1.6s ease-out}
+@keyframes destaca{0%,40%{box-shadow:0 0 0 4px var(--warn)}100%{box-shadow:var(--shadow)}}
 .arq{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;border:1px dashed var(--line-2);border-radius:var(--r);padding:16px;background:var(--surface-2)}
 .arq b{display:block} .arq .small{margin-top:2px}
 /* estatística por setor: uma série só (barra azul da marca), rótulo do setor à esquerda e o número escrito ao lado */
@@ -1086,6 +1089,7 @@ function telaPresenca(){
     d.eventos.filter(function(e){ return !!e.arquivado===hist; }).reverse().map(function(e){
       return '<button data-ev="'+e.id+'" aria-pressed="'+(e.id===d.evento)+'">'+esc(e.nome)+'<small>'+e.presentes+' presente(s)'+(e.arquivado?' · arquivado':(e.aberto?' · aberto':''))+'</small></button>'; }).join("")+
     (hist?'':'<button class="novo" id="novo">+ Novo evento</button>'+(nArq?'<button class="extra" id="hist">📁 Histórico<small>'+nArq+' evento(s) encerrado(s)</small></button>':''))+
+    (ev?'<button class="extra'+((d.pendentes||[]).length?' alerta':'')+'" id="irpend">📦 Brindes a entregar<small>'+((d.pendentes||[]).length?(d.pendentes.length+' ausente(s) para entregar'):'ninguém pendente')+'</small></button>':'')+
     '<button class="extra" id="estat">📊 Estatísticas<small>participação por setor</small></button></div>';
   if(!ev){
     app.innerHTML='<div class="stack">'+barra+'<div class="card pad stack" style="text-align:center"><div style="font-size:2.4rem">📋</div><h2>'+(nArq?'Nenhum evento ativo':'Crie o primeiro evento')+'</h2>'+
@@ -1295,6 +1299,7 @@ function ligarTopo(){
   var hb=$("#hist"); if(hb) hb.onclick=function(){ var a=PRE.eventos.find(function(e){ return e.arquivado; }); HIST=true; if(a) carregarPresenca(a.id); };
   var ab=$("#ativos"); if(ab) ab.onclick=function(){ HIST=false; var a=PRE.eventos.find(function(e){ return !e.arquivado; }); if(a) carregarPresenca(a.id); else { PRE.evento=null; PRE.presentes=[]; PRE.sorteios=[]; telaPresenca(); } };
   var eb=$("#estat"); if(eb) eb.onclick=function(){ telaEstat(null); };
+  var ip=$("#irpend"); if(ip) ip.onclick=function(){ var c=$("#pend"); if(!c) return; c.scrollIntoView({behavior:"smooth",block:"start"}); c.classList.remove("destaca"); void c.offsetWidth; c.classList.add("destaca"); };
   app.querySelectorAll("[data-ev]").forEach(function(b){ b.onclick=function(){ carregarPresenca(+b.dataset.ev); }; });
   app.querySelectorAll("[data-tel]").forEach(function(b){ b.onclick=function(){ telaoQr(PRE.eventos.find(function(e){ return e.id===+b.dataset.tel; })); }; });
   app.querySelectorAll("[data-qrm]").forEach(function(b){ b.onclick=function(){ qrMesa(PRE.eventos.find(function(e){ return e.id===+b.dataset.qrm; })); }; });
