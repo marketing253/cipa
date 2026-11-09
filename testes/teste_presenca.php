@@ -90,5 +90,29 @@ t('desmarcou', count($d['presentes']) === 1);
 $d = api_preExcluirEvento($A, $ev);
 t('evento excluído', count($d['eventos']) === 1 && $d['evento'] === $ev2);
 
+// estatística por setor (09/11/2026): pessoas diferentes × colaboradores do setor
+api_importar($A, [['matricula' => '4001', 'nome' => 'Pessoa Oficina', 'setor' => 'Oficina', 'codigo' => '461.456.789-00']], false);
+$es = api_preEstat($A);
+$tr = array_values(array_filter($es['setores'], fn($x) => $x['setor'] === 'Tráfego'))[0];
+$of = array_values(array_filter($es['setores'], fn($x) => $x['setor'] === 'Oficina'))[0];
+t('estat: tráfego', $tr['total'] === 5 && $tr['participantes'] === $es['participantes']);
+t('estat: oficina 0 de 1', $of['participantes'] === 0 && $of['total'] === 1);
+t('estat: totais', $es['colaboradores'] === 6 && $es['checkins'] >= $es['participantes'] && $es['participantes'] > 0);
+t('estat: por evento', api_preEstat($A, $ev2)['participantes'] === 3);
+
+// encerrar e arquivar
+$d = api_preArquivar($A, $ev2, true);
+$e2 = array_values(array_filter($d['eventos'], fn($x) => $x['id'] === $ev2))[0];
+t('arquivado fecha o check-in', $e2['arquivado'] && !$e2['aberto']);
+erro('arquivado não reabre', fn() => api_preAbrir($A, $ev2, true), 'histórico');
+erro('arquivado não marca', fn() => api_preMarcar($A, $ev2, '3001'), 'histórico');
+erro('arquivado não sorteia', fn() => api_preSortear($A, $ev2), 'histórico');
+erro('arquivado não faz check-in', fn() => api_preCheckin($tk, '3001', '451'), 'encerrado');
+$d3 = api_preEvento($A, 'SIPAT 2026 – dia 3');
+t('abre no evento ativo', api_preDados($A)['evento'] === $d3['evento']);
+$d = api_preArquivar($A, $ev2, false);
+$e2 = array_values(array_filter($d['eventos'], fn($x) => $x['id'] === $ev2))[0];
+t('tirado do histórico', !$e2['arquivado'] && !$e2['aberto']);
+
 echo "\n$ok ok, $ko falha(s)\n";
 exit($ko ? 1 : 0);

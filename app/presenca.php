@@ -28,6 +28,9 @@ function pre_tabelas(): PDO {
     $cols = array_column($p->query('PRAGMA table_info(presenca_eventos)')->fetchAll(), 'name');
     if (!in_array('token', $cols, true)) $p->exec('ALTER TABLE presenca_eventos ADD COLUMN token TEXT');
     if (!in_array('aberto', $cols, true)) $p->exec('ALTER TABLE presenca_eventos ADD COLUMN aberto INTEGER NOT NULL DEFAULT 1');
+    // evento encerrado e guardado no histórico (09/11/2026)
+    if (!in_array('arquivado', $cols, true)) $p->exec('ALTER TABLE presenca_eventos ADD COLUMN arquivado INTEGER NOT NULL DEFAULT 0');
+    if (!in_array('arquivado_em', $cols, true)) $p->exec('ALTER TABLE presenca_eventos ADD COLUMN arquivado_em TEXT');
     // situação do brinde: sorteado (acabou de sair) → entregue, ou pendente (ausente, entregar depois do evento)
     $cs = array_column($p->query('PRAGMA table_info(sorteios)')->fetchAll(), 'name');
     if (!in_array('status', $cs, true)) $p->exec("ALTER TABLE sorteios ADD COLUMN status TEXT NOT NULL DEFAULT 'entregue'");
@@ -102,12 +105,16 @@ function api_preCheckin($tok, $m, $c = ''): array {
 
 function pre_dados(?int $ev = null): array {
     $p = pre_tabelas();
-    $eventos = $p->query('SELECT e.id, e.nome, e.criado, e.token, e.aberto, (SELECT COUNT(*) FROM presencas WHERE evento=e.id) AS presentes,
+    $eventos = $p->query('SELECT e.id, e.nome, e.criado, e.token, e.aberto, e.arquivado, e.arquivado_em, (SELECT COUNT(*) FROM presencas WHERE evento=e.id) AS presentes,
         (SELECT COUNT(*) FROM sorteios WHERE evento=e.id) AS sorteados FROM presenca_eventos e ORDER BY e.id DESC')->fetchAll();
     $eventos = array_map(fn($e) => ['id' => (int)$e['id'], 'nome' => $e['nome'], 'criado' => $e['criado'],
         'token' => (string)$e['token'], 'aberto' => (bool)$e['aberto'],
+        'arquivado' => (bool)$e['arquivado'], 'arquivadoEm' => (string)$e['arquivado_em'],
         'presentes' => (int)$e['presentes'], 'sorteados' => (int)$e['sorteados']], $eventos);
-    if ($ev === null && $eventos) $ev = $eventos[0]['id'];
+    if ($ev === null && $eventos) {   // abre no evento ativo mais recente; o histórico fica para quando pedir
+        $ativos = array_values(array_filter($eventos, fn($e) => !$e['arquivado']));
+        $ev = ($ativos ?: $eventos)[0]['id'];
+    }
     $pres = $sort = [];
     if ($ev) {
         $st = $p->prepare('SELECT matricula,nome,setor,como,em FROM presencas WHERE evento=? ORDER BY em DESC'); $st->execute([$ev]);
@@ -140,6 +147,7 @@ function api_preEvento($t, $nome): array {
 function api_preAbrir($t, $evento, $aberto): array {
     exige_admin($t);
     $e = pre_evento((int)$evento);
+    if ($aberto && !empty($e['arquivado'])) falha('Este evento está no histórico. Tire do histórico antes de reabrir o check-in.');
     pre_tabelas()->prepare('UPDATE presenca_eventos SET aberto=? WHERE id=?')->execute([$aberto ? 1 : 0, $e['id']]);
     registrar($aberto ? 'Check-in do evento aberto' : 'Check-in do evento encerrado', $e['nome']);
     return pre_dados($e['id']);
@@ -157,6 +165,7 @@ function api_preExcluirEvento($t, $evento): array {
 function api_preMarcar($t, $evento, $codigo): array {
     exige_admin($t);
     $ev = pre_evento((int)$evento);
+    if (!empty($ev['arquivado'])) falha('Este evento está no histórico. Tire do histórico para marcar presença.');
     [$e, $como] = pre_ler_codigo($codigo);
     $st = pre_tabelas()->prepare('INSERT OR IGNORE INTO presencas(evento,mnorm,matricula,nome,setor,como,em) VALUES(?,?,?,?,?,?,?)');
     $st->execute([$ev['id'], mat_norm($e['matricula']), $e['matricula'], $e['nome'], (string)$e['setor'], $como, agora()]);
@@ -174,9 +183,50 @@ function api_preDesmarcar($t, $evento, $mat): array {
 }
 
 /* sorteia entre os presentes que ainda não ganharam neste evento */
+/* encerrar e guardar no histórico (fecha o check-in) | tirar do histórico (check-in continua fechado) */
+function api_preArquivar($t, $evento, $arquivar): array {
+    exige_admin($t);
+    $e = pre_evento((int)$evento);
+    if ($arquivar) pre_tabelas()->prepare('UPDATE presenca_eventos SET arquivado=1, arquivado_em=?, aberto=0 WHERE id=?')->execute([agora(), $e['id']]);
+    else pre_tabelas()->prepare('UPDATE presenca_eventos SET arquivado=0, arquivado_em=NULL WHERE id=?')->execute([$e['id']]);
+    registrar($arquivar ? 'Evento encerrado e arquivado' : 'Evento tirado do histórico', $e['nome']);
+    return pre_dados($e['id']);
+}
+
+/* participação por setor: pessoas diferentes que fizeram check-in (num evento ou em todos) × colaboradores do setor */
+function api_preEstat($t, $evento = null): array {
+    exige_admin($t);
+    $p = pre_tabelas();
+    $semSetor = 'Sem setor';
+    $tot = []; $setorDe = [];
+    foreach (db()->query('SELECT mnorm,setor FROM eleitores ORDER BY ordem') as $e) {
+        if (isset($setorDe[$e['mnorm']])) continue;
+        $s = trim((string)$e['setor']) ?: $semSetor;
+        $setorDe[$e['mnorm']] = $s; $tot[$s] = ($tot[$s] ?? 0) + 1;
+    }
+    $ev = $evento ? pre_evento((int)$evento) : null;
+    $st = $ev ? $p->prepare('SELECT mnorm,setor FROM presencas WHERE evento=?') : $p->prepare('SELECT mnorm,setor FROM presencas');
+    $st->execute($ev ? [$ev['id']] : []);
+    $part = []; $checkins = 0;
+    foreach ($st as $r) {
+        $checkins++;
+        $s = $setorDe[$r['mnorm']] ?? (trim((string)$r['setor']) ?: $semSetor);   // setor atual da lista; se saiu da lista, o da hora do check-in
+        $part[$s][$r['mnorm']] = true;
+    }
+    $setores = [];
+    foreach (array_unique(array_merge(array_keys($tot), array_keys($part))) as $s)
+        $setores[] = ['setor' => $s, 'total' => $tot[$s] ?? 0, 'participantes' => count($part[$s] ?? [])];
+    usort($setores, fn($a, $b) => $b['participantes'] <=> $a['participantes'] ?: strcmp($a['setor'], $b['setor']));
+    $unicos = array_sum(array_map('count', $part));
+    $evs = array_map(fn($e) => ['id' => $e['id'], 'nome' => $e['nome'], 'presentes' => $e['presentes'], 'arquivado' => $e['arquivado']], pre_dados(null)['eventos']);
+    return ['evento' => $ev ? (int)$ev['id'] : null, 'eventoNome' => $ev ? $ev['nome'] : 'Todos os eventos', 'eventos' => $evs,
+            'colaboradores' => array_sum($tot), 'participantes' => $unicos, 'checkins' => $checkins, 'setores' => $setores];
+}
+
 function api_preSortear($t, $evento, $brinde = ''): array {
     exige_admin($t);
     $ev = pre_evento((int)$evento); $p = pre_tabelas();
+    if (!empty($ev['arquivado'])) falha('Este evento está no histórico. Tire do histórico para sortear.');
     $st = $p->prepare('SELECT * FROM presencas WHERE evento=? AND mnorm NOT IN (SELECT mnorm FROM sorteios WHERE evento=?) ORDER BY mnorm');
     $st->execute([$ev['id'], $ev['id']]);
     $c = $st->fetchAll();

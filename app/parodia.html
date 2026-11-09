@@ -213,6 +213,35 @@ html.redentor .card{border-top:4px solid var(--gold)}
 .evbar button small{font-weight:600;color:var(--muted);font-size:.76rem}
 .evbar button[aria-pressed="true"]{background:linear-gradient(135deg,#16203a,#3e4095);color:#fff;border-color:transparent;box-shadow:0 8px 20px -10px rgba(22,32,58,.7)}
 .evbar button[aria-pressed="true"] small{color:#ffd76a}
+.evbar .extra{border-style:dashed;color:var(--accent);background:var(--accent-soft)}
+.evbar .extra small{color:var(--accent)}
+.arq{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;border:1px dashed var(--line-2);border-radius:var(--r);padding:16px;background:var(--surface-2)}
+.arq b{display:block} .arq .small{margin-top:2px}
+/* estatística por setor: uma série só (barra azul da marca), rótulo do setor à esquerda e o número escrito ao lado */
+.est-filtros{display:flex;flex-wrap:wrap;gap:10px;align-items:end}
+.est-filtros .field{flex:1 1 220px;margin:0}
+.seg{display:inline-flex;border:1px solid var(--line-2);border-radius:999px;padding:3px;background:var(--surface)}
+.seg button{border:0;background:none;border-radius:999px;padding:7px 14px;font-weight:700;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:#3e4095;color:#fff}
+.graf{display:grid;gap:6px}
+.graf .lin{display:grid;grid-template-columns:minmax(110px,30%) 1fr auto;gap:12px;align-items:center;padding:4px 6px;border-radius:8px}
+.graf .lin:hover{background:var(--surface-2)}
+.graf .nm{font-weight:700;font-size:.92rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.graf .trilho{height:20px;border-radius:4px;background:color-mix(in srgb,var(--line) 60%,transparent);overflow:hidden}
+.graf .trilho i{display:block;height:100%;width:0;border-radius:0 4px 4px 0;background:#3e4095;transition:width .8s cubic-bezier(.2,.8,.2,1)}
+.graf .lin.zero .nm{color:var(--muted);font-weight:600}
+.graf .vl{font-variant-numeric:tabular-nums;font-size:.9rem;white-space:nowrap;text-align:right;min-width:120px}
+.graf .vl b{font-size:1rem}
+.graf .eixo{display:grid;grid-template-columns:minmax(110px,30%) 1fr auto;gap:12px;font-size:.75rem;color:var(--muted);padding:0 6px}
+.graf .eixo span:nth-child(2){display:flex;justify-content:space-between}
+.graf .eixo span:last-child{min-width:120px}
+@media (max-width:560px){.graf .lin,.graf .eixo{grid-template-columns:1fr auto}.graf .lin .trilho{grid-column:1/-1;grid-row:2}.graf .eixo span:nth-child(2){display:none}}
+.est-print{font-family:var(--f-body);color:#16203a}
+.est-print h1{font-family:var(--f-display);color:#3e4095;font-size:20pt;margin:0}
+.est-print table{width:100%;border-collapse:collapse;margin-top:6mm;font-size:10.5pt}
+.est-print th,.est-print td{border-bottom:.3mm solid #d8dcea;padding:2mm;text-align:left}
+.est-print td.n{text-align:right;font-variant-numeric:tabular-nums}
+.est-print .b{display:block;height:4mm;background:#3e4095;border-radius:0 1mm 1mm 0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .evbar .novo{border-style:dashed;color:var(--accent);justify-content:center}
 .evhero{position:relative;overflow:hidden;border-radius:var(--r);padding:22px;color:#fff;
   background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='44'%3E%3Cpath d='M19 14h6v5h5v6h-5v5h-6v-5h-5v-6h5z' fill='%23d29500' fill-opacity='.12'/%3E%3C/svg%3E"),linear-gradient(120deg,#16203a 0%,#1e2b4f 55%,#3e4095 100%);border-bottom:4px solid #d29500;box-shadow:var(--shadow)}
@@ -1040,7 +1069,7 @@ function telaCheckin(){
 }
 
 /* comissão */
-var PRE=null, CAM=null, ULT={t:"",em:0};
+var PRE=null, CAM=null, ULT={t:"",em:0}, HIST=false, EST={ordem:"qtd",zeros:false};
 function carregarPresenca(ev){ return api("preDados",AT,ev||(PRE&&PRE.evento)||null).then(function(d){ PRE=d; telaPresenca(); })
   .catch(function(e){ store("par_adm",null); AT=null; toast(e.message); telaLoginJuri("comissao"); }); }
 function evAtual(){ return PRE.eventos.find(function(e){ return e.id===PRE.evento; })||null; }
@@ -1051,28 +1080,34 @@ function telaPresenca(){
   var d=PRE, ev=evAtual();
   quem('<span>Comissão</span><button class="btn sm" id="sair">Sair</button>');
   $("#sair").onclick=sair;
-  var barra='<div class="evbar" role="group" aria-label="Eventos">'+d.eventos.slice().reverse().map(function(e){
-      return '<button data-ev="'+e.id+'" aria-pressed="'+(e.id===d.evento)+'">'+esc(e.nome)+'<small>'+e.presentes+' presente(s)'+(e.aberto?' · aberto':'')+'</small></button>'; }).join("")+
-    '<button class="novo" id="novo">+ Novo evento</button></div>';
+  var hist=!!(ev&&ev.arquivado)||HIST, nArq=d.eventos.filter(function(e){ return e.arquivado; }).length;
+  var barra='<div class="evbar" role="group" aria-label="Eventos">'+
+    (hist?'<button class="extra" id="ativos">← Eventos ativos<small>voltar</small></button>':'')+
+    d.eventos.filter(function(e){ return !!e.arquivado===hist; }).reverse().map(function(e){
+      return '<button data-ev="'+e.id+'" aria-pressed="'+(e.id===d.evento)+'">'+esc(e.nome)+'<small>'+e.presentes+' presente(s)'+(e.arquivado?' · arquivado':(e.aberto?' · aberto':''))+'</small></button>'; }).join("")+
+    (hist?'':'<button class="novo" id="novo">+ Novo evento</button>'+(nArq?'<button class="extra" id="hist">📁 Histórico<small>'+nArq+' evento(s) encerrado(s)</small></button>':''))+
+    '<button class="extra" id="estat">📊 Estatísticas<small>participação por setor</small></button></div>';
   if(!ev){
-    app.innerHTML='<div class="stack">'+barra+'<div class="card pad stack" style="text-align:center"><div style="font-size:2.4rem">📋</div><h2>Crie o primeiro evento</h2>'+
+    app.innerHTML='<div class="stack">'+barra+'<div class="card pad stack" style="text-align:center"><div style="font-size:2.4rem">📋</div><h2>'+(nArq?'Nenhum evento ativo':'Crie o primeiro evento')+'</h2>'+
       '<p class="muted" style="margin:0">Um evento para cada palestra (ex.: “SIPAT – Palestra Trânsito Seguro”). Cada um ganha o próprio QR de check-in para o telão e para a mesa.</p>'+
       '<div><button class="btn primary lg" id="novo2" style="max-width:320px">+ Criar evento</button></div></div></div>';
-    ligarTopo(); $("#novo2").onclick=novoEvento; return;
+    ligarTopo(); var n2=$("#novo2"); if(n2) n2.onclick=novoEvento; return;
   }
   var conc=d.presentes.length-d.sorteios.length;
   app.innerHTML='<div class="stack">'+barra+
     '<section class="evhero"><div class="cab"><div><div class="lbl">Evento</div><h2 style="margin-top:4px">'+esc(ev.nome)+'</h2></div>'+
-      '<span class="st'+(ev.aberto?' on':'')+'">'+(ev.aberto?'Check-in aberto':'Check-in encerrado')+'</span></div>'+
+      '<span class="st'+(ev.aberto?' on':'')+'">'+(ev.arquivado?'📁 No histórico':(ev.aberto?'Check-in aberto':'Check-in encerrado'))+'</span></div>'+
       '<div class="kpis"><div class="kpi" id="k1"><b id="cont">'+d.presentes.length+'</b><span>presentes</span></div>'+
         '<div class="kpi"><b>'+d.sorteios.length+'</b><span>ganhadores</span></div>'+
         '<div class="kpi"><b id="kconc">'+Math.max(0,conc)+'</b><span>concorrendo</span></div></div></section>'+
+    (ev.arquivado?'<div class="arq"><div><b>📁 Evento encerrado e guardado no histórico</b><div class="small muted">Desde '+esc(dataBr(ev.arquivadoEm))+'. A lista de presença e os ganhadores ficam guardados; o check-in não abre mais.</div></div>'+
+      '<div class="row"><button class="btn" id="estev">📊 Estatística deste evento</button><button class="btn ghost" id="desarq">Tirar do histórico</button></div></div>':
     '<div class="acts">'+
       '<button class="act prim" id="telq"><span class="i">📺</span><b>Telão do QR</b><small>Mostrar no início da palestra</small></button>'+
       '<button class="act ouro" id="sb"><span class="i">🎁</span><b>Sortear brinde</b><small>Em tela cheia, com voz</small></button>'+
       '<button class="act" id="qrm"><span class="i">🖨️</span><b>Cartaz da mesa</b><small>QR para imprimir e colar</small></button>'+
       '<button class="act'+(ev.aberto?' fecha':'')+'" id="abre"><span class="i">'+(ev.aberto?'🔒':'🔓')+'</span><b>'+(ev.aberto?'Encerrar check-in':'Reabrir check-in')+'</b><small>'+(ev.aberto?'Quando a palestra acabar':'Liberar o QR de novo')+'</small></button>'+
-    '</div>'+
+    '</div>')+
     '<div class="cols">'+
       '<div class="card pad stack"><div class="cab"><h3>Lista de presença <span class="n" id="ncont">'+d.presentes.length+'</span></h3>'+
         '<div class="row"><span class="ao-vivo">ao vivo</span><button class="btn sm" id="csv">Baixar planilha</button></div></div>'+
@@ -1092,31 +1127,42 @@ function telaPresenca(){
             :'<div class="vazio">Nenhum sorteio ainda.</div>')+
         '</div>'+
         cardPendentes(d.pendentes||[])+
-        '<div class="card pad stack"><h3>Marcar na mão</h3>'+
+        (ev.arquivado?'':'<div class="card pad stack"><h3>Marcar na mão</h3>'+
           '<p class="small muted" style="margin:0">Para quem está sem celular: digite a matrícula ou leia o QR do colaborador.</p>'+
           '<form id="fm" class="row" novalidate><input id="mm" class="busca" style="flex:1 1 140px;width:auto" inputmode="numeric" autocomplete="off" placeholder="Matrícula"><button class="btn primary" id="mb">Marcar</button></form>'+
           '<div id="leitura"></div>'+
           '<button class="btn" id="cam">📷 Ler QR do colaborador</button>'+
           '<div id="camarea" hidden><div class="camera"><video id="vid" playsinline muted></video><div class="mira"></div></div>'+
             '<div class="row" style="justify-content:center;margin-top:10px"><button class="btn" id="camfecha">Fechar câmera</button></div></div>'+
-        '</div>'+
+        '</div>')+
       '</div>'+
     '</div>'+
-    '<div class="row" style="justify-content:space-between"><a class="btn sm" href="jurados">← Painel da comissão (todos os links)</a><button class="btn sm ghost" style="color:var(--bad)" id="delev">Excluir este evento</button></div>'+
+    '<div class="row" style="justify-content:space-between"><a class="btn sm" href="jurados">← Painel da comissão (todos os links)</a><div class="row">'+
+      (ev.arquivado?'':'<button class="btn sm" id="arqev">📁 Encerrar e guardar no histórico</button>')+
+      '<button class="btn sm ghost" style="color:var(--bad)" id="delev">Excluir este evento</button></div></div>'+
   '</div>';
   ligarTopo();
+  ligarStatus();
+  ligarLista();
+  $("#csv").onclick=function(){ baixarCsv(ev); };
+  $("#delev").onclick=function(){ if(!confirm("Excluir o evento “"+ev.nome+"” com a lista de presença ("+d.presentes.length+") e os sorteios? Isso não pode ser desfeito.")) return;
+    api("preExcluirEvento",AT,ev.id).then(function(x){ PRE=x; HIST=false; telaPresenca(); toast("Evento excluído."); }).catch(function(e){ toast(e.message); }); };
+  if(ev.arquivado){
+    $("#estev").onclick=function(){ telaEstat(ev.id); };
+    $("#desarq").onclick=function(){ api("preArquivar",AT,ev.id,false).then(function(x){ PRE=x; HIST=false; telaPresenca(); toast("Evento de volta aos ativos (check-in continua encerrado)."); }).catch(function(e){ toast(e.message); }); };
+    return;
+  }
+  $("#arqev").onclick=function(){
+    if(!confirm("Encerrar o evento “"+ev.nome+"” e guardar no histórico?\n\nO check-in fecha e o evento sai da barra de cima. A lista de presença ("+d.presentes.length+") e os ganhadores ficam guardados em 📁 Histórico.")) return;
+    api("preArquivar",AT,ev.id,true).then(function(x){ PRE=x; HIST=false; var a=PRE.eventos.find(function(e){ return !e.arquivado; });
+      if(a) carregarPresenca(a.id); else { PRE.evento=null; telaPresenca(); } toast("Evento encerrado e guardado no histórico."); }).catch(function(e){ toast(e.message); }); };
   $("#cam").onclick=abrirCamera;
   $("#camfecha").onclick=pararCamera;
   $("#fm").onsubmit=function(e2){ e2.preventDefault(); var v=$("#mm").value.trim(); if(!v) return; marcar(v); $("#mm").value=""; };
   $("#sb").onclick=function(){ abrirTelao(""); };
-  ligarStatus();
-  ligarLista();
-  $("#csv").onclick=function(){ baixarCsv(ev); };
   $("#qrm").onclick=function(){ qrMesa(ev); };
   $("#telq").onclick=function(){ telaoQr(ev); };
   $("#abre").onclick=function(){ api("preAbrir",AT,ev.id,!ev.aberto).then(function(x){ PRE=x; telaPresenca(); toast(ev.aberto?"Check-in encerrado.":"Check-in reaberto."); }).catch(function(e){ toast(e.message); }); };
-  $("#delev").onclick=function(){ if(!confirm("Excluir o evento “"+ev.nome+"” com a lista de presença ("+d.presentes.length+") e os sorteios? Isso não pode ser desfeito.")) return;
-    api("preExcluirEvento",AT,ev.id).then(function(x){ PRE=x; telaPresenca(); toast("Evento excluído."); }).catch(function(e){ toast(e.message); }); };
   vivoPresenca();
 }
 /* situação do brinde de cada ganhador */
@@ -1148,7 +1194,7 @@ var VIVOP;
 function vivoPresenca(){
   clearTimeout(VIVOP);
   VIVOP=setTimeout(function(){
-    if(PAGE!=="presenca"||!AT||!PRE||!PRE.evento) return;
+    if(PAGE!=="presenca"||!AT||!PRE||!PRE.evento||$("#graf")) return;
     var ocupado=CAM||$("#dlg").innerHTML||$(".telao")||document.hidden||(document.activeElement&&/INPUT|TEXTAREA/.test(document.activeElement.tagName));
     if(ocupado){ vivoPresenca(); return; }
     var antes=PRE.presentes.length, ids={}; PRE.presentes.forEach(function(x){ ids[x.matricula]=1; });
@@ -1160,6 +1206,66 @@ function vivoPresenca(){
       } else vivoPresenca();
     }).catch(function(){ vivoPresenca(); });
   },8000);
+}
+/* estatística de participação por setor (pessoas diferentes que fizeram check-in × colaboradores do setor) */
+function telaEstat(evId){
+  pararCamera(); clearTimeout(VIVOP);
+  app.innerHTML='<div class="loading">Calculando…</div>';
+  api("preEstat",AT,evId).then(function(r){
+    EST.r=r;
+    var pct=function(a,b){ return b?Math.round(1000*a/b)/10:0; };
+    var com=r.setores.filter(function(x){ return x.participantes>0; }).length;
+    var opts='<option value="">Todos os eventos</option>'+r.eventos.map(function(e){ return '<option value="'+e.id+'"'+(e.id===r.evento?' selected':'')+'>'+esc(e.nome)+(e.arquivado?' (histórico)':'')+' · '+e.presentes+'</option>'; }).join("");
+    app.innerHTML='<div class="stack">'+
+      '<div class="row" style="justify-content:space-between"><button class="btn sm" id="volta">← Voltar à presença</button>'+
+        '<div class="row"><button class="btn sm" id="ecsv">Baixar planilha</button><button class="btn sm" id="eimp">🖨️ Imprimir</button></div></div>'+
+      '<section class="evhero"><div class="lbl">Participação no check-in da CIPA</div><h2 style="margin-top:4px">'+esc(r.eventoNome)+'</h2>'+
+        '<div class="kpis k4"><div class="kpi"><b>'+r.participantes+'</b><span>pessoas participaram</span></div>'+
+        '<div class="kpi"><b>'+String(pct(r.participantes,r.colaboradores)).replace(".",",")+'%</b><span>dos '+r.colaboradores+' colaboradores</span></div>'+
+        '<div class="kpi"><b>'+r.checkins+'</b><span>check-ins'+(r.evento?'':' (somando os eventos)')+'</span></div>'+
+        '<div class="kpi"><b>'+com+'</b><span>de '+r.setores.length+' setores participaram</span></div></div></section>'+
+      '<div class="card pad stack">'+
+        '<div class="est-filtros"><label class="field"><span>Evento</span><select id="eev">'+opts+'</select></label>'+
+          '<div><div class="small muted" style="margin-bottom:4px">Ordenar por</div><div class="seg" role="group"><button data-o="qtd" aria-pressed="'+(EST.ordem==="qtd")+'">Mais pessoas</button><button data-o="pct" aria-pressed="'+(EST.ordem==="pct")+'">% do setor</button></div></div>'+
+          '<label class="row small" style="gap:6px;align-items:center"><input type="checkbox" id="ezer"'+(EST.zeros?' checked':'')+'> Mostrar setores sem ninguém</label></div>'+
+        '<h3 style="margin:6px 0 0">'+(EST.ordem==="pct"?'% de cada setor que participou':'Pessoas por setor')+'</h3>'+
+        '<div id="graf"></div>'+
+        '<p class="small muted" style="margin:0">Conta cada pessoa uma vez'+(r.evento?'':', mesmo que tenha ido a vários eventos')+'. O setor é o da lista de colaboradores.</p>'+
+      '</div></div>';
+    desenhaEstat();
+    $("#volta").onclick=function(){ carregarPresenca(PRE&&PRE.evento); };
+    $("#eev").onchange=function(){ telaEstat(this.value?+this.value:null); };
+    app.querySelectorAll("[data-o]").forEach(function(b){ b.onclick=function(){ EST.ordem=b.dataset.o; telaEstat(r.evento); }; });
+    $("#ezer").onchange=function(){ EST.zeros=this.checked; desenhaEstat(); };
+    $("#ecsv").onclick=function(){
+      var l=[["Setor","Participantes","Colaboradores no setor","% do setor"]].concat(r.setores.map(function(x){ return [x.setor,x.participantes,x.total,String(pct(x.participantes,x.total)).replace(".",",")]; }));
+      var csv="\ufeff"+l.map(function(z){ return z.map(function(v){ return '"'+String(v).replace(/"/g,'""')+'"'; }).join(";"); }).join("\r\n");
+      var a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"})); a.download="participacao por setor - "+r.eventoNome.replace(/[\\/:*?"<>|]/g,"")+".csv"; a.click(); };
+    $("#eimp").onclick=function(){
+      var l=linhasEstat(true), mx=Math.max.apply(null,l.map(function(x){ return EST.ordem==="pct"?x.pct:x.participantes; }).concat([1]));
+      $("#impressao").innerHTML='<section class="est-print"><img src="logo-redentor.png" alt="" style="height:16mm"><h1>Participação por setor · check-in da CIPA</h1>'+
+        '<p>'+esc(r.eventoNome)+' · '+r.participantes+' pessoas de '+r.colaboradores+' colaboradores ('+String(pct(r.participantes,r.colaboradores)).replace(".",",")+'%) · emitido em '+esc(dataBr(new Date().toISOString()))+'</p>'+
+        '<table><thead><tr><th>Setor</th><th style="width:38%"></th><th class="n">Pessoas</th><th class="n">No setor</th><th class="n">%</th></tr></thead><tbody>'+
+        l.map(function(x){ var v=EST.ordem==="pct"?x.pct:x.participantes; return '<tr><td>'+esc(x.setor)+'</td><td><span class="b" style="width:'+(100*v/(EST.ordem==="pct"?100:mx)).toFixed(1)+'%"></span></td><td class="n">'+x.participantes+'</td><td class="n">'+x.total+'</td><td class="n">'+String(x.pct).replace(".",",")+'%</td></tr>'; }).join("")+
+        '</tbody></table></section>';
+      setTimeout(function(){ window.print(); },200); };
+  }).catch(function(e){ toast(e.message); carregarPresenca(PRE&&PRE.evento); });
+}
+function linhasEstat(todos){
+  var r=EST.r, l=r.setores.map(function(x){ return {setor:x.setor,participantes:x.participantes,total:x.total,pct:x.total?Math.round(1000*x.participantes/x.total)/10:0}; });
+  if(!todos&&!EST.zeros) l=l.filter(function(x){ return x.participantes>0; });
+  return l.sort(function(a,b){ return EST.ordem==="pct"?(b.pct-a.pct||b.participantes-a.participantes):(b.participantes-a.participantes||b.pct-a.pct)||a.setor.localeCompare(b.setor,"pt-BR"); });
+}
+function desenhaEstat(){
+  var l=linhasEstat(false), g=$("#graf"); if(!g) return;
+  if(!l.length){ g.innerHTML='<div class="vazio">Ninguém fez check-in'+(EST.r.evento?' neste evento':'')+' ainda.</div>'; return; }
+  var pctMode=EST.ordem==="pct", mx=pctMode?100:Math.max.apply(null,l.map(function(x){ return x.participantes; }).concat([1]));
+  g.innerHTML='<div class="graf"><div class="eixo"><span></span><span><span>0</span><span>'+(pctMode?'100%':mx+' pessoas')+'</span></span><span></span></div>'+l.map(function(x){
+    var v=pctMode?x.pct:x.participantes, pc=String(x.pct).replace(".",",");
+    return '<div class="lin'+(x.participantes?'':' zero')+'" title="'+esc(x.setor)+': '+x.participantes+' de '+x.total+' colaboradores ('+pc+'%)">'+
+      '<div class="nm">'+esc(x.setor)+'</div><div class="trilho"><i data-w="'+(100*v/mx).toFixed(1)+'"></i></div>'+
+      '<div class="vl">'+(pctMode?'<b>'+pc+'%</b> <span class="muted">· '+x.participantes+' de '+x.total+'</span>':'<b>'+x.participantes+'</b> <span class="muted">de '+x.total+' · '+pc+'%</span>')+'</div></div>'; }).join("")+'</div>';
+  requestAnimationFrame(function(){ g.querySelectorAll("[data-w]").forEach(function(i){ i.style.width=i.dataset.w+"%"; }); });
 }
 function novoEvento(){
   dlg('<div class="row" style="justify-content:space-between"><h2>Novo evento</h2><button class="btn sm ghost" id="fx" aria-label="Fechar">✕</button></div>'+
@@ -1180,7 +1286,10 @@ function ligarLista(){
 function ligarTira(){ app.querySelectorAll("[data-tira]").forEach(function(b){ b.onclick=function(){ if(!confirm("Tirar a presença desta pessoa?")) return;
   api("preDesmarcar",AT,PRE.evento,b.dataset.tira).then(function(x){ PRE=x; telaPresenca(); }).catch(function(e){ toast(e.message); }); }; }); }
 function ligarTopo(){
-  $("#novo").onclick=novoEvento;
+  var nv=$("#novo"); if(nv) nv.onclick=novoEvento;
+  var hb=$("#hist"); if(hb) hb.onclick=function(){ var a=PRE.eventos.find(function(e){ return e.arquivado; }); HIST=true; if(a) carregarPresenca(a.id); };
+  var ab=$("#ativos"); if(ab) ab.onclick=function(){ HIST=false; var a=PRE.eventos.find(function(e){ return !e.arquivado; }); if(a) carregarPresenca(a.id); else { PRE.evento=null; PRE.presentes=[]; PRE.sorteios=[]; telaPresenca(); } };
+  var eb=$("#estat"); if(eb) eb.onclick=function(){ telaEstat(null); };
   app.querySelectorAll("[data-ev]").forEach(function(b){ b.onclick=function(){ carregarPresenca(+b.dataset.ev); }; });
   app.querySelectorAll("[data-tel]").forEach(function(b){ b.onclick=function(){ telaoQr(PRE.eventos.find(function(e){ return e.id===+b.dataset.tel; })); }; });
   app.querySelectorAll("[data-qrm]").forEach(function(b){ b.onclick=function(){ qrMesa(PRE.eventos.find(function(e){ return e.id===+b.dataset.qrm; })); }; });
