@@ -309,6 +309,34 @@ html.redentor .card{border-top:4px solid var(--gold)}
 .vazio{padding:18px;text-align:center;color:var(--muted);border:1.5px dashed var(--line-2);border-radius:12px}
 html.redentor .telao:not(.qr){background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='44'%3E%3Cpath d='M19 14h6v5h5v6h-5v5h-6v-5h-5v-6h5z' fill='%23d29500' fill-opacity='.12'/%3E%3C/svg%3E"),linear-gradient(135deg,#16203a 0%,#1e2b4f 50%,#3e4095 100%);border-bottom:1.2vh solid #d29500}
 .links{display:grid;gap:12px}
+/* cabeçalho de seção: título + situação, e números em cartões claros */
+.phead{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap}
+.phead .pt{display:flex;gap:14px;align-items:center;min-width:0}
+.phead .pic{flex:none;width:52px;height:52px;border-radius:14px;display:grid;place-items:center;font-size:1.6rem;background:linear-gradient(135deg,#16203a,#3e4095);box-shadow:0 8px 18px -10px rgba(22,32,58,.8)}
+.phead h2{margin:2px 0 0;font-size:clamp(1.3rem,3vw,1.75rem);line-height:1.15}
+.phead .tema{color:var(--muted);font-size:.88rem;margin-top:2px}
+.phead .st{background:var(--surface-2);color:var(--muted);border:1px solid var(--line)} .phead .st::before{background:var(--muted)}
+.phead .st.on{background:var(--ok-soft);color:var(--ok);border-color:transparent} .phead .st.on::before{background:var(--ok)}
+.stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+@media (min-width:760px){.stats{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.stat{position:relative;overflow:hidden;display:flex;gap:12px;align-items:center;padding:14px 16px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow)}
+.stat::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--c,#3e4095)}
+.stat .si{flex:none;width:40px;height:40px;border-radius:12px;display:grid;place-items:center;font-size:1.15rem;background:color-mix(in srgb,var(--c,#3e4095) 13%,transparent)}
+.stat b{display:block;font-family:var(--f-display);font-size:1.7rem;line-height:1;color:var(--ink)} .stat b small{font-size:.55em;color:var(--muted);font-weight:700}
+.stat span.l{display:block;font-size:.8rem;color:var(--muted);margin-top:3px}
+.stat .pb{height:5px;border-radius:9px;background:var(--line);margin-top:6px;overflow:hidden} .stat .pb i{display:block;height:100%;background:var(--c,#3e4095)}
+.stat.alerta{--c:#d29500} .stat.alerta b{color:#a87400}
+/* abas da seção: sublinhado (os filtros continuam em pílulas) */
+.subnav{display:flex;gap:2px;overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:4px 6px 0;box-shadow:var(--shadow);margin:0;scrollbar-width:thin}
+.subnav button{flex:none;border:0;background:none;padding:12px 14px 11px;font-weight:700;font-size:.92rem;color:var(--muted);border-bottom:3px solid transparent;border-radius:0;white-space:nowrap;cursor:pointer}
+.subnav button:hover{color:var(--ink)}
+.subnav button[aria-pressed="true"]{color:#3e4095;border-bottom-color:#d29500}
+.subnav .n{display:inline-block;min-width:20px;padding:0 6px;margin-left:4px;border-radius:999px;background:var(--surface-2);font-size:.75rem;color:var(--muted)}
+.subnav button[aria-pressed="true"] .n{background:#3e4095;color:#fff}
+.vazio.grande{padding:34px 18px} .vazio.grande .vi{font-size:2.2rem;display:block;margin-bottom:6px} .vazio.grande b{display:block;color:var(--ink);font-size:1.05rem}
+/* menu do painel: ícone em selo */
+.menu button .i{width:36px;height:36px;border-radius:11px;display:grid;place-items:center;background:var(--surface-2);font-size:1.1rem}
+.menu button[aria-current="page"] .i{background:rgba(255,255,255,.14)}
 @media (min-width:720px){.links{grid-template-columns:repeat(3,minmax(0,1fr))}}
 .lk{display:flex;flex-direction:column;gap:10px;padding:16px;border:1px solid var(--line);border-radius:var(--r);background:var(--surface);box-shadow:var(--shadow)}
 .lk .top{display:flex;gap:12px;align-items:center}
@@ -870,7 +898,7 @@ function telaAdmin(){
   quem('<span>Comissão</span><button class="btn sm" id="sair">Sair</button>');
   $("#sair").onclick=sair;
   var link=/\/\/parodia\./.test(d.urlApp)?d.urlApp:d.urlApp+"parodia";   // no domínio da paródia a raiz já é a inscrição
-  var abas=[["parodias","Paródias"],["ranking","Apuração"],["jurados","Jurados ("+d.jurados.length+")"],["historico","📁 Histórico"+((d.edicoes||[]).length?" ("+d.edicoes.length+")":"")],["config","Configuração"]];
+  var abas=[["parodias","🎵 Paródias",d.parodias.length],["ranking","🏆 Apuração"],["jurados","⚖️ Jurados",d.jurados.length],["links","🔗 Links e QR"],["historico","📁 Histórico",(d.edicoes||[]).length||""],["config","⚙️ Configuração"]];
   var corpo="";
   if(ABA==="parodias"){
     if(!telaAdmin.ja){ telaAdmin.ja=1; if(contagem(d.parodias).pendente) FILTRO="pendente"; }   // abre direto no que falta aprovar
@@ -888,7 +916,8 @@ function telaAdmin(){
           ?'<div class="decide"><button class="btn ok" data-ap="'+p.id+'" data-a="aprovar">✔ Aprovar</button><button class="btn danger" data-ap="'+p.id+'" data-a="recusar">✕ Não aprovar</button></div><div class="mais"><button class="btn sm ghost exc" data-exc="'+p.id+'">🗑 Excluir</button></div>'
           :'<div class="mais"><button class="btn sm ghost" data-ap="'+p.id+'" data-a="reabrir">Desfazer decisão</button><button class="btn sm ghost" data-ver="'+p.id+'">Notas e detalhes</button><button class="btn sm ghost exc" data-exc="'+p.id+'">🗑 Excluir</button></div>')+
       '</article>'; }).join("")+'</div>'
-      :'<div class="vazio">'+(FILTRO==="pendente"?'Tudo aprovado por enquanto. 🎉':'Nenhuma paródia aqui ainda.')+'</div>');
+      :'<div class="vazio grande"><span class="vi">'+(FILTRO==="pendente"?'🎉':'🎤')+'</span><b>'+(FILTRO==="pendente"?'Tudo aprovado por enquanto':'Nenhuma paródia aqui ainda')+'</b>'+
+        (d.parodias.length?'':(d.situacao==="aberta"?'As inscrições estão abertas: divulgue o link na aba <b>🔗 Links e QR</b>.':'As inscrições estão fechadas. Para abrir, vá em <b>⚙️ Configuração</b>.'))+'</div>');
   } else if(ABA==="ranking"){
     var ap=d.parodias.filter(function(p){ return p.status==="aprovada"; }).sort(function(a,b){ return (b.media==null?-1:b.media)-(a.media==null?-1:a.media); });
     var feitas=0, devidas=0; ap.forEach(function(p){ feitas+=p.notas.length; devidas+=p.notas.length+p.faltam.length; });
@@ -938,30 +967,35 @@ function telaAdmin(){
   }
   var cnt=contagem(d.parodias), nf=0, nd=0;
   d.parodias.forEach(function(p){ if(p.status==="aprovada"){ nf+=p.notas.length; nd+=p.notas.length+p.faltam.length; } });
-  var linkJ=d.urlApp+"jurados";
-  app.innerHTML='<div class="stack">'+
-    '<section class="evhero"><div class="cab"><div><div class="lbl">Comissão da CIPA</div><h2 style="margin-top:4px">'+esc(d.cfg.titulo)+'</h2></div>'+
-      '<span class="st'+(d.situacao==="aberta"?' on':'')+'">Inscrições '+(d.situacao==="aberta"?"abertas":(d.situacao==="antes"?"ainda não abertas":"encerradas"))+'</span></div>'+
-      '<div class="kpis k4"><div class="kpi"><b>'+cnt.todas+'</b><span>inscrições</span></div><div class="kpi"><b>'+cnt.pendente+'</b><span>aguardando aprovação</span></div>'+
-        '<div class="kpi"><b>'+cnt.aprovada+'</b><span>aprovadas</span></div><div class="kpi"><b>'+nf+'<small style="font-size:.5em;opacity:.8"> / '+nd+'</small></b><span>notas dos jurados</span></div></div></section>'+
-    '<div class="cab"><h3>🔗 Todos os links da CIPA</h3><span class="small muted">copie, imprima o QR ou abra</span></div>'+
-    '<div class="links">'+
+  var linkJ=d.urlApp+(PAGE==="admin"?"admin":"jurados");   // no painel unificado o jurado entra pelo /admin
+  var sitTxt=d.situacao==="aberta"?"Inscrições abertas":(d.situacao==="antes"?"Inscrições ainda não abertas":"Inscrições encerradas");
+  var linksHtml='<div class="links">'+
       '<div class="lk"><div class="top"><div class="mini" id="qi"></div><div style="min-width:0"><b>Inscrição das equipes</b><div class="url">'+esc(link)+'</div></div></div>'+
         '<div class="row"><button class="btn sm" data-cp="'+esc(link)+'">Copiar link</button><button class="btn sm primary" id="pi">🖨️ Imprimir QR</button></div></div>'+
       '<div class="lk"><div class="top"><div class="mini" id="qj"></div><div style="min-width:0"><b>Área dos jurados</b><div class="url">'+esc(linkJ)+'</div></div></div>'+
         '<div class="row"><button class="btn sm" data-cp="'+esc(linkJ)+'">Copiar link</button><button class="btn sm primary" id="pj">🖨️ Credenciais dos jurados</button></div></div>'+
-      '<div class="lk"><div class="top"><div class="ic">📋</div><div style="min-width:0"><b>Presença e sorteio</b><div class="url">'+esc(d.urlApp)+'presenca</div><div class="small muted">Check-in das palestras, telão do QR e brindes</div></div></div>'+
-        '<div class="row"><a class="btn sm primary" href="presenca">Abrir</a></div></div>'+
+      (PAGE==="admin"?'':'<div class="lk"><div class="top"><div class="ic">📋</div><div style="min-width:0"><b>Presença e sorteio</b><div class="url">'+esc(d.urlApp)+'presenca</div><div class="small muted">Check-in das palestras, telão do QR e brindes</div></div></div>'+
+        '<div class="row"><a class="btn sm primary" href="presenca">Abrir</a></div></div>')+
+    '</div>';
+  if(ABA==="links") corpo='<p class="muted" style="margin:0">Copie o link ou imprima o QR Code para divulgar. As credenciais saem uma por jurado, com o nome e o QR de acesso.</p>'+linksHtml;
+  app.innerHTML='<div class="stack">'+
+    '<header class="phead"><div class="pt"><span class="pic">🎤</span><div style="min-width:0"><div class="lbl">Comissão da CIPA</div><h2>'+esc(d.cfg.titulo)+'</h2>'+(d.cfg.tema?'<div class="tema">'+esc(d.cfg.tema)+'</div>':'')+'</div></div>'+
+      '<span class="st'+(d.situacao==="aberta"?' on':'')+'">'+sitTxt+'</span></header>'+
+    '<div class="stats">'+
+      '<div class="stat"><span class="si">📝</span><div><b>'+cnt.todas+'</b><span class="l">inscrições</span></div></div>'+
+      '<div class="stat'+(cnt.pendente?' alerta':'')+'" style="--c:#d29500"><span class="si">⏳</span><div><b>'+cnt.pendente+'</b><span class="l">aguardando aprovação</span></div></div>'+
+      '<div class="stat" style="--c:#1f8a5b"><span class="si">✅</span><div><b>'+cnt.aprovada+'</b><span class="l">aprovadas</span></div></div>'+
+      '<div class="stat"><span class="si">⚖️</span><div style="flex:1;min-width:0"><b>'+nf+'<small> / '+nd+'</small></b><span class="l">notas dos jurados</span><div class="pb"><i style="width:'+(nd?Math.round(100*nf/nd):0)+'%"></i></div></div></div>'+
     '</div>'+
-    '<div class="tabs" id="abas">'+abas.map(function(a){ return '<button data-a="'+a[0]+'" aria-pressed="'+(ABA===a[0])+'">'+esc(a[1])+'</button>'; }).join("")+'</div>'+
+    '<nav class="subnav" id="abas" aria-label="Seções do concurso">'+abas.map(function(a){ return '<button data-a="'+a[0]+'" aria-pressed="'+(ABA===a[0])+'">'+esc(a[1])+(a[2]!==undefined&&a[2]!==""?'<span class="n">'+a[2]+'</span>':'')+'</button>'; }).join("")+'</nav>'+
     corpo+'</div>';
   app.querySelectorAll("[data-cp]").forEach(function(b){ b.onclick=function(){ var l=b.dataset.cp; (navigator.clipboard?navigator.clipboard.writeText(l):Promise.reject()).then(function(){ toast("Link copiado."); },function(){ prompt("Copie o link:",l); }); }; });
   carregar("https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js").then(function(){
     [["#qi",link],["#qj",linkJ]].forEach(function(q){ var el=$(q[0]); if(el&&!el.firstChild) new QRCode(el,{text:q[1],width:256,height:256,correctLevel:QRCode.CorrectLevel.M}); });
   }).catch(function(){});
-  $("#pi").onclick=function(){ imprimirCartaz("Concurso de Paródias da CIPA",d.cfg.tema||"Inscreva a sua equipe",link,
+  if($("#pi")) $("#pi").onclick=function(){ imprimirCartaz("Concurso de Paródias da CIPA",d.cfg.tema||"Inscreva a sua equipe",link,
     ["Aponte a câmera do celular para o QR Code","Digite a <b>matrícula</b> do responsável pela equipe","Digite os <b>3 primeiros números do CPF</b>","Preencha a equipe, a música e a letra da paródia"]); };
-  $("#pj").onclick=function(){ imprimirCredenciais(d,linkJ); };
+  if($("#pj")) $("#pj").onclick=function(){ imprimirCredenciais(d,linkJ); };
   app.querySelectorAll("#abas button").forEach(function(b){ b.onclick=function(){ ABA=b.dataset.a; telaAdmin(); }; });
   var fin=$("#fin"); if(fin) fin.onclick=function(){
     var t=prompt("Finalizar o concurso e guardar no histórico?\n\nAs "+d.parodias.length+" paródia(s) saem da lista atual e ficam guardadas no histórico, com as notas. As inscrições fecham.\n\nNome que vai ficar no histórico:",d.cfg.titulo+" "+new Date().getFullYear());
@@ -1549,7 +1583,7 @@ function imprimirCredenciais(d, link){
         '<div class="cc"><div class="jq">'+
           (j?'<small>Jurado(a)</small><div class="n">'+esc(esc2||j.nome)+'</div><div class="c">'+(esc2?esc(j.nome)+' · ':'')+'Matrícula '+esc(j.matricula)+'</div>'
             :'<small>Nome do jurado(a)</small><div class="linha"></div>')+
-          '<ol><li>Aponte a câmera do celular para o QR Code</li><li>Toque em <b>Sou jurado</b></li><li>Digite a sua <b>matrícula</b> e os <b>3 primeiros números do CPF</b></li><li>Leia cada paródia e escolha as notas de 0 a 10</li></ol></div>'+
+          '<ol><li>Aponte a câmera do celular para o QR Code</li><li>'+(/admin$/.test(link)?'Digite a sua <b>matrícula</b> e toque em <b>Avançar</b>':'Toque em <b>Sou jurado</b> e digite a sua <b>matrícula</b>')+'</li><li>Digite os <b>3 primeiros números do CPF</b></li><li>Leia cada paródia e escolha as notas de 0 a 10</li></ol></div>'+
           '<div class="qr"><img src="'+qr+'" alt="QR Code da área dos jurados"><div>'+esc(link)+'</div></div></div>'+
         '<div class="cr"><span>Uso pessoal: não compartilhe o seu acesso.</span><span>Dúvidas? Procure a comissão da CIPA.</span></div>'+
       '</section>'; }).join("");
