@@ -72,9 +72,7 @@ function equipe_norm(string $s): string { return mb_strtolower(preg_replace('/\s
 
 /* nome de escala (apelido) de cada matrícula, da lista de colaboradores; vazio se não tiver */
 function par_escala(string $mat): string {
-    static $m = null;
-    if ($m === null) { $m = []; foreach (db()->query("SELECT mnorm,escala FROM eleitores WHERE escala<>'' ORDER BY ordem") as $e) $m[$e['mnorm']] ??= trim((string)$e['escala']); }
-    return $m[mat_norm($mat)] ?? '';
+    return colab_escala($mat);
 }
 function par_linha(array $r): array {
     return ['id' => (int)$r['id'], 'matricula' => $r['matricula'], 'responsavel' => $r['responsavel'], 'escala' => par_escala($r['matricula']), 'setor' => (string)$r['setor'],
@@ -125,7 +123,7 @@ function api_parInfo(): array {
 
 function api_parConsultar($m, $c = ''): array {
     if (mat_norm($m) === '') falha('Digite sua matrícula.');
-    $e = eleitor_por_mat($m);
+    $e = colab_por_mat($m);
     if (!$e) falha('Matrícula não encontrada no cadastro de colaboradores. Procure a comissão da CIPA.');
     confere($e, $c);
     $cfg = par_cfg(); $p = par_da_matricula($m);
@@ -200,7 +198,7 @@ function exige_jurado($t): array {
 
 function api_parJuradoLogin($m, $c): array {
     if (mat_norm($m) === '') falha('Digite sua matrícula.');
-    $e = eleitor_por_mat($m);
+    $e = colab_por_mat($m);
     if (!$e) falha('Matrícula não encontrada no cadastro de colaboradores.');
     confere($e, $c);
     $j = jurado_por_mat($m);
@@ -382,7 +380,7 @@ function api_parJurado($t, $m, $remover = false): array {
         registrar('Jurado removido do concurso de paródias', $j['matricula'] . ' – ' . $j['nome']);
         return par_admin_dados();
     }
-    $e = eleitor_por_mat($m);
+    $e = colab_por_mat($m);
     if (!$e) falha('Matrícula não encontrada no cadastro de colaboradores.');
     if (jurado_por_mat($m)) falha($e['nome'] . ' já é jurado.');
     $p->prepare('INSERT INTO parodia_jurados(mnorm,matricula,nome) VALUES(?,?,?)')->execute([mat_norm($e['matricula']), $e['matricula'], $e['nome']]);

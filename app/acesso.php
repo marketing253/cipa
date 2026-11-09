@@ -39,6 +39,7 @@ function acesso_falhou(string $mnorm): void { db()->prepare('INSERT INTO falhas(
 /* passo 1: a matrícula diz o que pedir no passo 2 */
 function api_acessoInicio($m): array {
     if (mat_norm($m) === '') falha('Digite sua matrícula.');
+    colab_por_mat($m);   // desligado (bloqueado pelo e-mail de demitidos) para aqui
     $c = comissao_por_mat($m);
     if ($c) return ['nivel' => 'comissao', 'nome' => explode(' ', $c['nome'])[0], 'temSenha' => (string)$c['senha'] !== ''];
     if (jurado_por_mat($m)) return ['nivel' => 'jurado', 'nome' => ''];
@@ -53,6 +54,7 @@ function acesso_sessao(array $c): array {
 
 function api_acessoEntrar($m, $senha): array {
     $c = comissao_por_mat($m) ?: falha('Esta matrícula não é da comissão.');
+    colab_por_mat($m);
     acesso_trava($c['mnorm']);
     if ((string)$c['senha'] === '') falha('Crie sua senha primeiro.');
     if (!password_verify((string)$senha, $c['senha'])) { acesso_falhou($c['mnorm']); falha('Senha incorreta.'); }
@@ -63,7 +65,7 @@ function api_acessoEntrar($m, $senha): array {
 function api_acessoCriarSenha($m, $cpf3, $senha): array {
     $c = comissao_por_mat($m) ?: falha('Esta matrícula não é da comissão.');
     if ((string)$c['senha'] !== '') falha('Você já tem senha. Se esqueceu, peça para outra pessoa da comissão zerar.');
-    $e = eleitor_por_mat($m) ?: falha('Matrícula não encontrada no cadastro de colaboradores.');
+    $e = colab_por_mat($m) ?: falha('Matrícula não encontrada no cadastro de colaboradores.');
     acesso_trava($c['mnorm']);
     $ok = preg_replace('/\D/', '', (string)$e['codigo']);
     if ($ok === '' || substr($ok, 0, 3) !== preg_replace('/\D/', '', (string)$cpf3)) { acesso_falhou($c['mnorm']); falha('Os 3 primeiros números do CPF não conferem.'); }
@@ -90,7 +92,7 @@ function api_acessoIncluir($t, $m, $nivel): array {
     exige_admin($t);
     if ($nivel === 'jurado') { api_parJurado($t, $m); return acesso_lista(); }
     if ($nivel !== 'comissao') falha('Nível inválido.');
-    $e = eleitor_por_mat($m) ?: falha('Matrícula não encontrada no cadastro de colaboradores.');
+    $e = colab_por_mat($m) ?: falha('Matrícula não encontrada no cadastro de colaboradores.');
     if (comissao_por_mat($e['matricula'])) falha('Esta pessoa já é da comissão.');
     acesso_tabelas()->prepare('INSERT INTO comissao_acessos(mnorm,matricula,nome,criado) VALUES(?,?,?,?)')
         ->execute([mat_norm($e['matricula']), $e['matricula'], $e['nome'], agora()]);

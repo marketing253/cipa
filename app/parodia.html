@@ -60,6 +60,14 @@ html.painel .wrap{max-width:1320px}
 .eleicao{width:100%;height:calc(100vh - 150px);min-height:640px;border:1px solid var(--line);border-radius:var(--r);background:var(--surface);box-shadow:var(--shadow)}
 @media (max-width:860px){.shell{grid-template-columns:1fr}.menu{position:static;flex-direction:row;overflow-x:auto;padding:6px}.menu .mh,.menu .eu,.menu button small{display:none}.menu button{flex:none;white-space:nowrap}}
 .acs .tbl td{vertical-align:middle}
+.cbt{display:inline-block;padding:2px 9px;border-radius:999px;font-size:.72rem;font-weight:800;vertical-align:middle}
+.cbt.adm{background:var(--ok-soft);color:var(--ok)} .cbt.dem{background:var(--bad-soft);color:var(--bad)} .cbt.cpf{background:var(--warn-soft);color:var(--warn)}
+.cbl td{vertical-align:middle} .cbl tr.bloq td{opacity:.62} .cbl tr.bloq td:last-child{opacity:1}
+.busca{flex:1 1 240px;min-width:0;padding:10px 14px;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--ink);font:inherit}
+.cbh summary{display:flex;gap:10px;align-items:center;flex-wrap:wrap;cursor:pointer;list-style:none} .cbh summary::-webkit-details-marker{display:none}
+.cbh[open] summary{margin-bottom:10px}
+.cbpassos{margin:0;padding-left:20px;display:grid;gap:6px}
+textarea#cbtx{font-family:ui-monospace,Consolas,monospace;font-size:.85rem}
 .nivel{display:inline-block;padding:2px 10px;border-radius:999px;font-size:.74rem;font-weight:800}
 .nivel.comissao{background:#3e4095;color:#fff} .nivel.jurado{background:#ffd76a;color:#16203a}
 .narrow{max-width:640px;margin:0 auto}
@@ -711,7 +719,8 @@ function sair(){ pararCamera(); clearTimeout(VIVOP); store("par_jur",null); stor
 /* =================== /admin unificado =================== */
 var RAIZ=app, SECAO=store("adm_secao")||"parodias", EU=null;
 var MENU=[["eleicao","🗳️","Eleição da CIPA","Candidatos, votação e resultado"],["parodias","🎤","Paródias","Inscrições, jurados e apuração"],
-  ["presenca","📋","Presença e sorteio","Check-in, brindes e estatísticas"],["config","⚙️","Configuração","Quem acessa e o nível de cada um"]];
+  ["presenca","📋","Presença e sorteio","Check-in, brindes e estatísticas"],["colab","👥","Colaboradores","Admitidos, desligados e cadastro"],
+  ["config","⚙️","Configuração","Quem acessa e o nível de cada um"]];
 function telaLoginAdmin(){
   app=RAIZ; quem(""); document.documentElement.classList.remove("painel");
   app.innerHTML='<div class="narrow"><div class="card pad stack entra"><div><div class="lbl">Painel da CIPA</div><h2 style="margin-top:4px">Entrar</h2>'+
@@ -776,6 +785,7 @@ function montarPainel(){
     app.innerHTML='<iframe class="eleicao" src="comissao?embed=1" title="Eleição da CIPA"></iframe>'; }
   else if(SECAO==="presenca") inicioPresenca();
   else if(SECAO==="config") telaAcessos();
+  else if(SECAO==="colab") telaColab();
   else carregarAdmin();
 }
 window.addEventListener("message",function(e){ if(e.origin===location.origin&&e.data&&e.data.cipa==="sair"&&PAGE==="admin") sair(); });
@@ -828,6 +838,151 @@ function telaAcessos(){
     $("#cfgpar").onclick=function(){ SECAO="parodias"; ABA="config"; store("adm_secao",SECAO); montarPainel(); };
     $("#cfgele").onclick=function(){ SECAO="eleicao"; store("adm_secao",SECAO); montarPainel(); };
   }).catch(function(e){ toast(e.message); if(/expirada/.test(e.message)) sair(); });
+}
+/* Colaboradores: e-mails de admitidos e demitidos (pelo n8n ou colados aqui) */
+var CB=null, CBA="lista", CBF="ativos", CBQ="", CBPREV=null;
+function semAc(x){ return String(x||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase(); }
+function telaColab(){
+  quem('<span>'+esc(EU?EU.nome.split(" ")[0]:"Comissão")+'</span><button class="btn sm" id="sair">Sair</button>'); $("#sair").onclick=sair;
+  api("colabDados",AT).then(function(d){ CB=d; desenhaColab(); }).catch(function(e){ toast(e.message); if(/expirada/.test(e.message)) sair(); });
+}
+function desenhaColab(){
+  var d=CB, l=d.colaboradores, ult=d.historico.find(function(h){ return h.origem==="n8n"; });
+  var novos=l.filter(function(x){ return x.novo&&x.ativo; }).length, semCpf=l.filter(function(x){ return x.ativo&&!x.temCpf; }).length;
+  var abas=[["lista","👥 Cadastro",l.length],["atualizar","📨 Colar e-mail"],["hist","🕘 Atualizações",d.historico.length||""],["n8n","🔗 Integração n8n"]];
+  var corpo="";
+  if(CBA==="lista"){
+    var f=[["ativos","Ativos",d.ativos],["novos","Admitidos (novos)",novos],["semcpf","Sem CPF",semCpf],["bloqueados","Bloqueados",d.bloqueados]];
+    corpo='<div class="row" style="align-items:center;gap:10px"><div class="tabs" id="cbf" style="margin:0">'+f.map(function(x){ return '<button data-f="'+x[0]+'" aria-pressed="'+(CBF===x[0])+'">'+x[1]+'<span class="n">'+x[2]+'</span></button>'; }).join("")+'</div>'+
+      '<input id="cbq" class="busca" type="search" placeholder="Buscar nome, matrícula, escala ou setor" value="'+esc(CBQ)+'"></div><div id="cblista"></div>';
+  } else if(CBA==="atualizar"){
+    corpo='<div class="card pad stack"><p class="muted" style="margin:0">Cole aqui o texto do e-mail do RH (pode copiar a tabela inteira). O sistema acha a <b>matrícula</b> e o <b>nome</b> de cada pessoa, e também cargo, setor e CPF quando vierem. '+
+        'Primeiro ele mostra o que vai mudar; só grava quando você confirmar.</p>'+
+      '<label class="field" style="max-width:320px"><span>Tipo do e-mail</span><select id="cbt"><option value="auto">Descobrir pelo texto</option><option value="admitidos">Admitidos (incluir / atualizar)</option><option value="demitidos">Demitidos (bloquear)</option></select></label>'+
+      '<label class="field"><span>Texto do e-mail</span><textarea id="cbtx" rows="10" placeholder="Matrícula   Nome   Cargo   Setor&#10;12345   FULANO DE TAL   MOTORISTA   TRÁFEGO"></textarea></label>'+
+      '<div id="cberr"></div><div class="row"><button class="btn primary" id="cbconf">Conferir</button></div></div><div id="cbprev"></div>';
+  } else if(CBA==="hist"){
+    corpo=d.historico.length?'<div class="stack">'+d.historico.map(function(h){
+      var adm=h.tipo==="admitidos", res=adm?[h.novos+" novos",h.atualizados+" atualizados"].concat(h.reativados?[h.reativados+" readmitidos"]:[]).join(" · "):h.bloqueados+" bloqueados";
+      return '<details class="card pad cbh"><summary><span class="cbt '+(adm?'adm':'dem')+'">'+(adm?'Admitidos':'Demitidos')+'</span><b>'+esc(dataBr(h.em))+'</b>'+
+        '<span class="muted small">'+(h.lidos?esc(res):'nenhum colaborador no e-mail')+' · '+(h.origem==="n8n"?'pelo n8n':'pelo painel')+(h.assunto?' · “'+esc(h.assunto)+'”':'')+'</span></summary>'+
+        (h.pessoas&&h.pessoas.length?'<div class="tbl"><table><tbody>'+h.pessoas.map(function(x){ return '<tr><td><b>'+esc(x.nome||"—")+'</b><div class="small muted">Matrícula '+esc(x.matricula)+(x.setor?' · '+esc(x.setor):'')+'</div></td><td class="small">'+esc(x.acao)+'</td></tr>'; }).join("")+'</tbody></table></div>':'')+'</details>'; }).join("")+'</div>'
+      :'<div class="vazio grande"><span class="vi">🕘</span><b>Nenhuma atualização ainda</b>Quando o n8n mandar o primeiro e-mail, ou quando você colar um, ele aparece aqui.</div>';
+  } else {
+    corpo='<div class="card pad stack"><h3 style="margin:0">Como funciona</h3>'+
+      '<ol class="cbpassos"><li>O n8n olha a caixa de e-mail do RH a cada minuto.</li><li>Quando chega e-mail com <b>admitidos</b>, <b>admissão</b>, <b>demitidos</b>, <b>demissão</b> ou <b>desligamento</b> no assunto, ele manda o texto para cá.</li>'+
+        '<li>Admitido entra (ou tem os dados atualizados); demitido fica <b>bloqueado</b>: não faz check-in, não entra na paródia nem no painel. Nada é apagado.</li><li>Cada e-mail aparece em <b>🕘 Atualizações</b>.</li></ol>'+
+      '<p class="small muted" style="margin:0">A lista de eleitores da votação não muda: ela é o registro oficial da eleição.</p></div>'+
+      '<div class="card pad stack"><h3 style="margin:0">Montar no n8n</h3>'+
+      '<ol class="cbpassos"><li>Baixe o fluxo pronto: <button class="btn sm primary" id="cbwf">⬇️ Baixar fluxo do n8n</button></li>'+
+        '<li>No n8n: <b>Workflows → Import from File</b> e escolha o arquivo.</li>'+
+        '<li>Abra o nó <b>E-mail do RH</b> e crie a credencial <b>IMAP</b> da caixa que recebe os e-mails (você digita o usuário e a senha lá no n8n).</li>'+
+        '<li>Ative o fluxo (botão <b>Active</b>).</li></ol>'+
+      '<div class="lk"><div style="min-width:0"><b>Endereço</b><div class="url">'+esc(d.endpoint)+'</div></div></div>'+
+      '<div class="lk"><div style="min-width:0;flex:1"><b>Chave da integração</b><div class="url" id="cbch">'+'•'.repeat(24)+'</div></div>'+
+        '<div class="row"><button class="btn sm" id="cbver">Mostrar</button><button class="btn sm" id="cbcp">Copiar</button><button class="btn sm danger" id="cbtroca">Trocar chave</button></div></div>'+
+      '<p class="small muted" style="margin:0">A chave já vai dentro do fluxo baixado. Se trocar a chave, baixe o fluxo de novo (ou troque o valor no nó <b>Enviar para a CIPA</b>).</p>'+
+      '<p class="small muted" style="margin:0">'+(ult?'Último e-mail recebido pelo n8n: <b>'+esc(dataBr(ult.em))+'</b>.':'O n8n ainda não mandou nenhum e-mail.')+'</p></div>';
+  }
+  app.innerHTML='<div class="stack">'+
+    '<header class="phead"><div class="pt"><span class="pic">👥</span><div style="min-width:0"><div class="lbl">Colaboradores</div><h2>Cadastro de colaboradores</h2>'+
+      '<div class="tema">Atualizado pelos e-mails de admitidos e demitidos</div></div></div>'+
+      '<span class="st'+(ult?' on':'')+'">'+(ult?'n8n: '+esc(dataBr(ult.em)):'n8n ainda não conectado')+'</span></header>'+
+    '<div class="stats">'+
+      '<div class="stat"><span class="si">👥</span><div><b>'+d.ativos+'</b><span class="l">ativos</span></div></div>'+
+      '<div class="stat" style="--c:#1f8a5b"><span class="si">🆕</span><div><b>'+novos+'</b><span class="l">admitidos pelo e-mail</span></div></div>'+
+      '<div class="stat" style="--c:#c0392b"><span class="si">⛔</span><div><b>'+d.bloqueados+'</b><span class="l">bloqueados (desligados)</span></div></div>'+
+      '<div class="stat'+(semCpf?' alerta':'')+'" style="--c:#d29500"><span class="si">🪪</span><div><b>'+semCpf+'</b><span class="l">ativos sem CPF</span></div></div>'+
+    '</div>'+
+    '<nav class="subnav" aria-label="Seções de colaboradores">'+abas.map(function(a){ return '<button data-ca="'+a[0]+'" aria-pressed="'+(CBA===a[0])+'">'+esc(a[1])+(a[2]!==undefined&&a[2]!==""?'<span class="n">'+a[2]+'</span>':'')+'</button>'; }).join("")+'</nav>'+
+    corpo+'</div>';
+  app.querySelectorAll("[data-ca]").forEach(function(b){ b.onclick=function(){ CBA=b.dataset.ca; CBPREV=null; desenhaColab(); }; });
+  if(CBA==="lista"){
+    app.querySelectorAll("#cbf [data-f]").forEach(function(b){ b.onclick=function(){ CBF=b.dataset.f; desenhaColab(); }; });
+    $("#cbq").oninput=function(){ CBQ=this.value; listaColab(); };
+    listaColab();
+  }
+  if(CBA==="atualizar") ligarColar();
+  if(CBA==="n8n"){
+    var vis=false;
+    $("#cbver").onclick=function(){ vis=!vis; $("#cbch").textContent=vis?d.chave:'•'.repeat(24); this.textContent=vis?"Esconder":"Mostrar"; };
+    $("#cbcp").onclick=function(){ (navigator.clipboard?navigator.clipboard.writeText(d.chave):Promise.reject()).then(function(){ toast("Chave copiada."); },function(){ prompt("Copie a chave:",d.chave); }); };
+    $("#cbtroca").onclick=function(){ if(!confirm("Trocar a chave? O fluxo do n8n que usa a chave atual para de funcionar até você baixar o fluxo de novo.")) return;
+      api("colabTrocarChave",AT).then(function(x){ CB=x; desenhaColab(); toast("Chave trocada. Baixe o fluxo de novo."); }).catch(function(e){ toast(e.message); }); };
+    $("#cbwf").onclick=function(){ baixarFluxo(d); };
+  }
+}
+function listaColab(){
+  var q=semAc(CBQ).trim(), l=CB.colaboradores.filter(function(x){
+    if(CBF==="ativos"&&!x.ativo) return false; if(CBF==="bloqueados"&&x.ativo) return false;
+    if(CBF==="novos"&&!(x.novo&&x.ativo)) return false; if(CBF==="semcpf"&&!(x.ativo&&!x.temCpf)) return false;
+    return !q||semAc(x.nome+" "+x.matricula+" "+x.escala+" "+x.setor+" "+x.cargo).indexOf(q)>=0; });
+  var mostra=l.slice(0,200);
+  $("#cblista").innerHTML=l.length?'<div class="card tbl cbl"><table><tbody>'+mostra.map(function(x){
+    return '<tr'+(x.ativo?'':' class="bloq"')+'><td>'+pessoaHtml(x.nome,x.escala)+'<div class="small muted">Matrícula '+esc(x.matricula)+(x.cargo?' · '+esc(x.cargo):'')+'</div></td>'+
+      '<td class="small">'+esc(x.setor||"—")+'</td>'+
+      '<td class="small">'+(x.ativo?'':'<span class="cbt dem">Bloqueado</span> <span class="muted">'+esc(x.demissao||dataBr(x.bloqueadoEm).split(" ")[0])+'</span>')+
+        (x.novo&&x.ativo?'<span class="cbt adm">Novo</span> ':'')+(x.ativo&&!x.temCpf?'<span class="cbt cpf">Sem CPF</span>':'')+'</td>'+
+      '<td style="text-align:right;white-space:nowrap"><button class="btn sm ghost" data-ed="'+esc(x.matricula)+'">Editar</button>'+
+        (x.ativo?'<button class="btn sm danger" data-bl="'+esc(x.matricula)+'">Bloquear</button>':'<button class="btn sm" data-desbl="'+esc(x.matricula)+'">Desbloquear</button>')+'</td></tr>'; }).join("")+'</tbody></table></div>'+
+    (l.length>mostra.length?'<p class="small muted" style="margin:6px 0 0">Mostrando 200 de '+l.length+'. Use a busca para achar os outros.</p>':'')
+    :'<div class="vazio">Ninguém aqui'+(q?' com essa busca':'')+'.</div>';
+  var acha=function(m){ return CB.colaboradores.find(function(x){ return x.matricula===m; }); };
+  app.querySelectorAll("[data-ed]").forEach(function(b){ b.onclick=function(){ editarColab(acha(b.dataset.ed)); }; });
+  app.querySelectorAll("[data-bl]").forEach(function(b){ b.onclick=function(){ var x=acha(b.dataset.bl);
+    if(!confirm("Bloquear "+x.nome+"? A pessoa não faz mais check-in nem entra na paródia ou no painel. Nada é apagado.")) return;
+    api("colabBloquear",AT,x.matricula,true).then(function(r){ CB=r; desenhaColab(); toast("Bloqueado."); }).catch(function(e){ toast(e.message); }); }; });
+  app.querySelectorAll("[data-desbl]").forEach(function(b){ b.onclick=function(){ var x=acha(b.dataset.desbl);
+    api("colabBloquear",AT,x.matricula,false).then(function(r){ CB=r; desenhaColab(); toast("Desbloqueado."); }).catch(function(e){ toast(e.message); }); }; });
+}
+function editarColab(x){
+  dlg('<div class="row" style="justify-content:space-between"><h2>Editar colaborador</h2><button class="btn sm ghost" id="fx" aria-label="Fechar">✕</button></div>'+
+    '<form id="fed" class="stack" novalidate><div class="small muted">Matrícula '+esc(x.matricula)+'</div>'+
+    '<label class="field"><span>Nome</span><input id="enome" maxlength="120" value="'+esc(x.nome)+'"></label>'+
+    '<label class="field"><span>Nome de escala (apelido)</span><input id="eesc" maxlength="60" value="'+esc(x.escala)+'"></label>'+
+    '<div class="row"><label class="field" style="flex:1 1 160px"><span>Cargo</span><input id="ecar" maxlength="120" value="'+esc(x.cargo)+'"></label>'+
+    '<label class="field" style="flex:1 1 160px"><span>Setor</span><input id="eset" maxlength="120" value="'+esc(x.setor)+'"></label></div>'+
+    '<label class="field"><span>CPF <span class="muted">('+(x.temCpf?'já cadastrado; deixe em branco para manter':'3 primeiros números ou o CPF completo')+')</span></span><input id="ecpf" inputmode="numeric" maxlength="14" autocomplete="off"></label>'+
+    '<div id="erred"></div><div class="row end"><button class="btn primary">Salvar</button></div></form>');
+  $("#fx").onclick=fecharDlg; $("#enome").focus();
+  $("#fed").onsubmit=function(e2){ e2.preventDefault();
+    api("colabSalvar",AT,x.matricula,{nome:$("#enome").value,escala:$("#eesc").value,cargo:$("#ecar").value,setor:$("#eset").value,cpf:$("#ecpf").value})
+      .then(function(r){ fecharDlg(); CB=r; desenhaColab(); toast("Salvo."); }).catch(function(e){ erroEm($("#erred"),e.message); }); };
+}
+function ligarColar(){
+  var conf=$("#cbconf");
+  conf.onclick=function(){ var tx=$("#cbtx").value; if(!tx.trim()){ erroEm($("#cberr"),"Cole o texto do e-mail."); return; }
+    erroEm($("#cberr"),""); busy(conf,true,"Conferindo…");
+    api("colabColar",AT,tx,$("#cbt").value,false).then(function(r){ busy(conf,false); CBPREV={texto:tx,tipo:r.previa.tipo,p:r.previa}; prevColab(); })
+      .catch(function(e){ busy(conf,false); erroEm($("#cberr"),e.message); }); };
+}
+function prevColab(){
+  var v=CBPREV.p, adm=v.tipo==="admitidos";
+  var nums=adm?[["🆕",v.novos,"novos","#1f8a5b"],["✏️",v.atualizados,"atualizados","#3e4095"],["↩️",v.reativados,"readmitidos","#d29500"]]
+              :[["⛔",v.bloqueados,"serão bloqueados","#c0392b"],["❔",v.naoAchados,"não estavam no cadastro","#d29500"],["✔",v.jaBloqueados,"já estavam bloqueados","#5a6380"]];
+  $("#cbprev").innerHTML='<div class="card pad stack"><div class="row" style="justify-content:space-between;align-items:center"><h3 style="margin:0">E-mail de <span class="cbt '+(adm?'adm':'dem')+'">'+(adm?'Admitidos':'Demitidos')+'</span> · '+v.lidos+' pessoa(s)</h3>'+
+      '<button class="btn primary" id="cbapl">'+(adm?'Confirmar e atualizar':'Confirmar e bloquear')+'</button></div>'+
+    '<div class="stats">'+nums.map(function(n){ return '<div class="stat" style="--c:'+n[3]+'"><span class="si">'+n[0]+'</span><div><b>'+n[1]+'</b><span class="l">'+n[2]+'</span></div></div>'; }).join("")+'</div>'+
+    '<div class="tbl"><table><tbody>'+v.pessoas.map(function(x){ return '<tr><td><b>'+esc(x.nome||"—")+'</b><div class="small muted">Matrícula '+esc(x.matricula)+(x.setor?' · '+esc(x.setor):'')+'</div></td><td class="small">'+esc(x.acao)+'</td></tr>'; }).join("")+'</tbody></table></div>'+
+    (v.ignoradas&&v.ignoradas.length?'<div class="note warn"><b>Linhas que não entendi</b> (confira se falta alguém):<ul style="margin:6px 0 0;padding-left:18px">'+v.ignoradas.map(function(x){ return '<li>'+esc(x)+'</li>'; }).join("")+'</ul></div>':'')+
+  '</div>';
+  $("#cbprev").scrollIntoView({behavior:"smooth",block:"start"});
+  $("#cbapl").onclick=function(){ var b=this; busy(b,true,"Gravando…");
+    api("colabColar",AT,CBPREV.texto,CBPREV.tipo,true).then(function(r){ CB=r; CBPREV=null; CBA="hist"; desenhaColab(); toast("Cadastro atualizado."); })
+      .catch(function(e){ busy(b,false); toast(e.message); }); };
+}
+function baixarFluxo(d){
+  var corpo='={{ JSON.stringify({ fn: "colabSync", args: ["'+d.chave+'", $json.textHtml || $json.textPlain || $json.text || "", $json.subject || "", "auto"] }) }}';
+  var wf={name:"CIPA – admitidos e demitidos",nodes:[
+    {parameters:{mailbox:"INBOX",postProcessAction:"read",format:"simple",options:{}},name:"E-mail do RH",type:"n8n-nodes-base.emailReadImap",typeVersion:2,position:[0,0]},
+    {parameters:{conditions:{options:{caseSensitive:false,leftValue:"",typeValidation:"loose"},combinator:"and",
+      conditions:[{id:"assunto",leftValue:"={{ ($json.subject || '').toLowerCase() }}",rightValue:"admiti|admiss|demiti|demiss|deslig",operator:{type:"string",operation:"regex"}}]},options:{}},
+      name:"Só admitidos e demitidos",type:"n8n-nodes-base.filter",typeVersion:2,position:[240,0]},
+    {parameters:{method:"POST",url:d.endpoint,sendBody:true,specifyBody:"json",jsonBody:corpo,options:{}},name:"Enviar para a CIPA",type:"n8n-nodes-base.httpRequest",typeVersion:4.2,position:[480,0]}],
+    connections:{"E-mail do RH":{main:[[{node:"Só admitidos e demitidos",type:"main",index:0}]]},"Só admitidos e demitidos":{main:[[{node:"Enviar para a CIPA",type:"main",index:0}]]}},
+    settings:{executionOrder:"v1"}};
+  var a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([JSON.stringify(wf,null,2)],{type:"application/json"}));
+  a.download="cipa-admitidos-demitidos.n8n.json"; document.body.appendChild(a); a.click(); setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); },500);
 }
 function carregarJurado(){ return api("parJuradoDados",JT).then(function(d){ DADOS=d; telaJurado(); }).catch(function(e){ store("par_jur",null); JT=null; toast(e.message); telaLoginJuri(); }); }
 function carregarAdmin(){ return api("parAdmin",AT).then(function(d){ DADOS=d; telaAdmin(); }).catch(function(e){ store("par_adm",null); AT=null; toast(e.message); telaLoginJuri("comissao"); }); }

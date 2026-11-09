@@ -19,7 +19,9 @@ const PERMITIDAS = ['ballot', 'consultar', 'login', 'votar', 'adminLogin', 'admi
     // presença nos eventos e sorteio de brindes
     'preQr', 'preDados', 'preEvento', 'preExcluirEvento', 'preMarcar', 'preDesmarcar', 'preSortear', 'preAnular', 'preStatus', 'preEventoInfo', 'preCheckin', 'preAbrir', 'preArquivar', 'preEstat',
     // /admin unificado: comissão (senha pessoal) e jurados
-    'acessoInicio', 'acessoEntrar', 'acessoCriarSenha', 'acessoLista', 'acessoIncluir', 'acessoRemover', 'acessoZerarSenha', 'acessoEu'];
+    'acessoInicio', 'acessoEntrar', 'acessoCriarSenha', 'acessoLista', 'acessoIncluir', 'acessoRemover', 'acessoZerarSenha', 'acessoEu',
+    // cadastro de colaboradores: e-mails de admitidos/demitidos (n8n ou colados no painel)
+    'colabSync', 'colabDados', 'colabColar', 'colabSalvar', 'colabBloquear', 'colabTrocarChave'];
 
 function responder($v, int $code = 200): never {
     http_response_code($code);

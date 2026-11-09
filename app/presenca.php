@@ -57,7 +57,7 @@ function pre_ler_codigo($cod): array {
         $mat = $m[1]; $como = 'QR Code';
     } elseif (preg_match('/^\d{1,20}$/', $cod)) { $mat = $cod; $como = 'Matrícula'; }
     else falha('Código não reconhecido. Leia o QR do colaborador ou digite a matrícula.');
-    $e = eleitor_por_mat($mat);
+    $e = colab_por_mat($mat);
     if (!$e) falha("Matrícula $mat não está na lista de colaboradores.");
     return [$e, $como];
 }
@@ -71,7 +71,7 @@ function pre_evento(int $id): array {
 
 function api_preQr($m, $c = ''): array {
     if (mat_norm($m) === '') falha('Digite sua matrícula.');
-    $e = eleitor_por_mat($m);
+    $e = colab_por_mat($m);
     if (!$e) falha('Matrícula não encontrada no cadastro de colaboradores. Procure a comissão da CIPA.');
     confere($e, $c);
     return ['nome' => $e['nome'], 'matricula' => $e['matricula'],
@@ -95,7 +95,7 @@ function api_preCheckin($tok, $m, $c = ''): array {
     $ev = pre_evento_tok($tok);
     if (!$ev['aberto']) falha('O check-in deste evento está encerrado. Procure a comissão da CIPA.');
     if (mat_norm($m) === '') falha('Digite sua matrícula.');
-    $e = eleitor_por_mat($m);
+    $e = colab_por_mat($m);
     if (!$e) falha('Matrícula não encontrada no cadastro de colaboradores. Procure a comissão da CIPA.');
     confere($e, $c);
     $st = pre_tabelas()->prepare('INSERT OR IGNORE INTO presencas(evento,mnorm,matricula,nome,setor,como,em) VALUES(?,?,?,?,?,?,?)');
@@ -122,9 +122,7 @@ function pre_dados(?int $ev = null): array {
         $st = $p->prepare('SELECT matricula,nome,setor,como,em FROM presencas WHERE evento=? ORDER BY em DESC'); $st->execute([$ev]);
         $pres = $st->fetchAll();
         // nome de escala (apelido) para o telão do QR; quem não tem fica vazio
-        $esc = [];
-        foreach (db()->query("SELECT mnorm,escala FROM eleitores WHERE escala<>'' ORDER BY ordem") as $e) $esc[$e['mnorm']] ??= trim((string)$e['escala']);
-        foreach ($pres as &$x) $x['escala'] = $esc[mat_norm($x['matricula'])] ?? ''; unset($x);
+        foreach ($pres as &$x) $x['escala'] = colab_escala((string)$x['matricula']); unset($x);
         $st = $p->prepare('SELECT id,matricula,nome,setor,brinde,em,status,entregue_em,ausente FROM sorteios WHERE evento=? ORDER BY id'); $st->execute([$ev]);
         $sort = array_map(fn($s) => ['id' => (int)$s['id'], 'ausente' => (bool)$s['ausente']] + $s, $st->fetchAll());
     }
@@ -204,7 +202,7 @@ function api_preEstat($t, $evento = null): array {
     $p = pre_tabelas();
     $semSetor = 'Sem setor';
     $tot = []; $setorDe = [];
-    foreach (db()->query('SELECT mnorm,setor FROM eleitores ORDER BY ordem') as $e) {
+    foreach (colab_ativos() as $e) {   // colaboradores ativos (desligados ficam fora da conta)
         if (isset($setorDe[$e['mnorm']])) continue;
         $s = trim((string)$e['setor']) ?: $semSetor;
         $setorDe[$e['mnorm']] = $s; $tot[$s] = ($tot[$s] ?? 0) + 1;
@@ -244,9 +242,8 @@ function api_preSortear($t, $evento, $brinde = ''): array {
       ->execute([$ev['id'], $g['mnorm'], $g['matricula'], $g['nome'], $g['setor'], $brinde, agora()]);
     $idS = (int)$p->lastInsertId();
     registrar('Sorteio de brinde', "{$ev['nome']} · " . ($brinde ?: 'brinde') . " · {$g['matricula']} – {$g['nome']} (entre " . count($c) . ')');
-    $e = eleitor_por_mat($g['matricula']);   // nome de escala (apelido) para o telão
     return ['ganhador' => ['id' => $idS, 'matricula' => $g['matricula'], 'nome' => $g['nome'],
-            'escala' => (string)($e['escala'] ?? ''), 'setor' => (string)$g['setor'], 'brinde' => $brinde],
+            'escala' => colab_escala((string)$g['matricula']), 'setor' => (string)$g['setor'], 'brinde' => $brinde],
             'concorreram' => count($c)] + pre_dados($ev['id']);
 }
 

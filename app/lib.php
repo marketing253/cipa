@@ -751,3 +751,6 @@ function api_recomecar($t, $tudo): array {
     } catch (Throwable $e) { $p->exec('ROLLBACK'); throw $e; }
     return admin_data();
 }
+
+// cadastro de colaboradores atualizado pelos e-mails do RH (admitidos/demitidos)
+require_once __DIR__ . '/colaboradores.php';
