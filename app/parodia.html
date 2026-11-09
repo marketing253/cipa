@@ -1122,11 +1122,11 @@ function telaPresenca(){
             var bts=x.status==="sorteado"?'<button class="btn sm ok" data-st="entregue" data-id="'+x.id+'">Entregue</button><button class="btn sm warn" data-st="pendente" data-id="'+x.id+'">Ausente</button>'
               :x.status==="pendente"?'<button class="btn sm ok" data-st="entregue" data-id="'+x.id+'">Entregue</button>'
               :'<button class="btn sm ghost" data-st="pendente" data-id="'+x.id+'" title="A pessoa não estava: entregar depois do evento">Ausente</button>';
-            return '<div class="g '+esc(x.status)+'"><span class="pos">'+(i+1)+'º</span><div><b>'+esc(x.nome)+'</b> '+sitHtml(x.status)+'<div class="small muted">'+esc(x.brinde||"Brinde")+' · '+esc(x.matricula)+'</div></div>'+
+            return '<div class="g '+esc(x.status)+'"><span class="pos">'+(i+1)+'º</span><div><b>'+esc(x.nome)+'</b> '+sitHtml(x.status,x)+'<div class="small muted">'+esc(x.brinde||"Brinde")+' · '+esc(x.matricula)+'</div></div>'+
               '<div class="bts">'+bts+'</div></div>'; }).join("")+'</div>'
             :'<div class="vazio">Nenhum sorteio ainda.</div>')+
         '</div>'+
-        cardPendentes(d.pendentes||[])+
+        cardPendentes(d.pendentes||[],d.recebidos||[])+
         (ev.arquivado?'':'<div class="card pad stack"><h3>Marcar na mão</h3>'+
           '<p class="small muted" style="margin:0">Para quem está sem celular: digite a matrícula ou leia o QR do colaborador.</p>'+
           '<form id="fm" class="row" novalidate><input id="mm" class="busca" style="flex:1 1 140px;width:auto" inputmode="numeric" autocomplete="off" placeholder="Matrícula"><button class="btn primary" id="mb">Marcar</button></form>'+
@@ -1166,26 +1166,31 @@ function telaPresenca(){
   vivoPresenca();
 }
 /* situação do brinde de cada ganhador */
-function sitHtml(s){ return s==="entregue"?'<span class="sit entregue">✓ Entregue</span>':s==="pendente"?'<span class="sit pendente">Ausente · entregar depois</span>':'<span class="sit sorteado">Acabou de sair</span>'; }
-function cardPendentes(l){
+function sitHtml(s,x){ return s==="entregue"?'<span class="sit entregue">✓ '+(x&&x.ausente?'Recebeu depois':'Entregue')+(x&&x.ausente&&x.entregue_em?' · '+esc(dataBr(x.entregue_em)):'')+'</span>':s==="pendente"?'<span class="sit pendente">Ausente · entregar depois</span>':'<span class="sit sorteado">Acabou de sair</span>'; }
+function cardPendentes(l,rec){
   return '<div class="card pad stack" id="pend"><div class="cab"><h3>📦 Brindes a entregar</h3>'+(l.length?'<span class="n">'+l.length+'</span>':'')+'</div>'+
     (l.length?'<p class="small muted" style="margin:0">Ganhadores que não estavam na hora (de todos os eventos). Quando a pessoa receber, toque em <b>Entregue</b>.</p>'+
       '<div class="gan">'+l.map(function(x){
         return '<div class="g pendente"><div><b>'+esc(x.nome)+'</b><div class="small muted">'+esc(x.brinde||"Brinde")+' · Matrícula '+esc(x.matricula)+(x.setor?' · '+esc(x.setor):'')+'</div>'+
           '<div class="small muted">'+esc(x.evento)+' · '+dataBr(x.em)+'</div></div>'+
-          '<div class="bts"><button class="btn sm ok" data-st="entregue" data-id="'+x.id+'">Entregue</button></div></div>'; }).join("")+'</div>'+
-      '<div><button class="btn sm" id="csvp">Baixar planilha dos pendentes</button></div>'
-      :'<div class="vazio">Nenhum brinde pendente. 👍</div>')+'</div>';
+          '<div class="bts"><button class="btn sm ok" data-st="entregue" data-id="'+x.id+'">Entregue</button></div></div>'; }).join("")+'</div>'
+      :'<div class="vazio">Nenhum brinde pendente. 👍</div>')+
+    (rec&&rec.length?'<details><summary class="small" style="cursor:pointer"><b>✓ Já receberam depois ('+rec.length+')</b></summary><div class="gan" style="margin-top:8px">'+rec.map(function(x){
+        return '<div class="g"><div><b>'+esc(x.nome)+'</b> <span class="sit entregue">✓ Recebeu</span><div class="small muted">'+esc(x.brinde||"Brinde")+' · Matrícula '+esc(x.matricula)+' · '+esc(x.evento)+'</div>'+
+          '<div class="small muted">Recebeu em <b>'+esc(dataBr(x.entregue_em))+'</b></div></div></div>'; }).join("")+'</div></details>':'')+
+    (l.length||(rec&&rec.length)?'<div><button class="btn sm" id="csvp">Baixar planilha dos brindes (a entregar e recebidos)</button></div>':'')+'</div>';
 }
 function ligarStatus(){
   app.querySelectorAll("[data-st]").forEach(function(b){ b.onclick=function(){
-    var st=b.dataset.st;
+    var st=b.dataset.st, pend=(PRE.pendentes||[]).find(function(x){ return x.id===+b.dataset.id; });
+    if(st==="entregue"&&pend&&!confirm("Confirmar que "+pend.nome+" recebeu o brinde"+(pend.brinde?" “"+pend.brinde+"”":"")+"?")) return;
     b.disabled=true;
     api("preStatus",AT,+b.dataset.id,st,PRE.evento).then(function(x){ PRE=x;
-      telaPresenca(); toast(st==="entregue"?"Marcado como entregue.":"Registrado como ausente: fica na lista de brindes a entregar."); })
+      telaPresenca(); toast(st==="entregue"?(pend?"Registrado: "+pend.nome+" recebeu o brinde.":"Marcado como entregue."):"Registrado como ausente: fica na lista de brindes a entregar."); })
     .catch(function(e){ b.disabled=false; toast(e.message); }); }; });
   var c=$("#csvp"); if(c) c.onclick=function(){
-    var l=[["Matrícula","Nome","Setor","Brinde","Evento","Sorteado em"]].concat((PRE.pendentes||[]).map(function(x){ return [x.matricula,x.nome,x.setor||"",x.brinde||"",x.evento,dataBr(x.em)]; }));
+    var l=[["Matrícula","Nome","Setor","Brinde","Evento","Sorteado em","Situação","Recebeu em"]].concat((PRE.pendentes||[]).map(function(x){ return [x.matricula,x.nome,x.setor||"",x.brinde||"",x.evento,dataBr(x.em),"Ausente · entregar",""]; }))
+      .concat((PRE.recebidos||[]).map(function(x){ return [x.matricula,x.nome,x.setor||"",x.brinde||"",x.evento,dataBr(x.em),"Recebeu depois",dataBr(x.entregue_em)]; }));
     var csv="\ufeff"+l.map(function(r){ return r.map(function(v){ return '"'+String(v).replace(/"/g,'""')+'"'; }).join(";"); }).join("\r\n");
     var a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"})); a.download="brindes a entregar.csv"; a.click(); };
 }

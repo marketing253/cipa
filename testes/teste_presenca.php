@@ -69,6 +69,9 @@ t('pendente de outro evento aparece no dia 2', count($d['pendentes']) === 1 && $
 t('pendente não vira entregue ao sortear outro evento', $d['pendentes'][0]['id'] === $idPend);
 $d = api_preStatus($A, $idPend, 'entregue', $ev2);
 t('entregar depois tira dos pendentes e fica no evento da tela', count($d['pendentes']) === 0 && $d['evento'] === $ev2);
+t('fica registrado que recebeu depois', count($d['recebidos']) === 1 && $d['recebidos'][0]['id'] === $idPend && $d['recebidos'][0]['entregue_em'] !== null);
+$sv = array_values(array_filter(api_preDados($A, $ev)['sorteios'], fn($x) => $x['id'] === $idPend))[0];
+t('no evento aparece como ausente que recebeu', $sv['status'] === 'entregue' && $sv['ausente'] === true);
 // check-in pelo celular com o QR da mesa
 $tk = api_preDados($A, $ev2)['eventos'][0]['token'];
 t('evento tem token', (bool)preg_match('/^[0-9a-f]{24}$/', $tk));

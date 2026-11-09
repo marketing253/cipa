@@ -35,6 +35,8 @@ function pre_tabelas(): PDO {
     $cs = array_column($p->query('PRAGMA table_info(sorteios)')->fetchAll(), 'name');
     if (!in_array('status', $cs, true)) $p->exec("ALTER TABLE sorteios ADD COLUMN status TEXT NOT NULL DEFAULT 'entregue'");
     if (!in_array('entregue_em', $cs, true)) $p->exec('ALTER TABLE sorteios ADD COLUMN entregue_em TEXT');
+    // marca de quem estava ausente na hora: continua 1 depois de receber, para o registro "recebeu depois" (09/11/2026)
+    if (!in_array('ausente', $cs, true)) { $p->exec('ALTER TABLE sorteios ADD COLUMN ausente INTEGER NOT NULL DEFAULT 0'); $p->exec("UPDATE sorteios SET ausente=1 WHERE status='pendente'"); }
     foreach ($p->query("SELECT id FROM presenca_eventos WHERE token IS NULL OR token=''")->fetchAll() as $r)
         $p->prepare('UPDATE presenca_eventos SET token=? WHERE id=?')->execute([bin2hex(random_bytes(12)), $r['id']]);
     $feito = true;
@@ -123,13 +125,16 @@ function pre_dados(?int $ev = null): array {
         $esc = [];
         foreach (db()->query("SELECT mnorm,escala FROM eleitores WHERE escala<>'' ORDER BY ordem") as $e) $esc[$e['mnorm']] ??= trim((string)$e['escala']);
         foreach ($pres as &$x) $x['escala'] = $esc[mat_norm($x['matricula'])] ?? ''; unset($x);
-        $st = $p->prepare('SELECT id,matricula,nome,setor,brinde,em,status,entregue_em FROM sorteios WHERE evento=? ORDER BY id'); $st->execute([$ev]);
-        $sort = array_map(fn($s) => ['id' => (int)$s['id']] + $s, $st->fetchAll());
+        $st = $p->prepare('SELECT id,matricula,nome,setor,brinde,em,status,entregue_em,ausente FROM sorteios WHERE evento=? ORDER BY id'); $st->execute([$ev]);
+        $sort = array_map(fn($s) => ['id' => (int)$s['id'], 'ausente' => (bool)$s['ausente']] + $s, $st->fetchAll());
     }
     // ausentes de todos os eventos que ainda não receberam o brinde
     $pend = array_map(fn($s) => ['id' => (int)$s['id']] + $s, $p->query("SELECT s.id,s.matricula,s.nome,s.setor,s.brinde,s.em,e.nome AS evento
         FROM sorteios s JOIN presenca_eventos e ON e.id=s.evento WHERE s.status='pendente' ORDER BY s.id")->fetchAll());
-    return ['eventos' => $eventos, 'evento' => $ev, 'presentes' => $pres, 'sorteios' => $sort, 'pendentes' => $pend, 'urlApp' => function_exists('url_publica') ? url_publica() : url_base()];
+    // ausentes que já receberam depois (registro de entrega)
+    $rec = array_map(fn($s) => ['id' => (int)$s['id']] + $s, $p->query("SELECT s.id,s.matricula,s.nome,s.setor,s.brinde,s.em,s.entregue_em,e.nome AS evento
+        FROM sorteios s JOIN presenca_eventos e ON e.id=s.evento WHERE s.status='entregue' AND s.ausente=1 ORDER BY s.entregue_em DESC")->fetchAll());
+    return ['eventos' => $eventos, 'evento' => $ev, 'presentes' => $pres, 'sorteios' => $sort, 'pendentes' => $pend, 'recebidos' => $rec, 'urlApp' => function_exists('url_publica') ? url_publica() : url_base()];
 }
 
 function api_preDados($t, $evento = null): array { exige_admin($t); return pre_dados($evento ? (int)$evento : null); }
@@ -260,13 +265,15 @@ function api_preAnular($t, $id): array {
 /* entregue / ausente (pendente: entregar depois do evento) / sorteado (desfazer) */
 function api_preStatus($t, $id, $status, $evento = null): array {
     exige_admin($t);
-    $rot = ['entregue' => 'Brinde entregue', 'pendente' => 'Ganhador ausente (entregar depois)', 'sorteado' => 'Entrega desfeita'];
+    $rot = ['entregue' => 'Brinde entregue (recebeu)', 'pendente' => 'Ganhador ausente (entregar depois)', 'sorteado' => 'Entrega desfeita'];
     if (!isset($rot[$status])) falha('Situação inválida.');
     $p = pre_tabelas();
     $st = $p->prepare('SELECT * FROM sorteios WHERE id=?'); $st->execute([(int)$id]);
     $s = $st->fetch() ?: falha('Sorteio não encontrado.');
-    $p->prepare('UPDATE sorteios SET status=?, entregue_em=? WHERE id=?')
-      ->execute([$status, $status === 'entregue' ? agora() : null, $s['id']]);
+    // ausente fica marcado (ausente=1) mesmo depois de receber; "desfazer" volta ao normal
+    $aus = $status === 'pendente' ? 1 : ($status === 'sorteado' ? 0 : (int)$s['ausente']);
+    $p->prepare('UPDATE sorteios SET status=?, entregue_em=?, ausente=? WHERE id=?')
+      ->execute([$status, $status === 'entregue' ? agora() : null, $aus, $s['id']]);
     registrar($rot[$status], "{$s['matricula']} – {$s['nome']}" . ($s['brinde'] ? " · {$s['brinde']}" : ''));
     return pre_dados($evento ? (int)$evento : (int)$s['evento']);   // continua no evento que está aberto na tela
 }
