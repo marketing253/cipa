@@ -14,7 +14,7 @@ const PERMITIDAS = ['ballot', 'consultar', 'login', 'votar', 'adminLogin', 'admi
     'fotoEnviar', 'inscConsultar', 'inscrever', 'auditoria', 'saveAgenda', 'recomecar', 'pedirFoto', 'inscNovaFoto',
     // concurso de paródias
     'parInfo', 'parConsultar', 'parSalvar', 'parJuradoLogin', 'parJuradoDados', 'parValidar', 'parNota',
-    'parAdmin', 'parSaveCfg', 'parJurado', 'parExcluir',
+    'parAdmin', 'parFinalizar', 'parEdicao', 'parSaveCfg', 'parJurado', 'parExcluir',
     // presença nos eventos e sorteio de brindes
     'preQr', 'preDados', 'preEvento', 'preExcluirEvento', 'preMarcar', 'preDesmarcar', 'preSortear', 'preAnular', 'preStatus', 'preEventoInfo', 'preCheckin', 'preAbrir', 'preArquivar', 'preEstat'];
 

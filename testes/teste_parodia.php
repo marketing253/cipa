@@ -77,7 +77,7 @@ t('jurado vê só as 2 aprovadas', count($jd['parodias']) === 2 && !isset($jd['p
 t('própria marcada', api_parJuradoDados($J1)['parodias'][0]['propria'] === true);
 erro('nota incompleta', fn() => api_parNota($J, 1, [8, 8]), 'cada critério');
 erro('nota fora da escala', fn() => api_parNota($J, 1, [8, 11, 8]), '0 a 10');
-erro('nota quebrada', fn() => api_parNota($J, 1, [8, 9.5, 8]), '0 a 10');
+erro('nota com duas casas', fn() => api_parNota($J, 1, [8, 9.55, 8]), 'uma casa decimal');
 erro('nota à própria', fn() => api_parNota($J1, 1, [10, 10, 10]), 'própria');
 api_parNota($J, 1, [8, 9, 7], 'Muito boa');
 $J2 = api_parJuradoLogin('2005', '125')['token'];
@@ -114,6 +114,28 @@ erro('sem sessão de comissão', fn() => api_parAdmin('x'), 'expirada');
 $ad = api_parExcluir($A, 3);
 t('excluiu', count($ad['parodias']) === 2);
 t('registro no log', (int)db()->query("SELECT COUNT(*) FROM log WHERE acao LIKE 'Paródia%'")->fetchColumn() >= 5);
+
+// nota quebrada (uma casa) e finalizar o concurso no histórico (09/11/2026)
+$apv = array_values(array_filter(api_parAdmin($A)['parodias'], fn($x) => $x['status'] === 'aprovada'));
+if ($apv) {
+    $alvo = $apv[0]['id'];
+    try { api_parJurado($A, '2005'); } catch (Erro $e) {}   // o 2005 foi removido antes: volta a ser jurado
+    $J3 = api_parJuradoLogin('2005', '125')['token'];
+    $r3 = api_parNota($J3, $alvo, [8.7, 9.3, 7.5]);
+    $minha = array_values(array_filter($r3['parodias'], fn($x) => $x['id'] === $alvo))[0]['minhaNota']['notas'];
+    $ok2 = $minha === [8.7, 9.3, 7.5];
+    t('aceita nota quebrada', $ok2);
+}
+$antes = count(api_parAdmin($A)['parodias']);
+erro('finalizar sem login', fn() => api_parFinalizar('x'), 'expirada');
+$ad = api_parFinalizar($A, 'Concurso de Paródias 2026');
+t('finalizou: lista limpa', $ad['parodias'] === [] && count($ad['edicoes']) === 1 && $ad['edicoes'][0]['equipes'] === $antes);
+t('finalizou: inscrições fechadas', $ad['cfg']['inscricoes'] === 'nao');
+$ed = api_parEdicao($A, $ad['edicoes'][0]['id']);
+t('histórico guarda paródias e notas', count($ed['parodias']) === $antes && $ed['titulo'] === 'Concurso de Paródias 2026' && isset($ed['criterios']));
+t('histórico sem celular', !array_key_exists('celular', $ed['parodias'][0]));
+erro('finalizar vazio', fn() => api_parFinalizar($A), 'Não há paródias');
+erro('edição inexistente', fn() => api_parEdicao($A, 999), 'não encontrado');
 
 echo "\n$ok ok, $ko falha(s)\n";
 exit($ko ? 1 : 0);

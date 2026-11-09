@@ -35,6 +35,7 @@ function par_tabelas(): PDO {
             parodia INTEGER NOT NULL, jurado TEXT NOT NULL, notas TEXT NOT NULL, comentario TEXT, em TEXT NOT NULL,
             PRIMARY KEY (parodia, jurado));
         CREATE TABLE IF NOT EXISTS parodia_fotos (chave TEXT PRIMARY KEY, parodia INTEGER NOT NULL, ordem INTEGER NOT NULL, dados TEXT NOT NULL);
+        CREATE TABLE IF NOT EXISTS parodia_edicoes (id INTEGER PRIMARY KEY AUTOINCREMENT, titulo TEXT NOT NULL, finalizado_em TEXT NOT NULL, dados TEXT NOT NULL);
     SQL);
     $feito = true;
     return $p;
@@ -241,13 +242,14 @@ function api_parNota($t, $id, $notas, $comentario = ''): array {
     if (count($notas) !== count($crit)) falha('Dê uma nota para cada critério.');
     $limpas = [];
     foreach ($notas as $i => $n) {
-        if (!is_numeric($n) || $n < 0 || $n > 10 || (float)$n != (int)$n) falha('Escolha uma nota de 0 a 10 (' . $crit[$i] . ').');
-        $limpas[] = (int)$n;
+        // nota quebrada com uma casa (ex.: 8,7) para diminuir empate (09/11/2026)
+        if (!is_numeric($n) || $n < 0 || $n > 10 || abs(round($n * 10) - $n * 10) > 1e-6) falha('Escolha uma nota de 0 a 10, com até uma casa decimal (' . $crit[$i] . ').');
+        $limpas[] = round((float)$n, 1);
     }
     par_tabelas()->prepare('INSERT INTO parodia_notas(parodia,jurado,notas,comentario,em) VALUES(?,?,?,?,?)
         ON CONFLICT(parodia,jurado) DO UPDATE SET notas=excluded.notas, comentario=excluded.comentario, em=excluded.em')
         ->execute([$p['id'], $j['mnorm'], json_encode($limpas), txt($comentario, 400), agora()]);
-    registrar('Nota de jurado', "Equipe {$p['equipe']} · total " . array_sum($limpas), 'Jurado ' . $j['nome']);
+    registrar('Nota de jurado', "Equipe {$p['equipe']} · total " . round(array_sum($limpas), 1), 'Jurado ' . $j['nome']);
     return api_parJuradoDados($t);
 }
 
@@ -275,12 +277,12 @@ function par_admin_dados(): array {
             $deve[$j['mnorm']]++;
             if (isset($deu[$x['id']][$j['mnorm']])) $avaliou[$j['mnorm']]++; else $faltam[] = $j['apelido'];
         }
-        return $x + ['notas' => $ns, 'faltam' => $faltam, 'media' => $tot ? round(array_sum($tot) / count($tot), 2) : null];
+        return $x + ['notas' => $ns, 'faltam' => $faltam, 'media' => $tot ? round(array_sum($tot) / count($tot), 3) : null];
     }, par_lista());
     return ['cfg' => par_cfg(), 'situacao' => par_situacao(par_cfg()), 'criterios' => $crit,
             'jurados' => array_map(fn($j) => ['matricula' => $j['matricula'], 'nome' => $j['nome'], 'escala' => $j['escala'],
                 'avaliou' => $avaliou[$j['mnorm']], 'deve' => $deve[$j['mnorm']]], $jur),
-            'parodias' => $lista, 'agora' => agora_local(), 'urlApp' => url_publica()];
+            'parodias' => $lista, 'agora' => agora_local(), 'urlApp' => url_publica(), 'edicoes' => par_edicoes()];
 }
 
 /* aprovar | recusar (não aprovar, motivo opcional, a equipe vê) | reabrir (volta para aguardando) */
@@ -298,6 +300,49 @@ function api_parValidar($t, $id, $acao, $motivo = ''): array {
 }
 
 function api_parAdmin($t): array { exige_admin($t); return par_admin_dados(); }
+
+/* =================== histórico (concursos finalizados) =================== */
+
+function par_edicoes(): array {
+    return array_map(function ($r) {
+        $d = json_decode($r['dados'], true) ?: [];
+        $ap = array_values(array_filter($d['parodias'] ?? [], fn($p) => ($p['status'] ?? '') === 'aprovada' && $p['media'] !== null));
+        usort($ap, fn($a, $b) => $b['media'] <=> $a['media']);
+        return ['id' => (int)$r['id'], 'titulo' => $r['titulo'], 'finalizadoEm' => $r['finalizado_em'],
+                'equipes' => count($d['parodias'] ?? []), 'podio' => array_map(fn($p) => $p['equipe'], array_slice($ap, 0, 3))];
+    }, par_tabelas()->query('SELECT id,titulo,finalizado_em,dados FROM parodia_edicoes ORDER BY id DESC')->fetchAll());
+}
+
+/* finaliza o concurso: guarda tudo (paródias, notas por jurado, médias, letras e fotos) numa edição do histórico,
+   fecha as inscrições e deixa a lista limpa para o próximo concurso. As fotos ficam no banco (os links continuam valendo). */
+function api_parFinalizar($t, $titulo = ''): array {
+    exige_admin($t);
+    $d = par_admin_dados();
+    if (!$d['parodias']) falha('Não há paródias para finalizar.');
+    $titulo = txt($titulo, 120) ?: $d['cfg']['titulo'];
+    $dados = ['titulo' => $titulo, 'tema' => $d['cfg']['tema'], 'criterios' => $d['criterios'],
+              'jurados' => array_map(fn($j) => ['matricula' => $j['matricula'], 'nome' => $j['nome'], 'escala' => $j['escala'] ?? ''], $d['jurados']),
+              'parodias' => array_map(function ($p) { unset($p['celular'], $p['faltam']); return $p; }, $d['parodias'])];
+    $p = par_tabelas();
+    $p->beginTransaction();
+    try {
+        $p->prepare('INSERT INTO parodia_edicoes(titulo,finalizado_em,dados) VALUES(?,?,?)')
+          ->execute([$titulo, agora(), json_encode($dados, JSON_UNESCAPED_UNICODE)]);
+        $p->exec('DELETE FROM parodia_notas');
+        $p->exec('DELETE FROM parodias');
+        $cfg = par_cfg(); $cfg['inscricoes'] = 'nao'; kv_set('parodia', $cfg);
+        $p->commit();
+    } catch (Throwable $e) { $p->rollBack(); throw $e; }
+    registrar('Concurso de paródias finalizado', $titulo . ' · ' . count($dados['parodias']) . ' paródia(s) guardadas no histórico');
+    return api_parAdmin($t);
+}
+
+function api_parEdicao($t, $id): array {
+    exige_admin($t);
+    $st = par_tabelas()->prepare('SELECT * FROM parodia_edicoes WHERE id=?'); $st->execute([(int)$id]);
+    $r = $st->fetch() ?: falha('Concurso não encontrado no histórico.');
+    return ['id' => (int)$r['id'], 'finalizadoEm' => $r['finalizado_em']] + (json_decode($r['dados'], true) ?: []);
+}
 
 function api_parSaveCfg($t, $c): array {
     exige_admin($t); $c = (array)$c; $cfg = par_cfg();
