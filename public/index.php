@@ -2,7 +2,8 @@
 /*
  * Serve a urna (app/urna.html) no modo "php", que fala com api.php.
  *   /             eleitor
- *   /admin        administração da comissão eleitoral (também /comissao)
+ *   /admin        painel unificado (comissão: eleição, paródias, presença, configuração; jurado: só a votação)
+ *   /comissao     administração da eleição (dentro do /admin com ?embed=1)
  *   /inscricao    inscrição de candidatos pelo celular
  *   /totem        tablet fixo: tela cheia, tela ligada, volta ao início sem uso
  *   /foto/TOKEN   foto do candidato pelo celular (QR Code)
@@ -51,11 +52,10 @@ if ($p === 'foto-cand') {
     echo base64_decode($m[2]);
     exit;
 }
-if ($p === 'admin') $p = 'comissao';
 if ($p === 'parodias') $p = 'parodia';
 if ($p === 'jurado') $p = 'jurados';
 if ($p === 'presença') $p = 'presenca';
-if ($p === 'parodia' || $p === 'jurados' || $p === 'qr' || $p === 'presenca' || $p === 'checkin') {
+if ($p === 'parodia' || $p === 'jurados' || $p === 'qr' || $p === 'presenca' || $p === 'checkin' || $p === 'admin') {
     $html = preg_replace('/<head>/', '<head><base href="/">', file_get_contents(dirname(__DIR__) . '/app/parodia.html'), 1);
     if ($p === 'parodia') {   // prévia do link no WhatsApp: só a inscrição da paródia tem imagem própria
         $host = preg_replace('/[^a-z0-9.:-]/i', '', (string)($_SERVER['HTTP_HOST'] ?? 'parodia.redentorhub.com.br'));
@@ -90,13 +90,16 @@ try {
         ['content="CIPA 2026 · Inscrições abertas"', 'content="Candidate-se à CIPA pelo celular, em poucos minutos."', 'og-cipa.jpg', 'redentorhub.com.br/inscricao"'],
         ['content="CIPA 2026 · ' . $og[0] . '"', 'content="' . $og[1] . '"', $og[2], 'redentorhub.com.br/"'], $html);
 } catch (Throwable $e) { error_log('[urna-cipa] prévia: ' . $e->getMessage()); }
-$cfg = '<script>window.__MODE__="php";window.__PAGE__=' . json_encode($p) . ';window.__TOK__=' . json_encode($tok) . ';</script>';
+// a eleição aberta dentro do /admin unificado (mesma origem): usa o login de lá e esconde o cabeçalho
+$embed = $p === 'comissao' && !empty($_GET['embed']);
+$cfg = '<script>window.__MODE__="php";window.__PAGE__=' . json_encode($p) . ';window.__TOK__=' . json_encode($tok) . ';' . ($embed ? 'window.__EMBED__=true;' : '') . '</script>';
 $pos = strpos($html, "<script>\n(function(){");
 $html = $pos === false ? str_replace('</head>', $cfg . '</head>', $html) : substr_replace($html, $cfg . "\n", $pos, 0);
 
 header('Content-Type: text/html; charset=utf-8');
 header('Cache-Control: no-store');
 header('X-Content-Type-Options: nosniff');
-header('X-Frame-Options: DENY');
+header($embed ? 'X-Frame-Options: SAMEORIGIN' : 'X-Frame-Options: DENY');
+if ($embed) header("Content-Security-Policy: frame-ancestors 'self'");
 header('Referrer-Policy: no-referrer');
 echo $html;

@@ -45,6 +45,23 @@ button{cursor:pointer}
 [hidden]{display:none!important}
 :focus-visible{outline:3px solid color-mix(in srgb,var(--accent) 55%,transparent);outline-offset:2px}
 .wrap{max-width:980px;margin:0 auto}
+html.painel .wrap{max-width:1320px}
+.shell{display:grid;grid-template-columns:250px minmax(0,1fr);gap:22px;align-items:start}
+.menu{position:sticky;top:16px;display:flex;flex-direction:column;gap:4px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:10px;box-shadow:var(--shadow)}
+.menu .mh{font-size:.72rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);padding:6px 10px 4px}
+.menu button{display:flex;gap:10px;align-items:center;text-align:left;border:0;background:none;border-radius:12px;padding:10px 12px;color:var(--ink);cursor:pointer}
+.menu button .i{font-size:1.25rem;width:28px;text-align:center;flex:none}
+.menu button b{display:block;font-size:.95rem} .menu button small{display:block;color:var(--muted);font-size:.74rem;line-height:1.25}
+.menu button:hover{background:var(--surface-2)}
+.menu button[aria-current="page"]{background:linear-gradient(135deg,#16203a,#3e4095);color:#fff;box-shadow:0 8px 20px -10px rgba(22,32,58,.7)}
+.menu button[aria-current="page"] small{color:#ffd76a}
+.menu .eu{border-top:1px solid var(--line);margin-top:6px;padding:10px 10px 4px;font-size:.8rem;color:var(--muted)}
+.conteudo{min-width:0}
+.eleicao{width:100%;height:calc(100vh - 150px);min-height:640px;border:1px solid var(--line);border-radius:var(--r);background:var(--surface);box-shadow:var(--shadow)}
+@media (max-width:860px){.shell{grid-template-columns:1fr}.menu{position:static;flex-direction:row;overflow-x:auto;padding:6px}.menu .mh,.menu .eu,.menu button small{display:none}.menu button{flex:none;white-space:nowrap}}
+.acs .tbl td{vertical-align:middle}
+.nivel{display:inline-block;padding:2px 10px;border-radius:999px;font-size:.74rem;font-weight:800}
+.nivel.comissao{background:#3e4095;color:#fff} .nivel.jurado{background:#ffd76a;color:#16203a}
 .narrow{max-width:640px;margin:0 auto}
 .muted{color:var(--muted)} .small{font-size:.86rem}
 .lbl{font-size:.72rem;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);font-weight:700}
@@ -626,6 +643,7 @@ function telaEnviada(x){
 var JT=store("par_jur"), AT=store("par_adm"), DADOS=null, FILTRO="todas", ABA="parodias";
 
 function telaLoginJuri(modo){
+  if(PAGE==="admin") return telaLoginAdmin();
   quem("");
   modo=modo||"jurado";
   app.innerHTML='<div class="narrow"><div class="card pad stack">'+
@@ -646,8 +664,118 @@ function telaLoginJuri(modo){
       .catch(function(e){ busy(b,false); erroEm($("#err"),e.message); });
   };
 }
-function sair(){ pararCamera(); store("par_jur",null); store("par_adm",null); JT=AT=null; DADOS=null; telaLoginJuri(PAGE==="presenca"?"comissao":undefined); }
+function sair(){ pararCamera(); clearTimeout(VIVOP); store("par_jur",null); store("par_adm",null); JT=AT=null; DADOS=null; EU=null; telaLoginJuri(PAGE==="presenca"?"comissao":undefined); }
 
+/* =================== /admin unificado =================== */
+var RAIZ=app, SECAO=store("adm_secao")||"parodias", EU=null;
+var MENU=[["eleicao","🗳️","Eleição da CIPA","Candidatos, votação e resultado"],["parodias","🎤","Paródias","Inscrições, jurados e apuração"],
+  ["presenca","📋","Presença e sorteio","Check-in, brindes e estatísticas"],["config","⚙️","Configuração","Quem acessa e o nível de cada um"]];
+function telaLoginAdmin(){
+  app=RAIZ; quem(""); document.documentElement.classList.remove("painel");
+  app.innerHTML='<div class="narrow"><div class="card pad stack entra"><div><div class="lbl">Painel da CIPA</div><h2 style="margin-top:4px">Entrar</h2>'+
+    '<p class="muted" style="margin:6px 0 0">Comissão e jurados entram aqui com a matrícula.</p></div><div id="caixa" class="stack"></div>'+
+    '<button class="btn sm ghost" id="admusr" style="align-self:center">Entrar como administrador (usuário e senha)</button></div></div>';
+  $("#admusr").onclick=loginAdminUsuario;
+  passo1();
+  function passo1(){
+    $("#caixa").innerHTML='<form id="f1" class="stack" novalidate><div class="small muted">Passo 1 de 2</div><label class="field"><span>Sua matrícula</span><input id="mat" inputmode="numeric" autocomplete="username"></label><div id="err"></div><button class="btn primary lg" id="b1">Avançar</button></form>';
+    $("#mat").focus();
+    $("#f1").onsubmit=function(ev){ ev.preventDefault(); var m=$("#mat").value.trim(), b=$("#b1"); if(!m){ erroEm($("#err"),"Digite sua matrícula."); return; }
+      busy(b,true,"Verificando…");
+      api("acessoInicio",m).then(function(r){ passo2(m,r); }).catch(function(e){ busy(b,false); erroEm($("#err"),e.message); }); };
+  }
+  function passo2(m,r){
+    var volta='<button type="button" class="btn sm ghost" id="volta">← Trocar matrícula</button>';
+    if(r.nivel==="jurado"){
+      $("#caixa").innerHTML='<form id="f2" class="stack" novalidate><div class="small muted">Passo 2 de 2 · <span class="nivel jurado">Jurado</span></div>'+
+        '<label class="field"><span>3 primeiros números do CPF</span><input id="cpf" inputmode="numeric" maxlength="3" autocomplete="off"></label><div id="err"></div><button class="btn primary lg" id="b2">Entrar</button>'+volta+'</form>';
+      $("#cpf").focus();
+      $("#f2").onsubmit=function(ev){ ev.preventDefault(); var b=$("#b2"); busy(b,true,"Entrando…");
+        api("parJuradoLogin",m,$("#cpf").value).then(function(x){ JT=x.token; store("par_jur",JT); return carregarJurado(); }).catch(function(e){ busy(b,false); erroEm($("#err"),e.message); }); };
+    } else if(r.temSenha){
+      $("#caixa").innerHTML='<form id="f2" class="stack" novalidate><div class="small muted">Passo 2 de 2 · <span class="nivel comissao">Comissão</span></div><h3 style="margin:0">Olá, '+esc(r.nome)+'</h3>'+
+        '<label class="field"><span>Sua senha</span><input id="sen" type="password" autocomplete="current-password"></label><div id="err"></div><button class="btn primary lg" id="b2">Entrar</button>'+volta+
+        '<p class="small muted" style="margin:0">Esqueceu a senha? Peça para outra pessoa da comissão zerar em Configuração.</p></form>';
+      $("#sen").focus();
+      $("#f2").onsubmit=function(ev){ ev.preventDefault(); var b=$("#b2"); busy(b,true,"Entrando…");
+        api("acessoEntrar",m,$("#sen").value).then(entrouComissao).catch(function(e){ busy(b,false); erroEm($("#err"),e.message); }); };
+    } else {
+      $("#caixa").innerHTML='<form id="f2" class="stack" novalidate><div class="small muted">Primeiro acesso · <span class="nivel comissao">Comissão</span></div><h3 style="margin:0">Olá, '+esc(r.nome)+'! Crie sua senha</h3>'+
+        '<label class="field"><span>3 primeiros números do CPF</span><input id="cpf" inputmode="numeric" maxlength="3" autocomplete="off"></label>'+
+        '<label class="field"><span>Nova senha <span class="muted">(mínimo 6 caracteres)</span></span><input id="sen" type="password" autocomplete="new-password"></label>'+
+        '<label class="field"><span>Repita a senha</span><input id="sen2" type="password" autocomplete="new-password"></label><div id="err"></div><button class="btn primary lg" id="b2">Criar senha e entrar</button>'+volta+'</form>';
+      $("#cpf").focus();
+      $("#f2").onsubmit=function(ev){ ev.preventDefault(); var b=$("#b2");
+        if($("#sen").value!==$("#sen2").value){ erroEm($("#err"),"As duas senhas não são iguais."); return; }
+        busy(b,true,"Criando…");
+        api("acessoCriarSenha",m,$("#cpf").value,$("#sen").value).then(entrouComissao).catch(function(e){ busy(b,false); erroEm($("#err"),e.message); }); };
+    }
+    $("#volta").onclick=passo1;
+  }
+}
+function loginAdminUsuario(){
+  $("#caixa").innerHTML='<form id="f" class="stack" novalidate><label class="field"><span>Usuário</span><input id="usu" autocomplete="username" value="admin"></label>'+
+    '<label class="field"><span>Senha</span><input id="sen" type="password" autocomplete="current-password"></label><div id="err"></div><button class="btn primary lg" id="go">Entrar</button></form>';
+  $("#admusr").hidden=true; $("#sen").focus();
+  $("#f").onsubmit=function(ev){ ev.preventDefault(); var b=$("#go"); busy(b,true,"Entrando…");
+    api("adminLogin",$("#usu").value,$("#sen").value).then(function(r){ entrouComissao({token:r.token,nome:"Administrador"}); }).catch(function(e){ busy(b,false); erroEm($("#err"),e.message); }); };
+}
+function entrouComissao(r){ AT=r.token; store("par_adm",AT); EU={nome:r.nome||"Comissão"}; montarPainel(); }
+function montarPainel(){
+  pararCamera(); clearTimeout(VIVOP); clearTimeout(VIVO);
+  app=RAIZ; document.documentElement.classList.add("painel","redentor");
+  if(!EU) api("acessoEu",AT).then(function(x){ EU=x; var e=$(".menu .eu b"); if(e) e.textContent=x.nome; }).catch(function(){});
+  RAIZ.innerHTML='<div class="shell"><nav class="menu" aria-label="Menu do painel"><div class="mh">Painel da CIPA</div>'+
+    MENU.map(function(m){ return '<button data-sec="'+m[0]+'"'+(SECAO===m[0]?' aria-current="page"':'')+'><span class="i">'+m[1]+'</span><span><b>'+m[2]+'</b><small>'+m[3]+'</small></span></button>'; }).join("")+
+    '<div class="eu">Conectado: <b>'+esc(EU?EU.nome:"…")+'</b></div></nav><section class="conteudo" id="conteudo"><div class="loading">Carregando…</div></section></div>';
+  RAIZ.querySelectorAll("[data-sec]").forEach(function(b){ b.onclick=function(){ SECAO=b.dataset.sec; store("adm_secao",SECAO); if(SECAO==="parodias") ABA="parodias"; montarPainel(); }; });
+  app=$("#conteudo");
+  if(SECAO==="eleicao"){ quem('<span>'+esc(EU?EU.nome.split(" ")[0]:"Comissão")+'</span><button class="btn sm" id="sair">Sair</button>'); $("#sair").onclick=sair;
+    app.innerHTML='<iframe class="eleicao" src="comissao?embed=1" title="Eleição da CIPA"></iframe>'; }
+  else if(SECAO==="presenca") carregarPresenca();
+  else if(SECAO==="config") telaAcessos();
+  else carregarAdmin();
+}
+window.addEventListener("message",function(e){ if(e.origin===location.origin&&e.data&&e.data.cipa==="sair"&&PAGE==="admin") sair(); });
+
+/* Configuração: quem entra no painel e com qual nível */
+function telaAcessos(){
+  quem('<span>'+esc(EU?EU.nome.split(" ")[0]:"Comissão")+'</span><button class="btn sm" id="sair">Sair</button>'); $("#sair").onclick=sair;
+  api("acessoLista",AT).then(function(d){
+    var com=d.pessoas.filter(function(x){ return x.nivel==="comissao"; }), jur=jurOrdem(d.pessoas.filter(function(x){ return x.nivel==="jurado"; }));
+    app.innerHTML='<div class="stack acs">'+
+      '<div><div class="lbl">Configuração</div><h2 style="margin-top:4px">Quem acessa o painel</h2>'+
+        '<p class="muted" style="margin:6px 0 0">Todo mundo entra em <b>'+esc(location.host)+'/admin</b> com a matrícula. '+
+        '<span class="nivel comissao">Comissão</span> vê tudo (eleição, paródias, presença e configuração) e entra com <b>senha pessoal</b>, criada no primeiro acesso. '+
+        '<span class="nivel jurado">Jurado</span> vê só a votação das paródias e entra com os <b>3 primeiros números do CPF</b>.</p></div>'+
+      '<form id="fa" class="card pad row" novalidate style="align-items:end"><label class="field" style="flex:1 1 180px;margin:0"><span>Matrícula</span><input id="am" inputmode="numeric" autocomplete="off"></label>'+
+        '<label class="field" style="flex:0 1 200px;margin:0"><span>Nível de acesso</span><select id="an"><option value="comissao">Comissão</option><option value="jurado">Jurado</option></select></label>'+
+        '<button class="btn primary" id="ab">Incluir</button></form><div id="erra"></div>'+
+      '<div class="card pad stack"><h3 style="margin:0">Comissão <span class="n">'+com.length+'</span></h3>'+
+        (com.length?'<div class="tbl"><table><tbody>'+com.map(function(x){ return '<tr><td>'+pessoaHtml(x.nome,x.escala)+'<div class="small muted">Matrícula '+esc(x.matricula)+'</div></td>'+
+          '<td class="small">'+(x.temSenha?'✔ Senha criada'+(x.ultimo?'<div class="muted">último acesso '+esc(dataBr(x.ultimo))+'</div>':''):'<span class="muted">Ainda não entrou (cria a senha no 1º acesso)</span>')+'</td>'+
+          '<td style="text-align:right;white-space:nowrap">'+(x.temSenha?'<button class="btn sm ghost" data-zera="'+esc(x.matricula)+'">Zerar senha</button>':'')+
+          '<button class="btn sm danger" data-rm="'+esc(x.matricula)+'" data-n="comissao">Remover</button></td></tr>'; }).join("")+'</tbody></table></div>'
+          :'<p class="muted" style="margin:0">Ninguém ainda. Inclua as pessoas da comissão acima (o usuário administrador continua valendo).</p>')+'</div>'+
+      '<div class="card pad stack"><h3 style="margin:0">Jurados <span class="n">'+jur.length+'</span></h3>'+
+        (jur.length?'<div class="tbl"><table><tbody>'+jur.map(function(x){ return '<tr><td>'+pessoaHtml(x.nome,x.escala)+'<div class="small muted">Matrícula '+esc(x.matricula)+'</div></td>'+
+          '<td style="text-align:right"><button class="btn sm danger" data-rm="'+esc(x.matricula)+'" data-n="jurado">Remover</button></td></tr>'; }).join("")+'</tbody></table></div>'
+          :'<p class="muted" style="margin:0">Nenhum jurado ainda.</p>')+'</div>'+
+      '<div class="card pad row" style="justify-content:space-between"><div><b>Concurso de paródias</b><div class="small muted">Nome, tema, datas das inscrições e critérios de nota.</div></div><button class="btn" id="cfgpar">Abrir configuração da paródia</button></div>'+
+      '<div class="card pad row" style="justify-content:space-between"><div><b>Eleição da CIPA</b><div class="small muted">Datas, vagas, verificação e senha do administrador ficam no painel da eleição.</div></div><button class="btn" id="cfgele">Abrir eleição</button></div>'+
+    '</div>';
+    $("#fa").onsubmit=function(ev){ ev.preventDefault(); var b=$("#ab"), m=$("#am").value.trim(); if(!m){ erroEm($("#erra"),"Digite a matrícula."); return; }
+      busy(b,true,"Incluindo…"); api("acessoIncluir",AT,m,$("#an").value).then(function(){ toast("Acesso incluído."); telaAcessos(); }).catch(function(e){ busy(b,false); erroEm($("#erra"),e.message); }); };
+    app.querySelectorAll("[data-rm]").forEach(function(b){ b.onclick=function(){
+      if(!confirm("Tirar o acesso de "+b.closest("tr").querySelector("b").textContent+"?")) return;
+      api("acessoRemover",AT,b.dataset.rm,b.dataset.n).then(function(){ toast("Acesso removido."); telaAcessos(); }).catch(function(e){ toast(e.message); }); }; });
+    app.querySelectorAll("[data-zera]").forEach(function(b){ b.onclick=function(){
+      if(!confirm("Zerar a senha? No próximo acesso a pessoa cria outra, confirmando os 3 primeiros números do CPF.")) return;
+      api("acessoZerarSenha",AT,b.dataset.zera).then(function(){ toast("Senha zerada."); telaAcessos(); }).catch(function(e){ toast(e.message); }); }; });
+    $("#cfgpar").onclick=function(){ SECAO="parodias"; ABA="config"; store("adm_secao",SECAO); montarPainel(); };
+    $("#cfgele").onclick=function(){ SECAO="eleicao"; store("adm_secao",SECAO); montarPainel(); };
+  }).catch(function(e){ toast(e.message); if(/expirada/.test(e.message)) sair(); });
+}
 function carregarJurado(){ return api("parJuradoDados",JT).then(function(d){ DADOS=d; telaJurado(); }).catch(function(e){ store("par_jur",null); JT=null; toast(e.message); telaLoginJuri(); }); }
 function carregarAdmin(){ return api("parAdmin",AT).then(function(d){ DADOS=d; telaAdmin(); }).catch(function(e){ store("par_adm",null); AT=null; toast(e.message); telaLoginJuri("comissao"); }); }
 
@@ -1255,7 +1383,7 @@ var VIVOP;
 function vivoPresenca(){
   clearTimeout(VIVOP);
   VIVOP=setTimeout(function(){
-    if(PAGE!=="presenca"||!AT||!PRE||!PRE.evento||$("#graf")) return;
+    if((PAGE!=="presenca"&&!(PAGE==="admin"&&SECAO==="presenca"))||!AT||!PRE||!PRE.evento||$("#graf")) return;
     var ocupado=CAM||$("#dlg").innerHTML||$(".telao")||document.hidden||(document.activeElement&&/INPUT|TEXTAREA/.test(document.activeElement.tagName));
     if(ocupado){ vivoPresenca(); return; }
     var antes=PRE.presentes.length, ids={}; PRE.presentes.forEach(function(x){ ids[x.matricula]=1; });
@@ -1580,9 +1708,10 @@ document.documentElement.classList.add("redentor");
 api("parInfo").then(function(i){
   INFO=i; $("#sub").textContent="CIPA · "+(i.empresa||"Auto Viação Redentor");
   var tit=PAGE==="qr"||PAGE==="presenca"||PAGE==="checkin"?"Presença nos eventos da CIPA":i.titulo;
-  $("#titulo").textContent=tit;
-  document.title=PAGE==="jurados"?"Jurados · "+tit:tit;
-  if(PAGE==="jurados"){ if(JT) carregarJurado(); else if(AT) carregarAdmin(); else telaLoginJuri(); }
+  $("#titulo").textContent=PAGE==="admin"?"Painel da CIPA":tit;
+  document.title=PAGE==="admin"?"Painel da CIPA":(PAGE==="jurados"?"Jurados · "+tit:tit);
+  if(PAGE==="admin"){ if(AT) montarPainel(); else if(JT) carregarJurado(); else telaLoginAdmin(); }
+  else if(PAGE==="jurados"){ if(JT) carregarJurado(); else if(AT) carregarAdmin(); else telaLoginJuri(); }
   else if(PAGE==="presenca"){ if(AT) carregarPresenca(); else telaLoginJuri("comissao"); }
   else if(PAGE==="qr") telaQr();
   else if(PAGE==="checkin") telaCheckin();

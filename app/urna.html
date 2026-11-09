@@ -252,6 +252,14 @@ button{cursor:pointer}
 .tabs button[aria-selected="true"]::before{content:"";width:4px;height:18px;border-radius:4px;background:var(--accent);margin-left:-6px}
 .side .btn{margin-top:12px;justify-content:flex-start}
 .adminbar{display:none}
+/* dentro do /admin unificado: sem cabeçalho e com as abas da eleição em linha (o menu da esquerda é o do /admin) */
+body.embed .band,body.embed #aSair{display:none!important}
+body.embed .admin{grid-template-columns:1fr;gap:14px;margin-top:8px}
+body.embed .side{position:static} body.embed .side-h{display:none}
+body.embed .tabs{flex-direction:row;flex-wrap:wrap;gap:6px}
+body.embed .tabs button{white-space:nowrap;background:var(--surface);border:1px solid var(--line)}
+body.embed .tabs button[aria-selected="true"]{background:var(--accent);color:#fff}
+body.embed .tabs button[aria-selected="true"]::before{display:none}
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px}
 .kpi{padding:18px 20px}
 .kpi .v{font-family:var(--f-display);font-weight:700;font-size:2.3rem;line-height:1;margin-top:10px;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
@@ -1159,6 +1167,14 @@ function confirmVote(){
 var A={t:null, d:null, tab:"painel", res:null, edit:null, confirm:null, q:""};
 
 function adminStart(){
+  if(window.__EMBED__){   // o login é o do /admin (mesma aba, mesmo sessionStorage)
+    document.body.classList.add("embed");
+    var tk=null; try{ tk=sessionStorage.getItem("par_adm"); }catch(e){}
+    if(tk){ A.t=tk; return adminLoad(); }
+    $("#app").innerHTML='<div class="card pad"><p>Sessão encerrada. Entre de novo no painel.</p></div>';
+    try{ parent.postMessage({cipa:"sair"},location.origin); }catch(e){}
+    return;
+  }
   if(A.t) return adminLoad();
   $("#app").innerHTML='<div class="card login solo"><h2>Administrador</h2><p class="muted">Área restrita à comissão eleitoral.</p><form id="fadm" autocomplete="off">'+
     '<div class="field"><label class="lbl" for="ausr">Usuário</label><input id="ausr" required autocapitalize="off"></div>'+
@@ -1177,7 +1193,9 @@ function adminLogout(){
   if(API.demo){ try{ if(location.hash) history.replaceState(null,"",location.pathname+location.search); }catch(e){} show("voter"); } else adminStart();
 }
 function adminLoad(){
-  API.adminData(A.t).then(function(d){ A.d=d; setHeader(d.cfg); adminRender(); }, function(e){ A.t=null; toast(e.message); adminStart(); });
+  API.adminData(A.t).then(function(d){ A.d=d; setHeader(d.cfg); adminRender(); }, function(e){ A.t=null;
+    if(window.__EMBED__){ $("#app").innerHTML='<div class="card pad"><p>Sessão encerrada. Entre de novo no painel.</p></div>'; try{ parent.postMessage({cipa:"sair"},location.origin); }catch(x){} return; }
+    toast(e.message); adminStart(); });
 }
 function apply(p){ return p.then(function(d){ if(d && d.cfg){ A.d=d; setHeader(d.cfg);} A.confirm=null; adminRender(); return d; }, function(e){ toast(e.message); throw e; }); }
 

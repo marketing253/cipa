@@ -4,6 +4,7 @@ declare(strict_types=1);
 require dirname(__DIR__) . '/app/lib.php';
 require dirname(__DIR__) . '/app/parodia.php';
 require dirname(__DIR__) . '/app/presenca.php';
+require dirname(__DIR__) . '/app/acesso.php';
 
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
@@ -16,7 +17,9 @@ const PERMITIDAS = ['ballot', 'consultar', 'login', 'votar', 'adminLogin', 'admi
     'parInfo', 'parConsultar', 'parSalvar', 'parJuradoLogin', 'parJuradoDados', 'parValidar', 'parNota',
     'parAdmin', 'parFinalizar', 'parEdicao', 'parSaveCfg', 'parJurado', 'parExcluir',
     // presença nos eventos e sorteio de brindes
-    'preQr', 'preDados', 'preEvento', 'preExcluirEvento', 'preMarcar', 'preDesmarcar', 'preSortear', 'preAnular', 'preStatus', 'preEventoInfo', 'preCheckin', 'preAbrir', 'preArquivar', 'preEstat'];
+    'preQr', 'preDados', 'preEvento', 'preExcluirEvento', 'preMarcar', 'preDesmarcar', 'preSortear', 'preAnular', 'preStatus', 'preEventoInfo', 'preCheckin', 'preAbrir', 'preArquivar', 'preEstat',
+    // /admin unificado: comissão (senha pessoal) e jurados
+    'acessoInicio', 'acessoEntrar', 'acessoCriarSenha', 'acessoLista', 'acessoIncluir', 'acessoRemover', 'acessoZerarSenha', 'acessoEu'];
 
 function responder($v, int $code = 200): never {
     http_response_code($code);
