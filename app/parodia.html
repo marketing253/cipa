@@ -327,6 +327,18 @@ html.redentor .telao:not(.qr){background:url("data:image/svg+xml,%3Csvg xmlns='h
 .stat .pb{height:5px;border-radius:9px;background:var(--line);margin-top:6px;overflow:hidden} .stat .pb i{display:block;height:100%;background:var(--c,#3e4095)}
 .stat.alerta{--c:#d29500} .stat.alerta b{color:#a87400}
 .stat.sobe b{animation:sobe .6s ease-out}
+.novoev{display:flex;gap:16px;align-items:center;text-align:left;width:100%;padding:20px 22px;border-radius:var(--r);border:2px dashed #3e4095;background:linear-gradient(135deg,rgba(62,64,149,.06),rgba(210,149,0,.08));color:var(--ink);cursor:pointer;transition:transform .15s,box-shadow .15s}
+.novoev:hover{transform:translateY(-1px);box-shadow:var(--shadow)}
+.novoev .i{flex:none;width:54px;height:54px;border-radius:16px;display:grid;place-items:center;font-size:1.9rem;font-weight:800;color:#fff;background:linear-gradient(135deg,#16203a,#3e4095)}
+.novoev b{display:block;font-family:var(--f-display);font-size:1.25rem} .novoev small{display:block;color:var(--muted);margin-top:2px}
+.evcards{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(240px,1fr))}
+.evcard{display:flex;flex-direction:column;align-items:flex-start;gap:6px;text-align:left;padding:16px;border-radius:var(--r);border:1px solid var(--line);background:var(--surface);box-shadow:var(--shadow);cursor:pointer;color:var(--ink);transition:transform .15s,border-color .15s}
+.evcard:hover{transform:translateY(-2px);border-color:#3e4095}
+.evcard b{font-family:var(--f-display);font-size:1.1rem} .evcard small{color:var(--muted)}
+.evcard .st{background:var(--surface-2);color:var(--muted);font-size:.72rem} .evcard .st::before{background:var(--muted)}
+.evcard .st.on{background:var(--ok-soft);color:var(--ok)} .evcard .st.on::before{background:var(--ok)}
+.evcard .nums{display:flex;gap:14px;font-size:.85rem;color:var(--muted);margin-top:4px} .evcard .nums b{font-size:1rem;color:var(--ink)}
+.act[disabled]{opacity:.5;cursor:default}
 .phead .st.arq{background:var(--surface-2);color:var(--muted)} .phead .st.arq::before{display:none}
 /* abas da seção: sublinhado (os filtros continuam em pílulas) */
 .subnav{display:flex;gap:2px;overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:4px 6px 0;box-shadow:var(--shadow);margin:0;scrollbar-width:thin}
@@ -762,13 +774,17 @@ function montarPainel(){
   app=$("#conteudo");
   if(SECAO==="eleicao"){ quem('<span>'+esc(EU?EU.nome.split(" ")[0]:"Comissão")+'</span><button class="btn sm" id="sair">Sair</button>'); $("#sair").onclick=sair;
     app.innerHTML='<iframe class="eleicao" src="comissao?embed=1" title="Eleição da CIPA"></iframe>'; }
-  else if(SECAO==="presenca") carregarPresenca();
+  else if(SECAO==="presenca") inicioPresenca();
   else if(SECAO==="config") telaAcessos();
   else carregarAdmin();
 }
 window.addEventListener("message",function(e){ if(e.origin===location.origin&&e.data&&e.data.cipa==="sair"&&PAGE==="admin") sair(); });
 
 /* Configuração: quem entra no painel e com qual nível */
+function inicioPresenca(){
+  return api("preDados",AT).then(function(d){ PRE=d; PRE.evento=null; PRE.presentes=[]; PRE.sorteios=[]; HIST=false; telaPresenca(); })
+    .catch(function(e){ toast(e.message); if(/expirada/.test(e.message)) sair(); });
+}
 function telaAcessos(){
   quem('<span>'+esc(EU?EU.nome.split(" ")[0]:"Comissão")+'</span><button class="btn sm" id="sair">Sair</button>'); $("#sair").onclick=sair;
   api("acessoLista",AT).then(function(d){
@@ -1308,18 +1324,38 @@ function telaPresenca(){
   $("#sair").onclick=sair;
   var hist=!!(ev&&ev.arquivado)||HIST, nArq=d.eventos.filter(function(e){ return e.arquivado; }).length;
   var barra='<div class="evbar" role="group" aria-label="Eventos">'+
-    (hist?'<button class="extra" id="ativos">← Eventos ativos<small>voltar</small></button>':'')+
+    (PAGE==="admin"&&!hist?'<button class="extra" id="inicio">🏠 Início<small>todos os eventos</small></button>':'')+
+    (hist?'<button class="extra" id="ativos">← Eventos ativos<small>voltar</small></button>':'<button class="novo" id="novo">+ Novo evento</button>')+
     d.eventos.filter(function(e){ return !!e.arquivado===hist; }).reverse().map(function(e){
       return '<button data-ev="'+e.id+'" aria-pressed="'+(e.id===d.evento)+'">'+esc(e.nome)+'<small>'+e.presentes+' presente(s)'+(e.arquivado?' · arquivado':(e.aberto?' · aberto':''))+'</small></button>'; }).join("")+
-    (hist?'':'<button class="novo" id="novo">+ Novo evento</button>'+(nArq?'<button class="extra" id="hist">📁 Histórico<small>'+nArq+' evento(s) encerrado(s)</small></button>':''))+
+    (hist?'':(nArq?'<button class="extra" id="hist">📁 Histórico<small>'+nArq+' evento(s) encerrado(s)</small></button>':''))+
     (ev?'<button class="extra'+((d.pendentes||[]).length?' alerta':'')+'" id="irpend">📦 Brindes a entregar<small>'+((d.pendentes||[]).length?(d.pendentes.length+' ausente(s) para entregar'):'ninguém pendente')+'</small></button>':'')+
     '<button class="extra" id="estat">📊 Estatísticas<small>participação por setor</small></button></div>';
-  if(!ev){
-    app.innerHTML='<div class="stack">'+barra+'<div class="card pad stack" style="text-align:center"><div style="font-size:2.4rem">📋</div><h2>'+(nArq?'Nenhum evento ativo':'Crie o primeiro evento')+'</h2>'+
-      '<p class="muted" style="margin:0">Um evento para cada palestra (ex.: “SIPAT – Palestra Trânsito Seguro”). Cada um ganha o próprio QR de check-in para o telão e para a mesa.</p>'+
-      '<div><button class="btn primary lg" id="novo2" style="max-width:320px">+ Criar evento</button></div></div></div>';
-    ligarTopo(); var n2=$("#novo2"); if(n2) n2.onclick=novoEvento; return;
+  if(!ev&&!hist){
+    var ativos=d.eventos.filter(function(e){ return !e.arquivado; }), np=(d.pendentes||[]).length;
+    app.innerHTML='<div class="stack">'+
+      '<header class="phead"><div class="pt"><span class="pic">📋</span><div style="min-width:0"><div class="lbl">Presença e sorteio</div><h2>Eventos da CIPA</h2>'+
+        '<div class="tema">Um evento para cada palestra, com QR de check-in e sorteio de brindes</div></div></div></header>'+
+      '<button class="novoev" id="novo2"><span class="i">＋</span><span><b>Novo evento</b><small>Ex.: “SIPAT – Palestra Trânsito Seguro”. Ganha o QR do telão e da mesa na hora.</small></span></button>'+
+      '<div class="cab"><h3 style="margin:0">Eventos ativos <span class="n">'+ativos.length+'</span></h3></div>'+
+      (ativos.length?'<div class="evcards">'+ativos.map(function(e){
+        return '<button class="evcard" data-ev="'+e.id+'"><span class="st'+(e.aberto?' on':'')+'">'+(e.aberto?'Check-in aberto':'Check-in encerrado')+'</span>'+
+          '<b>'+esc(e.nome)+'</b><small>Criado em '+esc(dataBr(e.criado))+'</small><span class="nums"><span>🙋 <b>'+e.presentes+'</b> presentes</span><span>🏆 <b>'+e.sorteados+'</b> sorteados</span></span></button>'; }).join("")+'</div>'
+        :'<div class="vazio">Nenhum evento ativo. Crie o primeiro acima.</div>')+
+      '<div class="acts">'+
+        '<button class="act'+(np?' ouro':'')+'" id="irpend2"><span class="i">📦</span><b>Brindes a entregar</b><small>'+(np?np+' ausente(s) para entregar':'Ninguém pendente')+'</small></button>'+
+        '<button class="act" id="estat2"><span class="i">📊</span><b>Estatísticas</b><small>Participação por setor</small></button>'+
+        '<button class="act" id="hist2"'+(nArq?'':' disabled')+'><span class="i">📁</span><b>Histórico</b><small>'+(nArq?nArq+' evento(s) encerrado(s)':'Nenhum evento encerrado')+'</small></button>'+
+      '</div></div>';
+    $("#novo2").onclick=novoEvento;
+    app.querySelectorAll("[data-ev]").forEach(function(b){ b.onclick=function(){ carregarPresenca(+b.dataset.ev); }; });
+    $("#estat2").onclick=function(){ telaEstat(null); };
+    $("#hist2").onclick=function(){ var a=PRE.eventos.find(function(e){ return e.arquivado; }); HIST=true; if(a) carregarPresenca(a.id); };
+    $("#irpend2").onclick=function(){ var a=ativos[0]||PRE.eventos[0]; if(!a){ toast("Ainda não há eventos."); return; }
+      carregarPresenca(a.id).then(function(){ setTimeout(function(){ var c=$("#pend"); if(c){ c.scrollIntoView({behavior:"smooth",block:"start"}); c.classList.add("destaca"); } },200); }); };
+    return;
   }
+  if(!ev){ PRE.evento=null; HIST=false; return telaPresenca(); }
   var conc=d.presentes.length-d.sorteios.length;
   app.innerHTML='<div class="stack">'+barra+
     '<header class="phead"><div class="pt"><span class="pic">📋</span><div style="min-width:0"><div class="lbl">Presença e sorteio · evento</div><h2>'+esc(ev.nome)+'</h2>'+
@@ -1527,6 +1563,7 @@ function ligarTira(){ app.querySelectorAll("[data-tira]").forEach(function(b){ b
   api("preDesmarcar",AT,PRE.evento,b.dataset.tira).then(function(x){ PRE=x; telaPresenca(); }).catch(function(e){ toast(e.message); }); }; }); }
 function ligarTopo(){
   var nv=$("#novo"); if(nv) nv.onclick=novoEvento;
+  var ini=$("#inicio"); if(ini) ini.onclick=inicioPresenca;
   var hb=$("#hist"); if(hb) hb.onclick=function(){ var a=PRE.eventos.find(function(e){ return e.arquivado; }); HIST=true; if(a) carregarPresenca(a.id); };
   var ab=$("#ativos"); if(ab) ab.onclick=function(){ HIST=false; var a=PRE.eventos.find(function(e){ return !e.arquivado; }); if(a) carregarPresenca(a.id); else { PRE.evento=null; PRE.presentes=[]; PRE.sorteios=[]; telaPresenca(); } };
   var eb=$("#estat"); if(eb) eb.onclick=function(){ telaEstat(null); };
