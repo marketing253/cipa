@@ -326,6 +326,8 @@ html.redentor .telao:not(.qr){background:url("data:image/svg+xml,%3Csvg xmlns='h
 .stat span.l{display:block;font-size:.8rem;color:var(--muted);margin-top:3px}
 .stat .pb{height:5px;border-radius:9px;background:var(--line);margin-top:6px;overflow:hidden} .stat .pb i{display:block;height:100%;background:var(--c,#3e4095)}
 .stat.alerta{--c:#d29500} .stat.alerta b{color:#a87400}
+.stat.sobe b{animation:sobe .6s ease-out}
+.phead .st.arq{background:var(--surface-2);color:var(--muted)} .phead .st.arq::before{display:none}
 /* abas da seção: sublinhado (os filtros continuam em pílulas) */
 .subnav{display:flex;gap:2px;overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:4px 6px 0;box-shadow:var(--shadow);margin:0;scrollbar-width:thin}
 .subnav button{flex:none;border:0;background:none;padding:12px 14px 11px;font-weight:700;font-size:.92rem;color:var(--muted);border-bottom:3px solid transparent;border-radius:0;white-space:nowrap;cursor:pointer}
@@ -772,8 +774,15 @@ function telaAcessos(){
   api("acessoLista",AT).then(function(d){
     var com=d.pessoas.filter(function(x){ return x.nivel==="comissao"; }), jur=jurOrdem(d.pessoas.filter(function(x){ return x.nivel==="jurado"; }));
     app.innerHTML='<div class="stack acs">'+
-      '<div><div class="lbl">Configuração</div><h2 style="margin-top:4px">Quem acessa o painel</h2>'+
-        '<p class="muted" style="margin:6px 0 0">Todo mundo entra em <b>'+esc(location.host)+'/admin</b> com a matrícula. '+
+      '<header class="phead"><div class="pt"><span class="pic">⚙️</span><div style="min-width:0"><div class="lbl">Configuração</div><h2>Quem acessa o painel</h2>'+
+        '<div class="tema">Inclua a comissão e os jurados pela matrícula</div></div></div></header>'+
+      '<div class="stats">'+
+        '<div class="stat"><span class="si">👥</span><div><b>'+com.length+'</b><span class="l">na comissão</span></div></div>'+
+        '<div class="stat" style="--c:#1f8a5b"><span class="si">🔑</span><div><b>'+com.filter(function(x){ return x.temSenha; }).length+'<small> / '+com.length+'</small></b><span class="l">já criaram a senha</span></div></div>'+
+        '<div class="stat" style="--c:#d29500"><span class="si">⚖️</span><div><b>'+jur.length+'</b><span class="l">jurados</span></div></div>'+
+        '<div class="stat" style="--c:#5a6380"><span class="si">🛡️</span><div><b>'+esc(EU?EU.nome.split(" ")[0]:"—")+'</b><span class="l">conectado agora</span></div></div>'+
+      '</div>'+
+      '<div class="card pad"><p class="muted" style="margin:0">Todo mundo entra em <b>'+esc(location.host)+'/admin</b> com a matrícula. '+
         '<span class="nivel comissao">Comissão</span> vê tudo (eleição, paródias, presença e configuração) e entra com <b>senha pessoal</b>, criada no primeiro acesso. '+
         '<span class="nivel jurado">Jurado</span> vê só a votação das paródias e entra com os <b>3 primeiros números do CPF</b>.</p></div>'+
       '<form id="fa" class="card pad row" novalidate style="align-items:end"><label class="field" style="flex:1 1 180px;margin:0"><span>Matrícula</span><input id="am" inputmode="numeric" autocomplete="off"></label>'+
@@ -1313,11 +1322,15 @@ function telaPresenca(){
   }
   var conc=d.presentes.length-d.sorteios.length;
   app.innerHTML='<div class="stack">'+barra+
-    '<section class="evhero"><div class="cab"><div><div class="lbl">Evento</div><h2 style="margin-top:4px">'+esc(ev.nome)+'</h2></div>'+
-      '<span class="st'+(ev.aberto?' on':'')+'">'+(ev.arquivado?'📁 No histórico':(ev.aberto?'Check-in aberto':'Check-in encerrado'))+'</span></div>'+
-      '<div class="kpis"><div class="kpi" id="k1"><b id="cont">'+d.presentes.length+'</b><span>presentes</span></div>'+
-        '<div class="kpi"><b>'+d.sorteios.length+'</b><span>ganhadores</span></div>'+
-        '<div class="kpi"><b id="kconc">'+Math.max(0,conc)+'</b><span>concorrendo</span></div></div></section>'+
+    '<header class="phead"><div class="pt"><span class="pic">📋</span><div style="min-width:0"><div class="lbl">Presença e sorteio · evento</div><h2>'+esc(ev.nome)+'</h2>'+
+        '<div class="tema">Criado em '+esc(dataBr(ev.criado))+'</div></div></div>'+
+      '<span class="st'+(ev.arquivado?' arq':(ev.aberto?' on':''))+'">'+(ev.arquivado?'📁 No histórico':(ev.aberto?'Check-in aberto':'Check-in encerrado'))+'</span></header>'+
+    '<div class="stats">'+
+      '<div class="stat" id="k1"><span class="si">🙋</span><div><b id="cont">'+d.presentes.length+'</b><span class="l">presentes</span></div></div>'+
+      '<div class="stat" style="--c:#d29500"><span class="si">🏆</span><div><b>'+d.sorteios.length+'</b><span class="l">ganhadores</span></div></div>'+
+      '<div class="stat" style="--c:#1f8a5b"><span class="si">🎟️</span><div><b id="kconc">'+Math.max(0,conc)+'</b><span class="l">concorrendo</span></div></div>'+
+      '<div class="stat'+((d.pendentes||[]).length?' alerta':'')+'" style="--c:#d29500"><span class="si">📦</span><div><b>'+(d.pendentes||[]).length+'</b><span class="l">brindes a entregar</span></div></div>'+
+    '</div>'+
     (ev.arquivado?'<div class="arq"><div><b>📁 Evento encerrado e guardado no histórico</b><div class="small muted">Desde '+esc(dataBr(ev.arquivadoEm))+'. A lista de presença e os ganhadores ficam guardados; o check-in não abre mais.</div></div>'+
       '<div class="row"><button class="btn" id="estev">📊 Estatística deste evento</button><button class="btn ghost" id="desarq">Tirar do histórico</button></div></div>':
     '<div class="acts">'+
@@ -1442,11 +1455,15 @@ function telaEstat(evId){
     app.innerHTML='<div class="stack">'+
       '<div class="row" style="justify-content:space-between"><button class="btn sm" id="volta">← Voltar à presença</button>'+
         '<div class="row"><button class="btn sm" id="ecsv">Baixar planilha</button><button class="btn sm" id="eimp">🖨️ Imprimir</button></div></div>'+
-      '<section class="evhero"><div class="lbl">Participação no check-in da CIPA</div><h2 style="margin-top:4px">'+esc(r.eventoNome)+'</h2>'+
-        '<div class="kpis k4"><div class="kpi"><b>'+r.participantes+'</b><span>pessoas participaram</span></div>'+
-        '<div class="kpi"><b>'+String(pct(r.participantes,r.colaboradores)).replace(".",",")+'%</b><span>dos '+r.colaboradores+' colaboradores</span></div>'+
-        '<div class="kpi"><b>'+r.checkins+'</b><span>check-ins'+(r.evento?'':' (somando os eventos)')+'</span></div>'+
-        '<div class="kpi"><b>'+com+'</b><span>de '+r.setores.length+' setores participaram</span></div></div></section>'+
+      '<header class="phead"><div class="pt"><span class="pic">📊</span><div style="min-width:0"><div class="lbl">Participação no check-in da CIPA</div><h2>'+esc(r.eventoNome)+'</h2>'+
+        '<div class="tema">Participação por setor</div></div></div></header>'+
+      '<div class="stats">'+
+        '<div class="stat"><span class="si">🙋</span><div><b>'+r.participantes+'</b><span class="l">pessoas participaram</span></div></div>'+
+        '<div class="stat" style="--c:#1f8a5b"><span class="si">📈</span><div style="flex:1;min-width:0"><b>'+String(pct(r.participantes,r.colaboradores)).replace(".",",")+'%</b><span class="l">dos '+r.colaboradores+' colaboradores</span>'+
+          '<div class="pb"><i style="width:'+Math.min(100,pct(r.participantes,r.colaboradores))+'%"></i></div></div></div>'+
+        '<div class="stat" style="--c:#d29500"><span class="si">✅</span><div><b>'+r.checkins+'</b><span class="l">check-ins'+(r.evento?'':' (somando os eventos)')+'</span></div></div>'+
+        '<div class="stat"><span class="si">🏢</span><div><b>'+com+'<small> / '+r.setores.length+'</small></b><span class="l">setores participaram</span></div></div>'+
+      '</div>'+
       '<div class="card pad stack">'+
         '<div class="est-filtros"><label class="field"><span>Evento</span><select id="eev">'+opts+'</select></label>'+
           '<div><div class="small muted" style="margin-bottom:4px">Ordenar por</div><div class="seg" role="group"><button data-o="qtd" aria-pressed="'+(EST.ordem==="qtd")+'">Mais pessoas</button><button data-o="pct" aria-pressed="'+(EST.ordem==="pct")+'">% do setor</button></div></div>'+
