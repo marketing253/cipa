@@ -67,6 +67,11 @@ html.painel .wrap{max-width:1320px}
 .cbh summary{display:flex;gap:10px;align-items:center;flex-wrap:wrap;cursor:pointer;list-style:none} .cbh summary::-webkit-details-marker{display:none}
 .cbh[open] summary{margin-bottom:10px}
 .cbpassos{margin:0;padding-left:20px;display:grid;gap:6px}
+.graf .lin[data-g]{cursor:pointer;border-radius:8px} .graf .lin[data-g]:hover{background:var(--surface-2)}
+.graf .lin .seta{display:inline-block;width:1em;color:var(--muted)}
+.graf .subg{margin:2px 0 8px 18px;padding-left:10px;border-left:2px solid var(--line)}
+.graf .lin.s .nm{font-weight:500;font-size:.88em} .graf .lin.s .trilho i{opacity:.55}
+.est-print tr.sub td{font-size:.9em;color:#555}
 textarea#cbtx{font-family:ui-monospace,Consolas,monospace;font-size:.85rem}
 .nivel{display:inline-block;padding:2px 10px;border-radius:999px;font-size:.74rem;font-weight:800}
 .nivel.comissao{background:#3e4095;color:#fff} .nivel.jurado{background:#ffd76a;color:#16203a}
@@ -1642,8 +1647,9 @@ function vivoPresenca(){
 function telaEstat(evId){
   pararCamera(); clearTimeout(VIVOP);
   app.innerHTML='<div class="loading">Calculando…</div>';
-  api("preEstat",AT,evId).then(function(r){
-    EST.r=r;
+  api("preEstat",AT,evId,EST.por||"setor").then(function(r){
+    EST.r=r; EST.abertos={};
+    var CG=r.por==="cargo", G=CG?"cargo":"lotação", GS=CG?"cargos":"lotações", SUB=CG?"Lotação":"Cargo";
     var pct=function(a,b){ return b?Math.round(1000*a/b)/10:0; };
     var com=r.setores.filter(function(x){ return x.participantes>0; }).length;
     var opts='<option value="">Todos os eventos</option>'+r.eventos.map(function(e){ return '<option value="'+e.id+'"'+(e.id===r.evento?' selected':'')+'>'+esc(e.nome)+(e.arquivado?' (histórico)':'')+' · '+e.presentes+'</option>'; }).join("");
@@ -1651,43 +1657,48 @@ function telaEstat(evId){
       '<div class="row" style="justify-content:space-between"><button class="btn sm" id="volta">← Voltar à presença</button>'+
         '<div class="row"><button class="btn sm" id="ecsv">Baixar planilha</button><button class="btn sm" id="eimp">🖨️ Imprimir</button></div></div>'+
       '<header class="phead"><div class="pt"><span class="pic">📊</span><div style="min-width:0"><div class="lbl">Participação no check-in da CIPA</div><h2>'+esc(r.eventoNome)+'</h2>'+
-        '<div class="tema">Participação por setor</div></div></div></header>'+
+        '<div class="tema">Participação por '+G+'</div></div></div></header>'+
       '<div class="stats">'+
         '<div class="stat"><span class="si">🙋</span><div><b>'+r.participantes+'</b><span class="l">pessoas participaram</span></div></div>'+
         '<div class="stat" style="--c:#1f8a5b"><span class="si">📈</span><div style="flex:1;min-width:0"><b>'+String(pct(r.participantes,r.colaboradores)).replace(".",",")+'%</b><span class="l">dos '+r.colaboradores+' colaboradores</span>'+
           '<div class="pb"><i style="width:'+Math.min(100,pct(r.participantes,r.colaboradores))+'%"></i></div></div></div>'+
         '<div class="stat" style="--c:#d29500"><span class="si">✅</span><div><b>'+r.checkins+'</b><span class="l">check-ins'+(r.evento?'':' (somando os eventos)')+'</span></div></div>'+
-        '<div class="stat"><span class="si">🏢</span><div><b>'+com+'<small> / '+r.setores.length+'</small></b><span class="l">setores participaram</span></div></div>'+
+        '<div class="stat"><span class="si">'+(CG?'🧰':'🏢')+'</span><div><b>'+com+'<small> / '+r.setores.length+'</small></b><span class="l">'+GS+' participaram</span></div></div>'+
       '</div>'+
       '<div class="card pad stack">'+
         '<div class="est-filtros"><label class="field"><span>Evento</span><select id="eev">'+opts+'</select></label>'+
-          '<div><div class="small muted" style="margin-bottom:4px">Ordenar por</div><div class="seg" role="group"><button data-o="qtd" aria-pressed="'+(EST.ordem==="qtd")+'">Mais pessoas</button><button data-o="pct" aria-pressed="'+(EST.ordem==="pct")+'">% do setor</button></div></div>'+
-          '<label class="row small" style="gap:6px;align-items:center"><input type="checkbox" id="ezer"'+(EST.zeros?' checked':'')+'> Mostrar setores sem ninguém</label></div>'+
-        '<h3 style="margin:6px 0 0">'+(EST.ordem==="pct"?'% de cada setor que participou':'Pessoas por setor')+'</h3>'+
+          '<div><div class="small muted" style="margin-bottom:4px">Agrupar por</div><div class="seg" role="group"><button data-por="setor" aria-pressed="'+!CG+'">🏢 Lotação</button><button data-por="cargo" aria-pressed="'+CG+'">🧰 Cargo</button></div></div>'+
+          '<div><div class="small muted" style="margin-bottom:4px">Ordenar por</div><div class="seg" role="group"><button data-o="qtd" aria-pressed="'+(EST.ordem==="qtd")+'">Mais pessoas</button><button data-o="pct" aria-pressed="'+(EST.ordem==="pct")+'">% do '+(CG?'cargo':'grupo')+'</button></div></div>'+
+          '<label class="row small" style="gap:6px;align-items:center"><input type="checkbox" id="ezer"'+(EST.zeros?' checked':'')+'> Mostrar '+GS+' sem ninguém</label></div>'+
+        '<h3 style="margin:6px 0 0">'+(EST.ordem==="pct"?'% de cada '+G+' que participou':'Pessoas por '+G)+'</h3>'+
         '<div id="graf"></div>'+
-        '<p class="small muted" style="margin:0">Conta cada pessoa uma vez'+(r.evento?'':', mesmo que tenha ido a vários eventos')+'. O setor é o da lista de colaboradores.</p>'+
+        '<p class="small muted" style="margin:0">Conta cada pessoa uma vez'+(r.evento?'':', mesmo que tenha ido a vários eventos')+'. Lotação e cargo vêm do cadastro de colaboradores. <b>Toque numa barra</b> para ver '+(CG?'as lotações desse cargo':'os cargos dessa lotação')+'.</p>'+
       '</div></div>';
     desenhaEstat();
     $("#volta").onclick=function(){ carregarPresenca(PRE&&PRE.evento); };
     $("#eev").onchange=function(){ telaEstat(this.value?+this.value:null); };
     app.querySelectorAll("[data-o]").forEach(function(b){ b.onclick=function(){ EST.ordem=b.dataset.o; telaEstat(r.evento); }; });
+    app.querySelectorAll("[data-por]").forEach(function(b){ b.onclick=function(){ EST.por=b.dataset.por; telaEstat(r.evento); }; });
     $("#ezer").onchange=function(){ EST.zeros=this.checked; desenhaEstat(); };
     $("#ecsv").onclick=function(){
-      var l=[["Setor","Participantes","Colaboradores no setor","% do setor"]].concat(r.setores.map(function(x){ return [x.setor,x.participantes,x.total,String(pct(x.participantes,x.total)).replace(".",",")]; }));
+      var l=[[CG?"Cargo":"Lotação",SUB,"Participantes","Colaboradores","%"]];
+      r.setores.forEach(function(x){ l.push([x.setor,"(total)",x.participantes,x.total,String(pct(x.participantes,x.total)).replace(".",",")]);
+        x.sub.forEach(function(s){ l.push([x.setor,s.nome,s.participantes,s.total,String(pct(s.participantes,s.total)).replace(".",",")]); }); });
       var csv="\ufeff"+l.map(function(z){ return z.map(function(v){ return '"'+String(v).replace(/"/g,'""')+'"'; }).join(";"); }).join("\r\n");
-      var a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"})); a.download="participacao por setor - "+r.eventoNome.replace(/[\\/:*?"<>|]/g,"")+".csv"; a.click(); };
+      var a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"})); a.download="participacao por "+(CG?"cargo":"lotacao")+" - "+r.eventoNome.replace(/[\\/:*?"<>|]/g,"")+".csv"; a.click(); };
     $("#eimp").onclick=function(){
       var l=linhasEstat(true), mx=Math.max.apply(null,l.map(function(x){ return EST.ordem==="pct"?x.pct:x.participantes; }).concat([1]));
-      $("#impressao").innerHTML='<section class="est-print"><img src="logo-redentor.png" alt="" style="height:16mm"><h1>Participação por setor · check-in da CIPA</h1>'+
+      $("#impressao").innerHTML='<section class="est-print"><img src="logo-redentor.png" alt="" style="height:16mm"><h1>Participação por '+G+' · check-in da CIPA</h1>'+
         '<p>'+esc(r.eventoNome)+' · '+r.participantes+' pessoas de '+r.colaboradores+' colaboradores ('+String(pct(r.participantes,r.colaboradores)).replace(".",",")+'%) · emitido em '+esc(dataBr(new Date().toISOString()))+'</p>'+
-        '<table><thead><tr><th>Setor</th><th style="width:38%"></th><th class="n">Pessoas</th><th class="n">No setor</th><th class="n">%</th></tr></thead><tbody>'+
-        l.map(function(x){ var v=EST.ordem==="pct"?x.pct:x.participantes; return '<tr><td>'+esc(x.setor)+'</td><td><span class="b" style="width:'+(100*v/(EST.ordem==="pct"?100:mx)).toFixed(1)+'%"></span></td><td class="n">'+x.participantes+'</td><td class="n">'+x.total+'</td><td class="n">'+String(x.pct).replace(".",",")+'%</td></tr>'; }).join("")+
+        '<table><thead><tr><th>'+(CG?'Cargo':'Lotação')+'</th><th style="width:38%"></th><th class="n">Pessoas</th><th class="n">Total</th><th class="n">%</th></tr></thead><tbody>'+
+        l.map(function(x){ var v=EST.ordem==="pct"?x.pct:x.participantes; return '<tr><td><b>'+esc(x.setor)+'</b></td><td><span class="b" style="width:'+(100*v/(EST.ordem==="pct"?100:mx)).toFixed(1)+'%"></span></td><td class="n">'+x.participantes+'</td><td class="n">'+x.total+'</td><td class="n">'+String(x.pct).replace(".",",")+'%</td></tr>'+
+          x.sub.filter(function(s){ return s.participantes>0; }).map(function(s){ return '<tr class="sub"><td>↳ '+esc(s.nome)+'</td><td></td><td class="n">'+s.participantes+'</td><td class="n">'+s.total+'</td><td class="n">'+String(pct(s.participantes,s.total)).replace(".",",")+'%</td></tr>'; }).join(""); }).join("")+
         '</tbody></table></section>';
       setTimeout(function(){ window.print(); },200); };
   }).catch(function(e){ toast(e.message); carregarPresenca(PRE&&PRE.evento); });
 }
 function linhasEstat(todos){
-  var r=EST.r, l=r.setores.map(function(x){ return {setor:x.setor,participantes:x.participantes,total:x.total,pct:x.total?Math.round(1000*x.participantes/x.total)/10:0}; });
+  var r=EST.r, l=r.setores.map(function(x){ return {setor:x.setor,participantes:x.participantes,total:x.total,sub:x.sub||[],pct:x.total?Math.round(1000*x.participantes/x.total)/10:0}; });
   if(!todos&&!EST.zeros) l=l.filter(function(x){ return x.participantes>0; });
   return l.sort(function(a,b){ return EST.ordem==="pct"?(b.pct-a.pct||b.participantes-a.participantes):(b.participantes-a.participantes||b.pct-a.pct)||a.setor.localeCompare(b.setor,"pt-BR"); });
 }
@@ -1697,10 +1708,16 @@ function desenhaEstat(){
   var pctMode=EST.ordem==="pct", mx=pctMode?100:Math.max.apply(null,l.map(function(x){ return x.participantes; }).concat([1]));
   g.innerHTML='<div class="graf"><div class="eixo"><span></span><span><span>0</span><span>'+(pctMode?'100%':mx+' pessoas')+'</span></span><span></span></div>'+l.map(function(x){
     var v=pctMode?x.pct:x.participantes, pc=String(x.pct).replace(".",",");
-    return '<div class="lin'+(x.participantes?'':' zero')+'" title="'+esc(x.setor)+': '+x.participantes+' de '+x.total+' colaboradores ('+pc+'%)">'+
-      '<div class="nm">'+esc(x.setor)+'</div><div class="trilho"><i data-w="'+(100*v/mx).toFixed(1)+'"></i></div>'+
-      '<div class="vl">'+(pctMode?'<b>'+pc+'%</b> <span class="muted">· '+x.participantes+' de '+x.total+'</span>':'<b>'+x.participantes+'</b> <span class="muted">de '+x.total+' · '+pc+'%</span>')+'</div></div>'; }).join("")+'</div>';
+    var ab=!!EST.abertos[x.setor], subs=x.sub.filter(function(s){ return EST.zeros||s.participantes>0; });
+    return '<div class="lin'+(x.participantes?'':' zero')+(ab?' aberto':'')+'" role="button" tabindex="0" aria-expanded="'+ab+'" data-g="'+esc(x.setor)+'" title="'+esc(x.setor)+': '+x.participantes+' de '+x.total+' colaboradores ('+pc+'%)">'+
+      '<div class="nm"><span class="seta">'+(ab?'▾':'▸')+'</span> '+esc(x.setor)+'</div><div class="trilho"><i data-w="'+(100*v/mx).toFixed(1)+'"></i></div>'+
+      '<div class="vl">'+(pctMode?'<b>'+pc+'%</b> <span class="muted">· '+x.participantes+' de '+x.total+'</span>':'<b>'+x.participantes+'</b> <span class="muted">de '+x.total+' · '+pc+'%</span>')+'</div></div>'+
+      (ab?'<div class="subg">'+(subs.length?subs.map(function(s){ var sp=s.total?Math.round(1000*s.participantes/s.total)/10:0, sv=pctMode?sp:s.participantes;
+        return '<div class="lin s'+(s.participantes?'':' zero')+'"><div class="nm">'+esc(s.nome)+'</div><div class="trilho"><i data-w="'+(100*sv/mx).toFixed(1)+'"></i></div>'+
+          '<div class="vl"><b>'+s.participantes+'</b> <span class="muted">de '+s.total+' · '+String(sp).replace(".",",")+'%</span></div></div>'; }).join(""):'<div class="small muted" style="padding:4px 0">Ninguém participou.</div>')+'</div>':''); }).join("")+'</div>';
   requestAnimationFrame(function(){ g.querySelectorAll("[data-w]").forEach(function(i){ i.style.width=i.dataset.w+"%"; }); });
+  g.querySelectorAll("[data-g]").forEach(function(d){ d.onclick=d.onkeydown=function(e){ if(e.type==="keydown"&&e.key!=="Enter"&&e.key!==" ") return; if(e.type==="keydown") e.preventDefault();
+    EST.abertos[d.dataset.g]=!EST.abertos[d.dataset.g]; desenhaEstat(); }; });
 }
 function novoEvento(){
   dlg('<div class="row" style="justify-content:space-between"><h2>Novo evento</h2><button class="btn sm ghost" id="fx" aria-label="Fechar">✕</button></div>'+

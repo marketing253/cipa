@@ -196,34 +196,47 @@ function api_preArquivar($t, $evento, $arquivar): array {
     return pre_dados($e['id']);
 }
 
-/* participação por setor: pessoas diferentes que fizeram check-in (num evento ou em todos) × colaboradores do setor */
-function api_preEstat($t, $evento = null): array {
+/* participação no check-in: pessoas diferentes que fizeram check-in (num evento ou em todos) × colaboradores ativos,
+   agrupado por lotação (setor) ou por cargo; cada grupo traz o detalhe pelo outro (cargos da lotação / lotações do cargo) */
+function api_preEstat($t, $evento = null, $por = 'setor'): array {
     exige_admin($t);
     $p = pre_tabelas();
-    $semSetor = 'Sem setor';
-    $tot = []; $setorDe = [];
+    $por = $por === 'cargo' ? 'cargo' : 'setor';
+    $sem = ['setor' => 'Sem lotação', 'cargo' => 'Sem cargo'];
+    $outro = $por === 'cargo' ? 'setor' : 'cargo';
+    $pessoa = [];   // mnorm => [setor, cargo] da lista de colaboradores
+    $tot = []; $totSub = [];
     foreach (colab_ativos() as $e) {   // colaboradores ativos (desligados ficam fora da conta)
-        if (isset($setorDe[$e['mnorm']])) continue;
-        $s = trim((string)$e['setor']) ?: $semSetor;
-        $setorDe[$e['mnorm']] = $s; $tot[$s] = ($tot[$s] ?? 0) + 1;
+        if (isset($pessoa[$e['mnorm']])) continue;
+        $x = ['setor' => trim((string)$e['setor']) ?: $sem['setor'], 'cargo' => trim((string)$e['cargo']) ?: $sem['cargo']];
+        $pessoa[$e['mnorm']] = $x;
+        $tot[$x[$por]] = ($tot[$x[$por]] ?? 0) + 1;
+        $totSub[$x[$por]][$x[$outro]] = ($totSub[$x[$por]][$x[$outro]] ?? 0) + 1;
     }
     $ev = $evento ? pre_evento((int)$evento) : null;
     $st = $ev ? $p->prepare('SELECT mnorm,setor FROM presencas WHERE evento=?') : $p->prepare('SELECT mnorm,setor FROM presencas');
     $st->execute($ev ? [$ev['id']] : []);
-    $part = []; $checkins = 0;
+    $part = []; $partSub = []; $checkins = 0;
     foreach ($st as $r) {
         $checkins++;
-        $s = $setorDe[$r['mnorm']] ?? (trim((string)$r['setor']) ?: $semSetor);   // setor atual da lista; se saiu da lista, o da hora do check-in
-        $part[$s][$r['mnorm']] = true;
+        // lotação/cargo atuais da lista; se saiu da lista, a lotação da hora do check-in
+        $x = $pessoa[$r['mnorm']] ?? ['setor' => trim((string)$r['setor']) ?: $sem['setor'], 'cargo' => $sem['cargo']];
+        $part[$x[$por]][$r['mnorm']] = true;
+        $partSub[$x[$por]][$x[$outro]][$r['mnorm']] = true;
     }
-    $setores = [];
-    foreach (array_unique(array_merge(array_keys($tot), array_keys($part))) as $s)
-        $setores[] = ['setor' => $s, 'total' => $tot[$s] ?? 0, 'participantes' => count($part[$s] ?? [])];
-    usort($setores, fn($a, $b) => $b['participantes'] <=> $a['participantes'] ?: strcmp($a['setor'], $b['setor']));
+    $grupos = [];
+    foreach (array_unique(array_merge(array_keys($tot), array_keys($part))) as $g) {
+        $sub = [];
+        foreach (array_unique(array_merge(array_keys($totSub[$g] ?? []), array_keys($partSub[$g] ?? []))) as $s)
+            $sub[] = ['nome' => (string)$s, 'total' => $totSub[$g][$s] ?? 0, 'participantes' => count($partSub[$g][$s] ?? [])];
+        usort($sub, fn($a, $b) => $b['participantes'] <=> $a['participantes'] ?: $b['total'] <=> $a['total'] ?: strcmp($a['nome'], $b['nome']));
+        $grupos[] = ['setor' => (string)$g, 'total' => $tot[$g] ?? 0, 'participantes' => count($part[$g] ?? []), 'sub' => $sub];
+    }
+    usort($grupos, fn($a, $b) => $b['participantes'] <=> $a['participantes'] ?: strcmp($a['setor'], $b['setor']));
     $unicos = array_sum(array_map('count', $part));
     $evs = array_map(fn($e) => ['id' => $e['id'], 'nome' => $e['nome'], 'presentes' => $e['presentes'], 'arquivado' => $e['arquivado']], pre_dados(null)['eventos']);
-    return ['evento' => $ev ? (int)$ev['id'] : null, 'eventoNome' => $ev ? $ev['nome'] : 'Todos os eventos', 'eventos' => $evs,
-            'colaboradores' => array_sum($tot), 'participantes' => $unicos, 'checkins' => $checkins, 'setores' => $setores];
+    return ['evento' => $ev ? (int)$ev['id'] : null, 'eventoNome' => $ev ? $ev['nome'] : 'Todos os eventos', 'eventos' => $evs, 'por' => $por,
+            'colaboradores' => array_sum($tot), 'participantes' => $unicos, 'checkins' => $checkins, 'setores' => $grupos];
 }
 
 function api_preSortear($t, $evento, $brinde = ''): array {

@@ -102,6 +102,17 @@ t('estat: tráfego', $tr['total'] === 5 && $tr['participantes'] === $es['partici
 t('estat: oficina 0 de 1', $of['participantes'] === 0 && $of['total'] === 1);
 t('estat: totais', $es['colaboradores'] === 6 && $es['checkins'] >= $es['participantes'] && $es['participantes'] > 0);
 t('estat: por evento', api_preEstat($A, $ev2)['participantes'] === 3);
+// por cargo (10/11/2026), com o detalhe pelo outro lado
+api_importar($A, [['matricula' => '3001', 'nome' => 'Pessoa 1', 'cargo' => 'Motorista'], ['matricula' => '3002', 'nome' => 'Pessoa 2', 'cargo' => 'Motorista'],
+                  ['matricula' => '4001', 'nome' => 'Pessoa Oficina', 'cargo' => 'Mecânico']], false);
+$ec = api_preEstat($A, null, 'cargo');
+$mo = array_values(array_filter($ec['setores'], fn($x) => $x['setor'] === 'Motorista'))[0];
+t('estat cargo: agrupa por cargo', $ec['por'] === 'cargo' && $mo['total'] === 2 && in_array('Sem cargo', array_column($ec['setores'], 'setor'), true));
+t('estat cargo: mesmas pessoas no total', $ec['participantes'] === $es['participantes'] && $ec['colaboradores'] === $es['colaboradores']);
+t('estat cargo: detalhe por lotação', $mo['sub'][0]['nome'] === 'Tráfego' && $mo['sub'][0]['total'] === 2);
+$el = api_preEstat($A);
+$tr = array_values(array_filter($el['setores'], fn($x) => $x['setor'] === 'Tráfego'))[0];
+t('estat lotação: detalhe por cargo', $el['por'] === 'setor' && array_sum(array_column($tr['sub'], 'total')) === $tr['total'] && in_array('Motorista', array_column($tr['sub'], 'nome'), true));
 
 // encerrar e arquivar
 $d = api_preArquivar($A, $ev2, true);
