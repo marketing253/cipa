@@ -841,6 +841,7 @@ function telaAcessos(){
 }
 /* Colaboradores: e-mails de admitidos e demitidos (pelo n8n ou colados aqui) */
 var CB=null, CBA="lista", CBF="ativos", CBQ="", CBPREV=null;
+function matTxt(m){ return m?'Matrícula '+esc(m):'<span class="cbt cpf">Sem matrícula</span>'; }
 function semAc(x){ return String(x||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase(); }
 function telaColab(){
   quem('<span>'+esc(EU?EU.nome.split(" ")[0]:"Comissão")+'</span><button class="btn sm" id="sair">Sair</button>'); $("#sair").onclick=sair;
@@ -848,25 +849,27 @@ function telaColab(){
 }
 function desenhaColab(){
   var d=CB, l=d.colaboradores, ult=d.historico.find(function(h){ return h.origem==="n8n"; });
-  var novos=l.filter(function(x){ return x.novo&&x.ativo; }).length, semCpf=l.filter(function(x){ return x.ativo&&!x.temCpf; }).length;
+  var novos=l.filter(function(x){ return x.novo&&x.ativo; }).length, semCpf=l.filter(function(x){ return x.ativo&&!x.temCpf; }).length,
+    semMat=l.filter(function(x){ return x.ativo&&x.semMatricula; }).length;
   var abas=[["lista","👥 Cadastro",l.length],["atualizar","📨 Colar e-mail"],["hist","🕘 Atualizações",d.historico.length||""],["n8n","🔗 Integração n8n"]];
   var corpo="";
   if(CBA==="lista"){
-    var f=[["ativos","Ativos",d.ativos],["novos","Admitidos (novos)",novos],["semcpf","Sem CPF",semCpf],["bloqueados","Bloqueados",d.bloqueados]];
-    corpo='<div class="row" style="align-items:center;gap:10px"><div class="tabs" id="cbf" style="margin:0">'+f.map(function(x){ return '<button data-f="'+x[0]+'" aria-pressed="'+(CBF===x[0])+'">'+x[1]+'<span class="n">'+x[2]+'</span></button>'; }).join("")+'</div>'+
+    var f=[["ativos","Ativos",d.ativos],["novos","Admitidos (novos)",novos]].concat(semMat?[["semmat","⚠️ Sem matrícula",semMat]]:[]).concat([["semcpf","Sem CPF",semCpf],["bloqueados","Bloqueados",d.bloqueados]]);
+    corpo=(semMat?'<div class="note warn"><b>'+semMat+' admitido(s) sem matrícula.</b> O e-mail do RH não traz a matrícula: clique em <b>Editar</b> e complete. Até lá a pessoa não consegue fazer check-in.</div>':'');
+    corpo+='<div class="row" style="align-items:center;gap:10px"><div class="tabs" id="cbf" style="margin:0">'+f.map(function(x){ return '<button data-f="'+x[0]+'" aria-pressed="'+(CBF===x[0])+'">'+x[1]+'<span class="n">'+x[2]+'</span></button>'; }).join("")+'</div>'+
       '<input id="cbq" class="busca" type="search" placeholder="Buscar nome, matrícula, escala ou setor" value="'+esc(CBQ)+'"></div><div id="cblista"></div>';
   } else if(CBA==="atualizar"){
-    corpo='<div class="card pad stack"><p class="muted" style="margin:0">Cole aqui o texto do e-mail do RH (pode copiar a tabela inteira). O sistema acha a <b>matrícula</b> e o <b>nome</b> de cada pessoa, e também cargo, setor e CPF quando vierem. '+
+    corpo='<div class="card pad stack"><p class="muted" style="margin:0">Cole aqui o texto do e-mail do RH (pode copiar a tabela inteira). O sistema acha cada pessoa pela <b>matrícula</b> ou, quando o e-mail não traz matrícula, pelo <b>nome completo</b>. '+
         'Primeiro ele mostra o que vai mudar; só grava quando você confirmar.</p>'+
       '<label class="field" style="max-width:320px"><span>Tipo do e-mail</span><select id="cbt"><option value="auto">Descobrir pelo texto</option><option value="admitidos">Admitidos (incluir / atualizar)</option><option value="demitidos">Demitidos (bloquear)</option></select></label>'+
       '<label class="field"><span>Texto do e-mail</span><textarea id="cbtx" rows="10" placeholder="Matrícula   Nome   Cargo   Setor&#10;12345   FULANO DE TAL   MOTORISTA   TRÁFEGO"></textarea></label>'+
       '<div id="cberr"></div><div class="row"><button class="btn primary" id="cbconf">Conferir</button></div></div><div id="cbprev"></div>';
   } else if(CBA==="hist"){
     corpo=d.historico.length?'<div class="stack">'+d.historico.map(function(h){
-      var adm=h.tipo==="admitidos", res=adm?[h.novos+" novos",h.atualizados+" atualizados"].concat(h.reativados?[h.reativados+" readmitidos"]:[]).join(" · "):h.bloqueados+" bloqueados";
+      var adm=h.tipo==="admitidos", conf=(h.pessoas||[]).filter(function(x){ return /^Conferir/.test(x.acao||""); }).length, res=adm?[h.novos+" novos",h.atualizados+" atualizados"].concat(h.reativados?[h.reativados+" readmitidos"]:[]).join(" · "):h.bloqueados+" bloqueados"+(conf?" · ⚠️ "+conf+" para conferir":"");
       return '<details class="card pad cbh"><summary><span class="cbt '+(adm?'adm':'dem')+'">'+(adm?'Admitidos':'Demitidos')+'</span><b>'+esc(dataBr(h.em))+'</b>'+
         '<span class="muted small">'+(h.lidos?esc(res):'nenhum colaborador no e-mail')+' · '+(h.origem==="n8n"?'pelo n8n':'pelo painel')+(h.assunto?' · “'+esc(h.assunto)+'”':'')+'</span></summary>'+
-        (h.pessoas&&h.pessoas.length?'<div class="tbl"><table><tbody>'+h.pessoas.map(function(x){ return '<tr><td><b>'+esc(x.nome||"—")+'</b><div class="small muted">Matrícula '+esc(x.matricula)+(x.setor?' · '+esc(x.setor):'')+'</div></td><td class="small">'+esc(x.acao)+'</td></tr>'; }).join("")+'</tbody></table></div>':'')+'</details>'; }).join("")+'</div>'
+        (h.pessoas&&h.pessoas.length?'<div class="tbl"><table><tbody>'+h.pessoas.map(function(x){ return '<tr><td><b>'+esc(x.nome||"—")+'</b><div class="small muted">'+matTxt(x.matricula)+(x.setor?' · '+esc(x.setor):'')+'</div></td><td class="small">'+esc(x.acao)+'</td></tr>'; }).join("")+'</tbody></table></div>':'')+'</details>'; }).join("")+'</div>'
       :'<div class="vazio grande"><span class="vi">🕘</span><b>Nenhuma atualização ainda</b>Quando o n8n mandar o primeiro e-mail, ou quando você colar um, ele aparece aqui.</div>';
   } else {
     corpo='<div class="card pad stack"><h3 style="margin:0">Como funciona</h3>'+
@@ -915,38 +918,39 @@ function desenhaColab(){
 function listaColab(){
   var q=semAc(CBQ).trim(), l=CB.colaboradores.filter(function(x){
     if(CBF==="ativos"&&!x.ativo) return false; if(CBF==="bloqueados"&&x.ativo) return false;
-    if(CBF==="novos"&&!(x.novo&&x.ativo)) return false; if(CBF==="semcpf"&&!(x.ativo&&!x.temCpf)) return false;
+    if(CBF==="novos"&&!(x.novo&&x.ativo)) return false; if(CBF==="semmat"&&!(x.ativo&&x.semMatricula)) return false; if(CBF==="semcpf"&&!(x.ativo&&!x.temCpf)) return false;
     return !q||semAc(x.nome+" "+x.matricula+" "+x.escala+" "+x.setor+" "+x.cargo).indexOf(q)>=0; });
   var mostra=l.slice(0,200);
   $("#cblista").innerHTML=l.length?'<div class="card tbl cbl"><table><tbody>'+mostra.map(function(x){
-    return '<tr'+(x.ativo?'':' class="bloq"')+'><td>'+pessoaHtml(x.nome,x.escala)+'<div class="small muted">Matrícula '+esc(x.matricula)+(x.cargo?' · '+esc(x.cargo):'')+'</div></td>'+
+    return '<tr'+(x.ativo?'':' class="bloq"')+'><td>'+pessoaHtml(x.nome,x.escala)+'<div class="small muted">'+matTxt(x.matricula)+(x.cargo?' · '+esc(x.cargo):'')+'</div></td>'+
       '<td class="small">'+esc(x.setor||"—")+'</td>'+
       '<td class="small">'+(x.ativo?'':'<span class="cbt dem">Bloqueado</span> <span class="muted">'+esc(x.demissao||dataBr(x.bloqueadoEm).split(" ")[0])+'</span>')+
         (x.novo&&x.ativo?'<span class="cbt adm">Novo</span> ':'')+(x.ativo&&!x.temCpf?'<span class="cbt cpf">Sem CPF</span>':'')+'</td>'+
-      '<td style="text-align:right;white-space:nowrap"><button class="btn sm ghost" data-ed="'+esc(x.matricula)+'">Editar</button>'+
-        (x.ativo?'<button class="btn sm danger" data-bl="'+esc(x.matricula)+'">Bloquear</button>':'<button class="btn sm" data-desbl="'+esc(x.matricula)+'">Desbloquear</button>')+'</td></tr>'; }).join("")+'</tbody></table></div>'+
+      '<td style="text-align:right;white-space:nowrap"><button class="btn sm '+(x.semMatricula?'primary':'ghost')+'" data-ed="'+esc(x.chave)+'">'+(x.semMatricula?'Completar':'Editar')+'</button>'+
+        (x.ativo?'<button class="btn sm danger" data-bl="'+esc(x.chave)+'">Bloquear</button>':'<button class="btn sm" data-desbl="'+esc(x.chave)+'">Desbloquear</button>')+'</td></tr>'; }).join("")+'</tbody></table></div>'+
     (l.length>mostra.length?'<p class="small muted" style="margin:6px 0 0">Mostrando 200 de '+l.length+'. Use a busca para achar os outros.</p>':'')
     :'<div class="vazio">Ninguém aqui'+(q?' com essa busca':'')+'.</div>';
-  var acha=function(m){ return CB.colaboradores.find(function(x){ return x.matricula===m; }); };
+  var acha=function(m){ return CB.colaboradores.find(function(x){ return x.chave===m; }); };
   app.querySelectorAll("[data-ed]").forEach(function(b){ b.onclick=function(){ editarColab(acha(b.dataset.ed)); }; });
   app.querySelectorAll("[data-bl]").forEach(function(b){ b.onclick=function(){ var x=acha(b.dataset.bl);
     if(!confirm("Bloquear "+x.nome+"? A pessoa não faz mais check-in nem entra na paródia ou no painel. Nada é apagado.")) return;
-    api("colabBloquear",AT,x.matricula,true).then(function(r){ CB=r; desenhaColab(); toast("Bloqueado."); }).catch(function(e){ toast(e.message); }); }; });
+    api("colabBloquear",AT,x.chave,true).then(function(r){ CB=r; desenhaColab(); toast("Bloqueado."); }).catch(function(e){ toast(e.message); }); }; });
   app.querySelectorAll("[data-desbl]").forEach(function(b){ b.onclick=function(){ var x=acha(b.dataset.desbl);
-    api("colabBloquear",AT,x.matricula,false).then(function(r){ CB=r; desenhaColab(); toast("Desbloqueado."); }).catch(function(e){ toast(e.message); }); }; });
+    api("colabBloquear",AT,x.chave,false).then(function(r){ CB=r; desenhaColab(); toast("Desbloqueado."); }).catch(function(e){ toast(e.message); }); }; });
 }
 function editarColab(x){
   dlg('<div class="row" style="justify-content:space-between"><h2>Editar colaborador</h2><button class="btn sm ghost" id="fx" aria-label="Fechar">✕</button></div>'+
-    '<form id="fed" class="stack" novalidate><div class="small muted">Matrícula '+esc(x.matricula)+'</div>'+
+    '<form id="fed" class="stack" novalidate>'+(x.semMatricula?'<div class="note warn">O e-mail do RH veio sem a matrícula. Digite a matrícula para a pessoa poder fazer check-in.</div>'+
+      '<label class="field"><span>Matrícula</span><input id="emat" inputmode="numeric" maxlength="20" autocomplete="off"></label>':'<div class="small muted">Matrícula '+esc(x.matricula)+'</div>')+
     '<label class="field"><span>Nome</span><input id="enome" maxlength="120" value="'+esc(x.nome)+'"></label>'+
     '<label class="field"><span>Nome de escala (apelido)</span><input id="eesc" maxlength="60" value="'+esc(x.escala)+'"></label>'+
     '<div class="row"><label class="field" style="flex:1 1 160px"><span>Cargo</span><input id="ecar" maxlength="120" value="'+esc(x.cargo)+'"></label>'+
     '<label class="field" style="flex:1 1 160px"><span>Setor</span><input id="eset" maxlength="120" value="'+esc(x.setor)+'"></label></div>'+
     '<label class="field"><span>CPF <span class="muted">('+(x.temCpf?'já cadastrado; deixe em branco para manter':'3 primeiros números ou o CPF completo')+')</span></span><input id="ecpf" inputmode="numeric" maxlength="14" autocomplete="off"></label>'+
     '<div id="erred"></div><div class="row end"><button class="btn primary">Salvar</button></div></form>');
-  $("#fx").onclick=fecharDlg; $("#enome").focus();
+  $("#fx").onclick=fecharDlg; ($("#emat")||$("#enome")).focus();
   $("#fed").onsubmit=function(e2){ e2.preventDefault();
-    api("colabSalvar",AT,x.matricula,{nome:$("#enome").value,escala:$("#eesc").value,cargo:$("#ecar").value,setor:$("#eset").value,cpf:$("#ecpf").value})
+    api("colabSalvar",AT,x.chave,{matricula:$("#emat")?$("#emat").value:"",nome:$("#enome").value,escala:$("#eesc").value,cargo:$("#ecar").value,setor:$("#eset").value,cpf:$("#ecpf").value})
       .then(function(r){ fecharDlg(); CB=r; desenhaColab(); toast("Salvo."); }).catch(function(e){ erroEm($("#erred"),e.message); }); };
 }
 function ligarColar(){
@@ -959,11 +963,11 @@ function ligarColar(){
 function prevColab(){
   var v=CBPREV.p, adm=v.tipo==="admitidos";
   var nums=adm?[["🆕",v.novos,"novos","#1f8a5b"],["✏️",v.atualizados,"atualizados","#3e4095"],["↩️",v.reativados,"readmitidos","#d29500"]]
-              :[["⛔",v.bloqueados,"serão bloqueados","#c0392b"],["❔",v.naoAchados,"não estavam no cadastro","#d29500"],["✔",v.jaBloqueados,"já estavam bloqueados","#5a6380"]];
+              :[["⛔",v.bloqueados,"serão bloqueados","#c0392b"],["❔",v.naoAchados,"não achados no cadastro","#d29500"],["✔",v.jaBloqueados,"já estavam bloqueados","#5a6380"]].concat(v.conferir?[["⚠️",v.conferir,"para conferir à mão","#d29500"]]:[]);
   $("#cbprev").innerHTML='<div class="card pad stack"><div class="row" style="justify-content:space-between;align-items:center"><h3 style="margin:0">E-mail de <span class="cbt '+(adm?'adm':'dem')+'">'+(adm?'Admitidos':'Demitidos')+'</span> · '+v.lidos+' pessoa(s)</h3>'+
       '<button class="btn primary" id="cbapl">'+(adm?'Confirmar e atualizar':'Confirmar e bloquear')+'</button></div>'+
     '<div class="stats">'+nums.map(function(n){ return '<div class="stat" style="--c:'+n[3]+'"><span class="si">'+n[0]+'</span><div><b>'+n[1]+'</b><span class="l">'+n[2]+'</span></div></div>'; }).join("")+'</div>'+
-    '<div class="tbl"><table><tbody>'+v.pessoas.map(function(x){ return '<tr><td><b>'+esc(x.nome||"—")+'</b><div class="small muted">Matrícula '+esc(x.matricula)+(x.setor?' · '+esc(x.setor):'')+'</div></td><td class="small">'+esc(x.acao)+'</td></tr>'; }).join("")+'</tbody></table></div>'+
+    '<div class="tbl"><table><tbody>'+v.pessoas.map(function(x){ return '<tr><td><b>'+esc(x.nome||"—")+'</b><div class="small muted">'+matTxt(x.matricula)+(x.setor?' · '+esc(x.setor):'')+'</div></td><td class="small">'+esc(x.acao)+'</td></tr>'; }).join("")+'</tbody></table></div>'+
     (v.ignoradas&&v.ignoradas.length?'<div class="note warn"><b>Linhas que não entendi</b> (confira se falta alguém):<ul style="margin:6px 0 0;padding-left:18px">'+v.ignoradas.map(function(x){ return '<li>'+esc(x)+'</li>'; }).join("")+'</ul></div>':'')+
   '</div>';
   $("#cbprev").scrollIntoView({behavior:"smooth",block:"start"});

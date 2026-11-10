@@ -8,8 +8,13 @@
  * e não muda. Quem não está nesta tabela continua sendo achado na lista de eleitores (o cadastro de antes).
  *
  * Os e-mails chegam pelo n8n (colabSync, com a chave da integração) ou colados no painel (colabColar).
- * O texto é lido por colab_ler(): aceita tabela com cabeçalho (tab, ; ou |), linhas "Matrícula: 123" / "Nome: ..."
+ * O texto é lido por colab_ler(): aceita tabela com cabeçalho (tab, ; ou |, HTML), linhas "Matrícula: 123" / "Nome: ..."
  * ou linhas soltas com o número da matrícula e o nome. O CPF ainda não vem: quando vier, é aproveitado.
+ *
+ * O e-mail do RADSYSTEM (assunto "Rad_ColaboradorDemitidos Enviado em: ...") traz só Nome, Telefone, Tipo e datas,
+ * SEM matrícula: a pessoa é achada pelo NOME COMPLETO no cadastro (sem acento e sem diferença de maiúsculas).
+ * Nome que aparece duas vezes no cadastro não é mexido (fica "conferir"). Admitido sem matrícula entra como
+ * pendente (chave "n:<nome>") e a comissão completa a matrícula no painel; até lá ele não consegue entrar em nada.
  */
 declare(strict_types=1);
 
@@ -74,6 +79,17 @@ function colab_sem_acento(string $s): string {
     return strtr($s, ['á'=>'a','à'=>'a','ã'=>'a','â'=>'a','é'=>'e','ê'=>'e','í'=>'i','ó'=>'o','õ'=>'o','ô'=>'o','ú'=>'u','ü'=>'u','ç'=>'c']);
 }
 
+/* nome para comparar: sem acento, minúsculo, só letras */
+function colab_nome_norm(string $n): string {
+    return trim(preg_replace('/[^a-z]+/', ' ', colab_sem_acento($n)));
+}
+/* nome normalizado → chaves (mnorm) de quem tem esse nome no cadastro */
+function colab_indice_nomes(): array {
+    $i = [];
+    foreach (colab_todos() as $k => $c) { $n = colab_nome_norm((string)$c['nome']); if ($n !== '') $i[$n][] = (string)$k; }
+    return $i;
+}
+
 /* nome da coluna → campo */
 function colab_campo(string $rot): ?string {
     $r = colab_sem_acento(trim($rot, " \t:*-_."));
@@ -84,6 +100,8 @@ function colab_campo(string $rot): ?string {
     if (preg_match('/^(nome|colaborador|funcionario|empregado)/', $r)) return 'nome';
     if (preg_match('/cargo|funcao/', $r)) return 'cargo';
     if (preg_match('/setor|depart|lotacao|area|centro de custo|garagem|unidade/', $r)) return 'setor';
+    if (preg_match('/^(tipo|situacao|movimentacao)$/', $r)) return 'tipo';
+    if (preg_match('/telefone|celular|fone/', $r)) return 'telefone';
     if (preg_match('/admiss|data de entrada|inicio/', $r)) return 'admissao';
     if (preg_match('/demiss|deslig|rescis|data de saida|afastamento/', $r)) return 'demissao';
     return null;
@@ -100,6 +118,8 @@ function colab_partes(string $l): array {
 
 function colab_texto_limpo(string $t): string {
     if (preg_match('/<(table|tr|td|br|p|div)\b/i', $t)) {   // corpo em HTML
+        $t = preg_replace('#<(style|script|head)\b.*?</\1>#is', ' ', $t);
+        $t = preg_replace('/\s+/u', ' ', $t);   // as quebras do código HTML não contam
         $t = preg_replace('#<\s*(br|/p|/div|/tr|/li|/h\d)\b[^>]*>#i', "\n", $t);
         $t = preg_replace('#<\s*/t[dh]\s*>#i', "\t", $t);
         $t = html_entity_decode(strip_tags($t), ENT_QUOTES | ENT_HTML5, 'UTF-8');
@@ -163,9 +183,11 @@ function colab_ler(string $texto): array {
     foreach ($out as $r) {
         $mat = preg_replace('/\D/', '', (string)($r['matricula'] ?? ''));
         $nome = preg_replace('/\s+/', ' ', trim((string)($r['nome'] ?? '')));
-        if ($mat === '' || mat_norm($mat) === '') { if ($nome !== '') $ign[] = 'Sem matrícula: ' . $nome; continue; }
-        if (isset($vistos[mat_norm($mat)])) continue;
-        $vistos[mat_norm($mat)] = true;
+        if (mat_norm($mat) === '') $mat = '';
+        if ($mat === '' && colab_nome_norm($nome) === '') continue;
+        $chave = $mat !== '' ? mat_norm($mat) : 'n:' . colab_nome_norm($nome);
+        if (isset($vistos[$chave])) continue;
+        $vistos[$chave] = true;
         $res[] = ['matricula' => $mat, 'nome' => txt($nome, 120), 'escala' => txt($r['escala'] ?? '', 60), 'cargo' => txt($r['cargo'] ?? '', 120),
                   'setor' => txt($r['setor'] ?? '', 120), 'cpf' => preg_replace('/\D/', '', (string)($r['cpf'] ?? '')),
                   'admissao' => txt($r['admissao'] ?? ($r['data'] ?? ''), 20), 'demissao' => txt($r['demissao'] ?? ($r['data'] ?? ''), 20)];
@@ -200,38 +222,50 @@ function colab_cpf_codigo(string $cpf): string {
 function colab_aplicar(string $tipo, array $linhas, bool $gravar, string $origem, string $assunto = ''): array {
     $p = colab_tabelas();
     $acha = $p->prepare('SELECT * FROM colaboradores WHERE mnorm=?');
-    $res = ['tipo' => $tipo, 'lidos' => count($linhas), 'novos' => 0, 'atualizados' => 0, 'bloqueados' => 0, 'reativados' => 0, 'jaBloqueados' => 0, 'naoAchados' => 0, 'pessoas' => []];
+    $res = ['tipo' => $tipo, 'lidos' => count($linhas), 'novos' => 0, 'atualizados' => 0, 'bloqueados' => 0, 'reativados' => 0, 'jaBloqueados' => 0, 'naoAchados' => 0, 'conferir' => 0, 'pessoas' => []];
+    $idx = colab_indice_nomes();
     if ($gravar) $p->exec('BEGIN IMMEDIATE');
     try {
         $agora = agora();
         foreach ($linhas as $r) {
-            $k = mat_norm($r['matricula']);
+            $pelo = '';
+            if ($r['matricula'] !== '') $k = mat_norm($r['matricula']);
+            else {   // sem matrícula no e-mail: acha pelo nome completo
+                $nn = colab_nome_norm($r['nome']); $ks = $idx[$nn] ?? [];
+                if (count($ks) > 1) { $res['conferir']++; $res['pessoas'][] = ['matricula' => '', 'nome' => $r['nome'], 'acao' => 'Conferir: há ' . count($ks) . ' pessoas com esse nome no cadastro (nada foi mudado)']; continue; }
+                if ($ks) { $k = $ks[0]; $pelo = ' (achado pelo nome)'; }
+                elseif ($tipo === 'admitidos') { $k = 'n:' . $nn; $idx[$nn] = [$k]; }
+                else { $res['conferir']++; $res['pessoas'][] = ['matricula' => '', 'nome' => $r['nome'], 'acao' => 'Conferir: não achei esse nome no cadastro (nada foi mudado)']; continue; }
+            }
             $acha->execute([$k]); $c = $acha->fetch();
-            $e = eleitor_por_mat($r['matricula']);
+            $e = str_starts_with($k, 'n:') ? null : eleitor_por_mat($k);
+            $mat = (string)($c['matricula'] ?? ($e['matricula'] ?? $r['matricula']));
+            $r['matricula'] = $mat;
             $nome = $r['nome'] ?: (string)($c['nome'] ?? ($e['nome'] ?? ''));
             if ($tipo === 'admitidos') {
                 if ($nome === '') { $res['pessoas'][] = ['matricula' => $r['matricula'], 'nome' => '', 'acao' => 'Sem nome: não incluído']; continue; }
                 $acao = $c ? ((int)$c['ativo'] ? 'atualizado' : 'reativado') : ($e ? 'atualizado' : 'novo');
                 $res[['novo' => 'novos', 'atualizado' => 'atualizados', 'reativado' => 'reativados'][$acao]]++;
-                $res['pessoas'][] = ['matricula' => $r['matricula'], 'nome' => $nome, 'setor' => $r['setor'], 'acao' => ucfirst($acao)];
+                $res['pessoas'][] = ['matricula' => $mat, 'nome' => $nome, 'setor' => $r['setor'],
+                    'acao' => ucfirst($acao) . ($mat === '' ? ' (falta a matrícula: complete no cadastro)' : $pelo)];
                 if ($gravar) $p->prepare('INSERT INTO colaboradores(mnorm,matricula,nome,escala,cargo,setor,codigo,admissao,ativo,atualizado,origem)
                         VALUES(?,?,?,?,?,?,?,?,1,?,?) ON CONFLICT(mnorm) DO UPDATE SET nome=excluded.nome,
                         escala=COALESCE(NULLIF(excluded.escala,\'\'),escala), cargo=COALESCE(NULLIF(excluded.cargo,\'\'),cargo),
                         setor=COALESCE(NULLIF(excluded.setor,\'\'),setor), codigo=COALESCE(NULLIF(excluded.codigo,\'\'),codigo),
                         admissao=COALESCE(NULLIF(excluded.admissao,\'\'),admissao), ativo=1, demissao=NULL, bloqueado_em=NULL,
                         atualizado=excluded.atualizado, origem=excluded.origem')
-                    ->execute([$k, $c['matricula'] ?? ($e['matricula'] ?? $r['matricula']), $nome, $r['escala'], $r['cargo'], $r['setor'],
+                    ->execute([$k, $mat, $nome, $r['escala'], $r['cargo'], $r['setor'],
                                colab_cpf_codigo($r['cpf']), $r['admissao'], $agora, $origem]);
             } else {
                 if (!$c && !$e) { $res['naoAchados']++; $res['pessoas'][] = ['matricula' => $r['matricula'], 'nome' => $nome, 'acao' => 'Não estava no cadastro (bloqueado mesmo assim)']; }
                 elseif ($c && !(int)$c['ativo']) { $res['jaBloqueados']++; $res['pessoas'][] = ['matricula' => $r['matricula'], 'nome' => $nome, 'acao' => 'Já estava bloqueado']; continue; }
-                else { $res['bloqueados']++; $res['pessoas'][] = ['matricula' => $r['matricula'], 'nome' => $nome, 'setor' => (string)($c['setor'] ?? ($e['setor'] ?? '')), 'acao' => 'Bloqueado']; }
+                else { $res['bloqueados']++; $res['pessoas'][] = ['matricula' => $r['matricula'], 'nome' => $nome, 'setor' => (string)($c['setor'] ?? ($e['setor'] ?? '')), 'acao' => 'Bloqueado' . $pelo]; }
                 if ($nome === '') $nome = 'Matrícula ' . $r['matricula'];
                 if ($gravar) {
                     $p->prepare('INSERT INTO colaboradores(mnorm,matricula,nome,ativo,demissao,bloqueado_em,atualizado,origem) VALUES(?,?,?,0,?,?,?,?)
                         ON CONFLICT(mnorm) DO UPDATE SET ativo=0, demissao=COALESCE(NULLIF(excluded.demissao,\'\'),demissao),
                         bloqueado_em=excluded.bloqueado_em, atualizado=excluded.atualizado, origem=excluded.origem')
-                        ->execute([$k, $c['matricula'] ?? ($e['matricula'] ?? $r['matricula']), $nome, $r['demissao'], $agora, $agora, $origem]);
+                        ->execute([$k, $mat, $nome, $r['demissao'], $agora, $agora, $origem]);
                     // quem foi desligado perde o acesso ao painel na hora
                     $p->prepare('DELETE FROM sessoes WHERE tipo=? AND ref=?')->execute(['admin', 'c:' . $k]);
                 }
@@ -288,7 +322,7 @@ function colab_painel(): array {
     $lista = [];
     foreach ($todos as $k => $c) {
         $x = $cad[$k] ?? null;
-        $lista[] = ['matricula' => $c['matricula'], 'nome' => (string)$c['nome'], 'escala' => (string)$c['escala'], 'cargo' => (string)$c['cargo'],
+        $lista[] = ['chave' => (string)$k, 'semMatricula' => str_starts_with((string)$k, 'n:'), 'matricula' => (string)$c['matricula'], 'nome' => (string)$c['nome'], 'escala' => (string)$c['escala'], 'cargo' => (string)$c['cargo'],
             'setor' => (string)$c['setor'], 'ativo' => (bool)$c['ativo'], 'temCpf' => trim((string)($x['codigo'] ?? '')) !== '' || trim((string)($elei[$k] ?? '')) !== '',
             'admissao' => (string)($x['admissao'] ?? ''), 'demissao' => (string)($x['demissao'] ?? ''), 'bloqueadoEm' => (string)($x['bloqueado_em'] ?? ''),
             'atualizado' => (string)($x['atualizado'] ?? ''), 'novo' => $x !== null && !array_key_exists($k, $elei)];
@@ -312,20 +346,31 @@ function api_colabColar($t, $texto, $tipo = 'auto', $aplicar = false): array {
     if (strlen($texto) > 2000000) falha('Texto grande demais.');
     $tipo = colab_tipo((string)$tipo, '', $texto);
     $l = colab_ler($texto);
-    if (!$l['linhas']) falha('Não encontrei nenhum colaborador (matrícula + nome) no texto colado.');
+    if (!$l['linhas']) falha('Não encontrei nenhum colaborador (nome ou matrícula) no texto colado.');
     $r = colab_aplicar($tipo, $l['linhas'], (bool)$aplicar, 'painel');
     return ['previa' => $r + ['ignoradas' => $l['ignoradas']], 'aplicado' => (bool)$aplicar] + ($aplicar ? colab_painel() : []);
 }
 
 /* edição manual de uma pessoa: escala, setor, cargo, CPF (3 primeiros ou completo) */
+function colab_chave_de($m): string { $m = (string)$m; return str_starts_with($m, 'n:') ? $m : mat_norm($m); }
+
 function api_colabSalvar($t, $m, $dados): array {
     exige_admin($t);
-    $k = mat_norm($m); if ($k === '') falha('Matrícula inválida.');
+    $k = colab_chave_de($m); if ($k === '') falha('Matrícula inválida.');
     $d = (array)$dados;
     $p = colab_tabelas();
     $st = $p->prepare('SELECT * FROM colaboradores WHERE mnorm=?'); $st->execute([$k]); $c = $st->fetch();
-    $e = eleitor_por_mat($m);
+    $e = str_starts_with($k, 'n:') ? null : eleitor_por_mat($k);
     if (!$c && !$e) falha('Matrícula não encontrada.');
+    if (str_starts_with($k, 'n:')) {   // admitido que veio sem matrícula: completa agora
+        $nm = mat_norm($d['matricula'] ?? '');
+        if ($nm !== '') {
+            $st->execute([$nm]);
+            if ($st->fetch()) falha('Essa matrícula já está no cadastro de colaboradores.');
+            $p->prepare('UPDATE colaboradores SET mnorm=?, matricula=? WHERE mnorm=?')->execute([$nm, preg_replace('/\D/', '', (string)$d['matricula']), $k]);
+            $k = $nm; $st->execute([$k]); $c = $st->fetch(); $e = eleitor_por_mat($k);
+        }
+    }
     $nome = txt($d['nome'] ?? '', 120) ?: (string)($c['nome'] ?? $e['nome']);
     $cpf = preg_replace('/\D/', '', (string)($d['cpf'] ?? ''));
     $cod = strlen($cpf) === 11 ? colab_cpf_codigo($cpf) : ($cpf !== '' ? (strlen($cpf) === 3 ? $cpf : falha('CPF: digite os 3 primeiros números ou o CPF completo.')) : null);
@@ -333,18 +378,21 @@ function api_colabSalvar($t, $m, $dados): array {
         ON CONFLICT(mnorm) DO UPDATE SET nome=excluded.nome, escala=excluded.escala, cargo=excluded.cargo, setor=excluded.setor,
         codigo=COALESCE(excluded.codigo,codigo), atualizado=excluded.atualizado, origem=excluded.origem')
         ->execute([$k, $c['matricula'] ?? $e['matricula'], $nome, txt($d['escala'] ?? '', 60), txt($d['cargo'] ?? '', 120), txt($d['setor'] ?? '', 120), $cod, agora(), 'edição']);
-    registrar('Colaborador editado', ($c['matricula'] ?? $e['matricula']) . ' – ' . $nome);
+    registrar('Colaborador editado', (($c['matricula'] ?? $e['matricula']) ?: 'sem matrícula') . ' – ' . $nome);
     return colab_painel();
 }
 
 function api_colabBloquear($t, $m, $bloquear): array {
     exige_admin($t);
-    $k = mat_norm($m);
-    $e = eleitor_por_mat($m);
+    $k = colab_chave_de($m);
+    $e = str_starts_with($k, 'n:') ? null : eleitor_por_mat($k);
     $st = colab_tabelas()->prepare('SELECT * FROM colaboradores WHERE mnorm=?'); $st->execute([$k]); $c = $st->fetch();
     if (!$c && !$e) falha('Matrícula não encontrada.');
     $nome = (string)($c['nome'] ?? $e['nome']);
-    if ($bloquear) {
+    if ($bloquear && !$e) {   // sem matrícula: só marca
+        colab_tabelas()->prepare('UPDATE colaboradores SET ativo=0, bloqueado_em=?, atualizado=?, origem=? WHERE mnorm=?')->execute([agora(), agora(), 'painel', $k]);
+        registrar('Colaborador bloqueado', 'sem matrícula – ' . $nome);
+    } elseif ($bloquear) {
         colab_aplicar('demitidos', [['matricula' => $c['matricula'] ?? $e['matricula'], 'nome' => $nome, 'demissao' => '']], true, 'painel', 'Bloqueio manual');
     } else {
         if (!$c) falha('Esta pessoa não está bloqueada.');

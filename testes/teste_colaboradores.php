@@ -108,5 +108,40 @@ erro('chave antiga para de valer', fn() => api_colabSync($chave, "3002 - Teste N
 t('chave nova vale', api_colabSync($nova, "3002 - Teste Novo", 'Admitidos')['novos'] === 1);
 erro('sem sessão', fn() => api_colabDados('x'), 'expirada');
 
+/* ---------- e-mail real do RADSYSTEM: sem matrícula, acha pelo nome ---------- */
+api_importar($A, [['matricula' => '6001', 'nome' => 'MARCELO DOS ANJOS TEIXEIRA', 'setor' => 'Tráfego', 'codigo' => '777.888.999-00'],
+                  ['matricula' => '6002', 'nome' => 'Ítalo Vieira Brandão', 'setor' => 'Tráfego'],
+                  ['matricula' => '6003', 'nome' => 'José Carlos Ferreira', 'setor' => 'Manutenção'],
+                  ['matricula' => '6004', 'nome' => 'Jose Carlos Ferreira', 'setor' => 'Tráfego']], false);
+$rad = "<html><body>\n<p>Estamos notificando que a tarefa [Rad_ColaboradorDemitidos]<br>\nfoi executada com exito na data [09/11/2026].</p>\n<table border=1>\n <tr>\n  <th>Nome</th>\n  <th>TelefoneCelular</th>\n  <th>Tipo</th>\n  <th>DtAdmissao</th>\n  <th>DtDemissao</th>\n </tr>\n"
+  . " <tr>\n  <td>Marcelo Dos Anjos Teixeira</td>\n  <td>90000-0001</td>\n  <td>Demitido</td>\n  <td></td>\n  <td>03/11/2026</td>\n </tr>\n"
+  . " <tr><td>Italo Vieira Brandao</td><td>90000-0002</td><td>Demitido</td><td></td><td>03/11/2026</td></tr>\n"
+  . " <tr><td>Wagner Pereira da Costa Neto</td><td>90000-0003</td><td>Demitido</td><td></td><td>03/11/2026</td></tr>\n"
+  . " <tr><td>Jose Carlos Ferreira</td><td>90000-0004</td><td>Demitido</td><td></td><td>06/11/2026</td></tr>\n</table>\n<p>Atenciosamente,<br>RADSYSTEM</p></body></html>";
+$l = colab_ler($rad);
+t('RAD: lê 4 linhas sem matrícula', count($l['linhas']) === 4 && $l['linhas'][0]['nome'] === 'Marcelo Dos Anjos Teixeira' && $l['linhas'][0]['matricula'] === '' && $l['linhas'][0]['demissao'] === '03/11/2026' && !$l['ignoradas']);
+t('RAD: tipo pelo assunto', colab_tipo('auto', 'Rad_ColaboradorDemitidos Enviado em: 09/11/2026 09:10:09', $rad) === 'demitidos');
+$chave = api_colabDados($A)['chave'];
+$r = api_colabSync($chave, $rad, 'Rad_ColaboradorDemitidos Enviado em: 09/11/2026 09:10:09');
+t('RAD: 2 bloqueados pelo nome, 2 para conferir (não achado e nome repetido)', $r['bloqueados'] === 2 && $r['naoAchados'] === 0 && $r['conferir'] === 2);
+erro('RAD: Marcelo bloqueado', fn() => api_preQr('6001', '777'), 'bloqueado');
+erro('RAD: Ítalo (com acento no cadastro) bloqueado', fn() => colab_por_mat('6002'), 'bloqueado');
+t('RAD: homônimos não foram mexidos', colab_por_mat('6003') !== null && colab_por_mat('6004') !== null);
+$h = api_colabDados($A)['historico'][0];
+t('RAD: histórico mostra a matrícula achada', $h['pessoas'][0]['matricula'] === '6001' && str_contains($h['pessoas'][0]['acao'], 'pelo nome'));
+
+/* admitido sem matrícula: fica pendente até completar */
+$adm = '<table><tr><th>Nome</th><th>TelefoneCelular</th><th>Tipo</th><th>DtAdmissao</th><th>DtDemissao</th></tr><tr><td>Paula Regina Souza</td><td>90000-0005</td><td>Admitido</td><td>05/11/2026</td><td></td></tr></table>';
+$r = api_colabSync($chave, $adm, 'Rad_ColaboradorAdmitidos Enviado em: 09/11/2026 09:10:09');
+t('RAD admitido: entra pendente', $r['tipo'] === 'admitidos' && $r['novos'] === 1);
+$p = api_colabDados($A); $pend = array_values(array_filter($p['colaboradores'], fn($x) => $x['semMatricula']));
+t('RAD admitido: aparece sem matrícula', count($pend) === 1 && $pend[0]['nome'] === 'Paula Regina Souza' && $pend[0]['chave'] === 'n:paula regina souza');
+$r = api_colabSync($chave, $adm, 'Rad_ColaboradorAdmitidos Enviado em: 10/11/2026');
+t('RAD admitido: e-mail repetido só atualiza', $r['novos'] === 0 && $r['atualizados'] === 1);
+api_colabSalvar($A, $pend[0]['chave'], ['nome' => 'Paula Regina Souza', 'matricula' => '6100', 'cpf' => '123', 'setor' => 'RH']);
+t('RAD admitido: matrícula completada vale no check-in', api_preQr('6100', '123')['nome'] === 'Paula Regina Souza');
+t('RAD admitido: sem pendente', !array_filter(api_colabDados($A)['colaboradores'], fn($x) => $x['semMatricula']));
+erro('RAD admitido: chave inexistente', fn() => api_colabSalvar($A, 'n:xx', ['matricula' => '6100']), 'não encontrada');
+
 echo "\n$ok ok, $ko falha(s)\n";
 exit($ko ? 1 : 0);
