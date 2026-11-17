@@ -21,7 +21,7 @@ const PERMITIDAS = ['ballot', 'consultar', 'login', 'votar', 'adminLogin', 'admi
     // /admin unificado: comissão (senha pessoal) e jurados
     'acessoInicio', 'acessoEntrar', 'acessoCriarSenha', 'acessoLista', 'acessoIncluir', 'acessoRemover', 'acessoZerarSenha', 'acessoEu',
     // cadastro de colaboradores: e-mails de admitidos/demitidos (n8n ou colados no painel)
-    'colabSync', 'colabDados', 'colabColar', 'colabSalvar', 'colabBloquear', 'colabTrocarChave'];
+    'colabSync', 'colabDados', 'colabColar', 'colabSalvar', 'colabBloquear', 'colabTrocarChave', 'colabEmailAgora'];
 
 function responder($v, int $code = 200): never {
     http_response_code($code);
@@ -37,6 +37,7 @@ if (!in_array($fn, PERMITIDAS, true)) responder(['erro' => 'Chamada desconhecida
 
 try {
     agenda_aplicar();   // abre/encerra sozinha no horário do cronograma
+    colab_email_auto(); // lê a caixa do RH (admitidos/demitidos) no máximo a cada 5 min
     $f = 'api_' . $fn;
     $n = (new ReflectionFunction($f))->getNumberOfParameters();
     $args = array_pad(array_slice($args, 0, $n), $n, null);

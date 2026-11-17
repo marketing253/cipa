@@ -280,7 +280,7 @@ function colab_aplicar(string $tipo, array $linhas, bool $gravar, string $origem
     } catch (Throwable $ex) { if ($gravar) $p->exec('ROLLBACK'); throw $ex; }
     if ($gravar) registrar($tipo === 'admitidos' ? 'Colaboradores admitidos' : 'Colaboradores desligados (bloqueados)',
         $tipo === 'admitidos' ? "{$res['novos']} novos, {$res['atualizados']} atualizados, {$res['reativados']} reativados · $origem"
-                              : ($res['bloqueados'] + $res['naoAchados']) . " bloqueados · $origem", $origem === 'n8n' ? 'Integração n8n' : 'Comissão');
+                              : ($res['bloqueados'] + $res['naoAchados']) . " bloqueados · $origem", ['n8n' => 'Integração n8n', 'email' => 'E-mail do RH'][$origem] ?? 'Comissão');
     return $res;
 }
 
@@ -333,7 +333,7 @@ function colab_painel(): array {
         'pessoas' => json_decode((string)$h['detalhe'], true) ?: []], $p->query('SELECT * FROM colab_sync ORDER BY id DESC LIMIT 60')->fetchAll());
     $ativos = count(array_filter($lista, fn($c) => $c['ativo']));
     return ['colaboradores' => $lista, 'ativos' => $ativos, 'bloqueados' => count($lista) - $ativos,
-            'historico' => $hist, 'chave' => colab_chave(), 'endpoint' => url_base() . 'api.php'];
+            'historico' => $hist, 'chave' => colab_chave(), 'endpoint' => url_base() . 'api.php', 'email' => colab_email_painel()];
 }
 
 function api_colabDados($t): array { exige_admin($t); return colab_painel(); }
@@ -408,3 +408,5 @@ function api_colabTrocarChave($t): array {
     registrar('Chave da integração n8n trocada');
     return colab_painel();
 }
+
+require_once __DIR__ . '/colab_email.php';

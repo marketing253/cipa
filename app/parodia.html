@@ -853,10 +853,10 @@ function telaColab(){
   api("colabDados",AT).then(function(d){ CB=d; desenhaColab(); }).catch(function(e){ toast(e.message); if(/expirada/.test(e.message)) sair(); });
 }
 function desenhaColab(){
-  var d=CB, l=d.colaboradores, ult=d.historico.find(function(h){ return h.origem==="n8n"; });
+  var d=CB, l=d.colaboradores, em=d.email||{}, ult=d.historico.find(function(h){ return h.origem==="n8n"||h.origem==="email"; });
   var novos=l.filter(function(x){ return x.novo&&x.ativo; }).length, semCpf=l.filter(function(x){ return x.ativo&&!x.temCpf; }).length,
     semMat=l.filter(function(x){ return x.ativo&&x.semMatricula; }).length;
-  var abas=[["lista","👥 Cadastro",l.length],["atualizar","📨 Colar e-mail"],["hist","🕘 Atualizações",d.historico.length||""],["n8n","🔗 Integração n8n"]];
+  var abas=[["lista","👥 Cadastro",l.length],["atualizar","📨 Colar e-mail"],["hist","🕘 Atualizações",d.historico.length||""],["n8n","🔗 Integração"]];
   var corpo="";
   if(CBA==="lista"){
     var f=[["ativos","Ativos",d.ativos],["novos","Admitidos (novos)",novos]].concat(semMat?[["semmat","⚠️ Sem matrícula",semMat]]:[]).concat([["semcpf","Sem CPF",semCpf],["bloqueados","Bloqueados",d.bloqueados]]);
@@ -873,15 +873,21 @@ function desenhaColab(){
     corpo=d.historico.length?'<div class="stack">'+d.historico.map(function(h){
       var adm=h.tipo==="admitidos", conf=(h.pessoas||[]).filter(function(x){ return /^Conferir/.test(x.acao||""); }).length, res=adm?[h.novos+" novos",h.atualizados+" atualizados"].concat(h.reativados?[h.reativados+" readmitidos"]:[]).join(" · "):h.bloqueados+" bloqueados"+(conf?" · ⚠️ "+conf+" para conferir":"");
       return '<details class="card pad cbh"><summary><span class="cbt '+(adm?'adm':'dem')+'">'+(adm?'Admitidos':'Demitidos')+'</span><b>'+esc(dataBr(h.em))+'</b>'+
-        '<span class="muted small">'+(h.lidos?esc(res):'nenhum colaborador no e-mail')+' · '+(h.origem==="n8n"?'pelo n8n':'pelo painel')+(h.assunto?' · “'+esc(h.assunto)+'”':'')+'</span></summary>'+
+        '<span class="muted small">'+(h.lidos?esc(res):'nenhum colaborador no e-mail')+' · '+(h.origem==="n8n"?'pelo n8n':h.origem==="email"?'pelo e-mail':'pelo painel')+(h.assunto?' · “'+esc(h.assunto)+'”':'')+'</span></summary>'+
         (h.pessoas&&h.pessoas.length?'<div class="tbl"><table><tbody>'+h.pessoas.map(function(x){ return '<tr><td><b>'+esc(x.nome||"—")+'</b><div class="small muted">'+matTxt(x.matricula)+(x.setor?' · '+esc(x.setor):'')+'</div></td><td class="small">'+esc(x.acao)+'</td></tr>'; }).join("")+'</tbody></table></div>':'')+'</details>'; }).join("")+'</div>'
-      :'<div class="vazio grande"><span class="vi">🕘</span><b>Nenhuma atualização ainda</b>Quando o n8n mandar o primeiro e-mail, ou quando você colar um, ele aparece aqui.</div>';
+      :'<div class="vazio grande"><span class="vi">🕘</span><b>Nenhuma atualização ainda</b>Quando chegar o primeiro e-mail do RH, ou quando você colar um, ele aparece aqui.</div>';
   } else {
-    corpo='<div class="card pad stack"><h3 style="margin:0">Como funciona</h3>'+
-      '<ol class="cbpassos"><li>O n8n olha a caixa de e-mail do RH a cada minuto.</li><li>Quando chega e-mail com <b>admitidos</b>, <b>admissão</b>, <b>demitidos</b>, <b>demissão</b> ou <b>desligamento</b> no assunto, ele manda o texto para cá.</li>'+
+    var emSt=!em.configurado?'<div class="note warn"><b>Ainda não configurada.</b> No EasyPanel, serviço da CIPA → <b>Ambiente</b>, coloque:<br><code>CIPA_EMAIL_USUARIO=</code>e-mail que recebe os avisos do RH<br><code>CIPA_EMAIL_SENHA=</code>senha de app do Google (16 letras)<br>Salve e clique em <b>Implantar</b>.</div>'
+      :em.erro?'<div class="note warn"><b>Erro na última leitura</b> ('+esc(dataBr(em.ultima))+'): '+esc(em.erro)+'</div>'
+      :'<p class="small muted" style="margin:0">Caixa <b>'+esc(em.usuario)+'</b> · última leitura '+(em.ultima?'<b>'+esc(dataBr(em.ultima))+'</b>':'ainda não feita')+(em.ultimoEmail?' · último e-mail do RH aplicado em <b>'+esc(dataBr(em.ultimoEmail))+'</b>':'')+'.</p>';
+    corpo='<div class="card pad stack"><h3 style="margin:0">Leitura direta do e-mail (recomendado)</h3>'+
+      '<p class="small muted" style="margin:0">O próprio sistema entra na caixa do RH a cada '+(em.intervaloMin||5)+' minutos (e antes de qualquer login), acha os e-mails de admitidos e demitidos e aplica sozinho. Não precisa do n8n.</p>'+
+      emSt+(em.configurado?'<div class="row"><button class="btn sm primary" id="cbem">📥 Buscar e-mails agora</button></div>':'')+'</div>'+
+      '<div class="card pad stack"><h3 style="margin:0">Como funciona</h3>'+
+      '<ol class="cbpassos"><li>O sistema (ou o n8n) olha a caixa de e-mail do RH.</li><li>E-mail com <b>admitidos</b>, <b>admissão</b>, <b>demitidos</b>, <b>demissão</b> ou <b>desligamento</b> no assunto é lido; os outros são ignorados.</li>'+
         '<li>Admitido entra (ou tem os dados atualizados); demitido fica <b>bloqueado</b>: não faz check-in, não entra na paródia nem no painel. Nada é apagado.</li><li>Cada e-mail aparece em <b>🕘 Atualizações</b>.</li></ol>'+
       '<p class="small muted" style="margin:0">A lista de eleitores da votação não muda: ela é o registro oficial da eleição.</p></div>'+
-      '<div class="card pad stack"><h3 style="margin:0">Montar no n8n</h3>'+
+      '<div class="card pad stack"><h3 style="margin:0">Pelo n8n (alternativa)</h3><p class="small muted" style="margin:0">Use só se não usar a leitura direta: com as duas ligadas o mesmo e-mail entra duas vezes (não estraga nada, só repete no histórico).</p>'+
       '<ol class="cbpassos"><li>Baixe o fluxo pronto: <button class="btn sm primary" id="cbwf">⬇️ Baixar fluxo do n8n</button></li>'+
         '<li>No n8n: <b>Workflows → Import from File</b> e escolha o arquivo.</li>'+
         '<li>Abra o nó <b>E-mail do RH</b> e crie a credencial <b>IMAP</b> da caixa que recebe os e-mails (você digita o usuário e a senha lá no n8n).</li>'+
@@ -895,7 +901,7 @@ function desenhaColab(){
   app.innerHTML='<div class="stack">'+
     '<header class="phead"><div class="pt"><span class="pic">👥</span><div style="min-width:0"><div class="lbl">Colaboradores</div><h2>Cadastro de colaboradores</h2>'+
       '<div class="tema">Atualizado pelos e-mails de admitidos e demitidos</div></div></div>'+
-      '<span class="st'+(ult?' on':'')+'">'+(ult?'n8n: '+esc(dataBr(ult.em)):'n8n ainda não conectado')+'</span></header>'+
+      '<span class="st'+(em.configurado&&!em.erro||ult?' on':'')+'">'+(em.configurado?(em.erro?'⚠️ erro ao ler o e-mail':'E-mail lido '+esc(dataBr(em.ultima||""))):ult?'n8n: '+esc(dataBr(ult.em)):'e-mail ainda não conectado')+'</span></header>'+
     '<div class="stats">'+
       '<div class="stat"><span class="si">👥</span><div><b>'+d.ativos+'</b><span class="l">ativos</span></div></div>'+
       '<div class="stat" style="--c:#1f8a5b"><span class="si">🆕</span><div><b>'+novos+'</b><span class="l">admitidos pelo e-mail</span></div></div>'+
@@ -918,6 +924,9 @@ function desenhaColab(){
     $("#cbtroca").onclick=function(){ if(!confirm("Trocar a chave? O fluxo do n8n que usa a chave atual para de funcionar até você baixar o fluxo de novo.")) return;
       api("colabTrocarChave",AT).then(function(x){ CB=x; desenhaColab(); toast("Chave trocada. Baixe o fluxo de novo."); }).catch(function(e){ toast(e.message); }); };
     $("#cbwf").onclick=function(){ baixarFluxo(d); };
+    if($("#cbem")) $("#cbem").onclick=function(){ var b=this; b.disabled=true; b.textContent="Buscando…";
+      api("colabEmailAgora",AT).then(function(x){ CB=x; desenhaColab(); toast(x.novos?x.novos+" e-mail(s) do RH aplicado(s).":"Nenhum e-mail novo do RH."); })
+        .catch(function(e){ toast(e.message); telaColab(); }); };
   }
 }
 function listaColab(){
