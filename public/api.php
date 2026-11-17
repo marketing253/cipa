@@ -43,7 +43,8 @@ try {
     $args = array_pad(array_slice($args, 0, $n), $n, null);
     responder($f(...$args) ?: (object)[]);
 } catch (Erro $e) {
-    responder(['erro' => $e->getMessage()]);
+    // para o n8n: erro do colabSync volta como falha HTTP, senão a execução fica verde sem ter gravado nada
+    responder(['erro' => $e->getMessage()], $fn === 'colabSync' ? 422 : 200);
 } catch (Throwable $e) {
     error_log('[urna-cipa] ' . $fn . ': ' . $e);
     responder(['erro' => 'Erro interno no servidor. Tente novamente em instantes.'], 500);
