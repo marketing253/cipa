@@ -143,5 +143,15 @@ t('RAD admitido: matrícula completada vale no check-in', api_preQr('6100', '123
 t('RAD admitido: sem pendente', !array_filter(api_colabDados($A)['colaboradores'], fn($x) => $x['semMatricula']));
 erro('RAD admitido: chave inexistente', fn() => api_colabSalvar($A, 'n:xx', ['matricula' => '6100']), 'não encontrada');
 
+/* ---------- leitura para a Redentor Academy ---------- */
+erro('exportar: chave errada', fn() => api_colabExportar('x'), 'Chave');
+$x = api_colabExportar($nova);
+$porMat = array_column($x['colaboradores'], null, 'matricula');
+t('exportar: traz a lista', $x['ok'] && $x['total'] === count($x['colaboradores']) && isset($porMat['6100']));
+t('exportar: sem pendente sem matrícula', !array_filter($x['colaboradores'], fn($c) => $c['matricula'] === ''));
+t('exportar: cpf3 de quem tem', $porMat['6100']['cpf3'] === '123' && $porMat['6001']['cpf3'] === '777');
+t('exportar: CPF inteiro não sai', !str_contains(json_encode($x), '888'));
+t('exportar: nada de código cru', !array_filter($x['colaboradores'], fn($c) => isset($c['codigo'])));
+
 echo "\n$ok ok, $ko falha(s)\n";
 exit($ko ? 1 : 0);

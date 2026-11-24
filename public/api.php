@@ -21,7 +21,7 @@ const PERMITIDAS = ['ballot', 'consultar', 'login', 'votar', 'adminLogin', 'admi
     // /admin unificado: comissão (senha pessoal) e jurados
     'acessoInicio', 'acessoEntrar', 'acessoCriarSenha', 'acessoLista', 'acessoIncluir', 'acessoRemover', 'acessoZerarSenha', 'acessoEu',
     // cadastro de colaboradores: e-mails de admitidos/demitidos (n8n ou colados no painel)
-    'colabSync', 'colabDados', 'colabColar', 'colabSalvar', 'colabBloquear', 'colabTrocarChave', 'colabEmailAgora'];
+    'colabSync', 'colabExportar', 'colabDados', 'colabColar', 'colabSalvar', 'colabBloquear', 'colabTrocarChave', 'colabEmailAgora'];
 
 function responder($v, int $code = 200): never {
     http_response_code($code);
@@ -44,7 +44,7 @@ try {
     responder($f(...$args) ?: (object)[]);
 } catch (Erro $e) {
     // para o n8n: erro do colabSync volta como falha HTTP, senão a execução fica verde sem ter gravado nada
-    responder(['erro' => $e->getMessage()], $fn === 'colabSync' ? 422 : 200);
+    responder(['erro' => $e->getMessage()], in_array($fn, ['colabSync', 'colabExportar'], true) ? 422 : 200);
 } catch (Throwable $e) {
     error_log('[urna-cipa] ' . $fn . ': ' . $e);
     responder(['erro' => 'Erro interno no servidor. Tente novamente em instantes.'], 500);

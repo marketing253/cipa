@@ -310,6 +310,29 @@ function api_colabSync($chave, $texto, $assunto = '', $tipo = 'auto'): array {
     return ['ok' => true, 'ignoradas' => count($l['ignoradas'])] + $r;
 }
 
+/*
+ * Leitura para a Redentor Academy (24/11/2026): a lista inteira, com os bloqueados (para o Academy desligar
+ * quem saiu) e só os 3 primeiros dígitos do CPF, que é o que o colaborador digita para entrar. CPF inteiro não sai.
+ * Mesma chave da integração do n8n. {"fn":"colabExportar","args":["<chave>"]}
+ */
+function api_colabExportar($chave): array {
+    $k = (string)kv_get('colab_chave', '');
+    if ($k === '' || !is_string($chave) || !hash_equals($k, $chave)) { usleep(400000); falha('Chave da integração inválida.'); }
+    $modo = cfg()['verificacao'] ?: 'nenhuma';
+    $cod = [];
+    foreach (db()->query('SELECT mnorm,codigo FROM eleitores') as $e) if (trim((string)$e['codigo']) !== '') $cod[$e['mnorm']] ??= (string)$e['codigo'];
+    foreach (colab_tabelas()->query('SELECT mnorm,codigo FROM colaboradores') as $c) if (trim((string)$c['codigo']) !== '') $cod[$c['mnorm']] = (string)$c['codigo'];
+    $lista = [];
+    foreach (colab_todos() as $m => $c) {
+        if (str_starts_with((string)$m, 'n:')) continue;   // admitido ainda sem matrícula: não tem como entrar
+        $cpf3 = $modo === 'cpf3' ? conf_norm('cpf3', $cod[$m] ?? '') : '';
+        $lista[] = ['matricula' => (string)$c['matricula'], 'nome' => (string)$c['nome'], 'escala' => (string)$c['escala'],
+            'cargo' => (string)$c['cargo'], 'setor' => (string)$c['setor'], 'ativo' => (bool)$c['ativo'],
+            'cpf3' => strlen($cpf3) === 3 ? $cpf3 : ''];
+    }
+    return ['ok' => true, 'verificacao' => $modo, 'total' => count($lista), 'colaboradores' => $lista];
+}
+
 /* ---------- painel (comissão) ---------- */
 
 function colab_painel(): array {
